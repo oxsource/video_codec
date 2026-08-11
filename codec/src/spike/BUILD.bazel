@@ -8,3 +8,18 @@ cc_binary(
         "//src/framework/core",
     ],
 )
+
+# Android-only MediaCodec encode spike (US2). target_compatible_with keeps it
+# out of host (Linux/macOS) builds so the dev host stays NDK-free. The dep is
+# the //third_party/android_ndk:android_media_codec wrapper, which forwards to
+# @androidndk//:media once `android_ndk_repository(name = "androidndk")` is
+# registered in WORKSPACE (deferred env item). Until then this target is
+# resolvable on host but never built here.
+cc_binary(
+    name = "mediacodec_spike",
+    srcs = ["mediacodec_spike.cc"],
+    target_compatible_with = ["@platforms//os:android"],
+    deps = [
+        "//third_party/android_ndk:android_media_codec",
+    ],
+)

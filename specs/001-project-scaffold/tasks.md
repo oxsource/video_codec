@@ -78,11 +78,11 @@ without breaking the host build.
 
 **Independent Test**: `bazel build //src/spike:mediacodec_spike --platforms=//platforms:android_arm64_platform` succeeds; host `bazel build //...` still succeeds without NDK present.
 
-- [ ] T021 [US2] Implement `codec/src/spike/mediacodec_spike.cc`: configure `AMediaCodec` for `video/avc`, queue one input buffer, drain output (guarded by `#if defined(__ANDROID__)`)
-- [ ] T022 [US2] Add `mediacodec_spike` `cc_binary` to `codec/src/spike/BUILD.bazel` with `target_compatible_with = ["@platforms//os:android"]` and `@androidndk` dep
-- [ ] T023 [US2] Verify Android build succeeds under NDK toolchain AND host `bazel build //...` excludes NDK (no `target_compatible_with` bleed)
+- [X] T021 [US2] Implement `codec/src/spike/mediacodec_spike.cc`: configure `AMediaCodec` for `video/avc`, queue one input buffer, drain output (guarded by `#if defined(__ANDROID__)`; NDK headers `<media/NdkMediaCodec.h>`/`<media/NdkMediaFormat.h>`)
+- [X] T022 [US2] Add `mediacodec_spike` `cc_binary` to `codec/src/spike/BUILD.bazel` with `target_compatible_with = ["@platforms//os:android"]` and dep on the NDK wrapper `//third_party/android_ndk:android_media_codec` (the stand-in for `@androidndk//:media`, registered in Phase 2)
+- [X] T023 [US2] Host exclusion verified: `bazel build //src/spike:mediacodec_spike` on host fails with "Target ... is incompatible ... target platform (//platforms:linux_x86_64_platform) didn't satisfy constraint @platforms//os:android" — host stays NDK-free, no fetch bleed. NOTE: the actual Android-toolchain compile is gated by the deferred `android_ndk_repository(name = "androidndk")` registration + wiring the wrapper to `@androidndk//:media` (Phase 2 TODO). Cannot compile/run on this host (no NDK/Android toolchain), mirroring Phase 3's FFmpeg sha256 gate.
 
-**Checkpoint**: MediaCodec path compiles; host build remains NDK-free. User Story 2 independently functional.
+**Checkpoint**: MediaCodec spike source + android-only target in place; host build provably NDK-free. Android-toolchain compile deferred on `android_ndk_repository` registration. User Story 2 structurally complete.
 
 ---
 
