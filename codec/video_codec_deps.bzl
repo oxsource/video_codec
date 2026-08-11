@@ -1,13 +1,16 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def _ffmpeg():
-    # Pin FFmpeg 6.1 release; build_file wraps libavcodec/libavutil as cc_library.
-    # TODO(phase2): replace <pinned-sha256> with the real ffmpeg-6.1 tarball sha256
-    # before the first `bazel build` (fetch will fail on a placeholder hash).
+    # FFmpeg 6.1 release; build_file wraps libavcodec/libavutil as cc_library.
+    # sha256 pinned to the official ffmpeg-6.1.tar.xz (verified 2026-08-11).
+    # NOTE: the wrapper still uses a source glob and will NOT compile FFmpeg
+    # standalone (it needs the configure-generated config.h). A real build
+    # requires rules_foreign_cc configure_make or a prebuilt FFmpeg. See
+    # third_party/ffmpeg/BUILD.bazel.
     http_archive(
         name = "ffmpeg",
         urls = ["https://ffmpeg.org/releases/ffmpeg-6.1.tar.xz"],
-        sha256 = "<pinned-sha256>",
+        sha256 = "488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144207c270",
         strip_prefix = "ffmpeg-6.1",
         build_file = "//third_party/ffmpeg:BUILD.bazel",
     )
