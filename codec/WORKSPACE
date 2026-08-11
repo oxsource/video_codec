@@ -1,0 +1,5 @@
+workspace(name = "video_codec")
+
+load("//:video_codec_deps.bzl", "video_codec_setup")
+
+video_codec_setup()

@@ -23,12 +23,12 @@ independently testable increment. Workspace root is `codec/`.
 
 **Purpose**: Initialize the Bazel workspace root at `codec/` and global build config.
 
-- [ ] T001 Create `codec/WORKSPACE` with `workspace(name = "video_codec")` and `load("//:video_codec_deps.bzl", "video_codec_setup")` + `video_codec_setup()`
-- [ ] T002 [P] Create `codec/.bazelversion` containing `6.5.0`
-- [ ] T003 [P] Create `codec/.bazelrc` (C++17 cxxopts, visibility=hidden, platform aliases `android_arm64`/`linux_x86_64`/`darwin_arm64`, default `linux_x86_64_platform`, `test --test_output=errors`)
-- [ ] T004 [P] Create `codec/.bazelignore` (ignore example/non-workspace dirs)
-- [ ] T005 Create `codec/BUILD.bazel` root alias `//:video_codec` → `//src/framework/public:video_codec` with `//visibility:public`
-- [ ] T006 Create `codec/video_codec_deps.bzl` with `video_codec_setup()` declaring FFmpeg 6.1, googletest 1.14.0, bazel_skylib 1.6.1, each guarded by `native.existing_rule()`
+- [X] T001 Create `codec/WORKSPACE` with `workspace(name = "video_codec")` and `load("//:video_codec_deps.bzl", "video_codec_setup")` + `video_codec_setup()`
+- [X] T002 [P] Create `codec/.bazelversion` containing `6.5.0`
+- [X] T003 [P] Create `codec/.bazelrc` (C++17 cxxopts, visibility=hidden, platform aliases `android_arm64`/`linux_x86_64`/`darwin_arm64`, default `linux_x86_64_platform`, `test --test_output=errors`)
+- [X] T004 [P] Create `codec/.bazelignore` (ignore example/non-workspace dirs)
+- [X] T005 Create `codec/BUILD.bazel` root alias `//:video_codec` → `//src/framework/public:video_codec` with `//visibility:public`
+- [X] T006 Create `codec/video_codec_deps.bzl` with `video_codec_setup()` declaring FFmpeg 6.1, googletest 1.14.0, bazel_skylib 1.6.1, each guarded by `native.existing_rule()`
 
 **Checkpoint**: Workspace evaluates; `bazel version` matches 6.5.0.
 

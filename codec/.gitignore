@@ -1,0 +1,16 @@
+# Bazel
+/bazel-*
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.pyc
+__pycache__/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/

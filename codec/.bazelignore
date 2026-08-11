@@ -1,0 +1,3 @@
+# Directories Bazel should ignore when scanning for BUILD files.
+# Add example/sandbox workspaces here if placed inside the repo.
+node_modules
