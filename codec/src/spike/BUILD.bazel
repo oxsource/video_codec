@@ -1,0 +1,10 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "ffmpeg_spike",
+    srcs = ["ffmpeg_spike.cc"],
+    deps = [
+        "@ffmpeg//:ffmpeg_codec",
+        "//src/framework/core",
+    ],
+)
