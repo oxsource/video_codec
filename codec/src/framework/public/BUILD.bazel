@@ -1,0 +1,27 @@
+package(default_visibility = ["//visibility:public"])
+
+# Umbrella target aggregating all modules. The backend is selected by platform:
+# Android -> backend/android (MediaCodec); everything else (linux, darwin) ->
+# backend/ffmpeg (Apple currently falls back to FFmpeg; VideoToolbox reserved).
+cc_library(
+    name = "video_codec",
+    hdrs = glob(["include/video_codec/*.h"]),
+    strip_include_prefix = "include",
+    copts = [
+        "-fvisibility=hidden",
+        "-fvisibility-inlines-hidden",
+        "-DVIDEO_CODEC_SHARED_LIBRARY",
+    ],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/utils",
+    ] + select({
+        "//platforms:android_arm64_platform_setting": [
+            "//src/framework/backend/android:android",
+        ],
+        "//conditions:default": [
+            "//src/framework/backend/ffmpeg:ffmpeg",
+        ],
+    }),
+)

@@ -1,0 +1,7 @@
+package(default_visibility = ["//visibility:public"])
+
+# Test infrastructure placeholder. Real googletest targets are added in the
+# Phase 2 encoder implementation once core/api types exist.
+test_suite(
+    name = "all",
+)

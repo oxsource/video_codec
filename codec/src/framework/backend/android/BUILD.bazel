@@ -1,0 +1,16 @@
+package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__"])
+
+# Android MediaCodec backend (NDK AMediaCodec). android-only so the host build
+# stays NDK-free; @ffmpeg path is selected on non-Android platforms.
+cc_library(
+    name = "android",
+    target_compatible_with = ["@platforms//os:android"],
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/utils",
+        "//third_party/android_ndk:android_media_codec",
+    ],
+)

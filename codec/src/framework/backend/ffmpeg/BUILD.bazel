@@ -1,0 +1,15 @@
+package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__"])
+
+# Generic FFmpeg backend (libx264 / libx265 / AAC / Opus). Default backend on all
+# non-Android platforms.
+cc_library(
+    name = "ffmpeg",
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/utils",
+        "@ffmpeg//:ffmpeg_codec",
+    ],
+)

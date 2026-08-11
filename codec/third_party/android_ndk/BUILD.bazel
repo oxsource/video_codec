@@ -1,0 +1,14 @@
+package(default_visibility = ["//visibility:public"])
+
+# Scaffold placeholder for the Android NDK media-codec headers.
+#
+# The real backend/android must include <media/NdkMediaCodec.h>. To keep the
+# host (Linux/macOS) build NDK-free, this target is android-only and currently
+# empty. Phase 2 real implementation should:
+#   1. register `android_ndk_repository(name = "androidndk")` in WORKSPACE
+#   2. replace this empty lib with `deps = ["@androidndk//:media"]`
+# so backend/android can compile against the NDK media headers.
+cc_library(
+    name = "android_media_codec",
+    target_compatible_with = ["@platforms//os:android"],
+)

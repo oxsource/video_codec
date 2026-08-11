@@ -39,17 +39,17 @@ independently testable increment. Workspace root is `codec/`.
 **Purpose**: Platform defs, third-party wrappers, and all module `BUILD.bazel`
 stubs. NO user-story work can begin until this phase is complete.
 
-- [ ] T007 [P] Create `codec/platforms/platforms.bzl` with `config_setting_and_platform` macro and `video_codec_select()`
-- [ ] T008 [P] Create `codec/platforms/BUILD` defining `android_arm64`, `linux_x86_64`, `darwin_arm64` (os+cpu constraint_values)
-- [ ] T009 [P] Create `codec/third_party/ffmpeg/BUILD.bazel` wrapper (`ffmpeg_codec` cc_library over libavcodec/libavutil; **enable libx264/libx265 encoders**; platform `linkopts` only on matching platform)
-- [ ] T010 [P] Create `codec/third_party/android_ndk/BUILD.bazel` wrapper exposing `media/NdkMediaCodec.h` for host-referenced headers
-- [ ] T011 [P] Create `codec/src/framework/core/BUILD.bazel` empty `cc_library` stub (visibility `__subpackages__`, `tests`)
-- [ ] T012 [P] Create `codec/src/framework/api/BUILD.bazel` empty `cc_library` stub (deps core)
-- [ ] T013 [P] Create `codec/src/framework/utils/BUILD.bazel` empty `cc_library` stub (deps core)
-- [ ] T014 [P] Create `codec/src/framework/backend/android/BUILD.bazel` empty `cc_library` stub (deps core, api, utils, `@androidndk`)
-- [ ] T015 [P] Create `codec/src/framework/backend/ffmpeg/BUILD.bazel` empty `cc_library` stub (deps core, api, utils, `@ffmpeg`)
-- [ ] T016 Create `codec/src/framework/public/BUILD.bazel` umbrella `cc_library` aggregating core/api/utils + `select()` backend, plus `include/video_codec/video_codec_export.h` defining `VIDEO_CODEC_API` (visibility `//visibility:public`)
-- [ ] T017 [P] Create `codec/tests/BUILD.bazel` empty `cc_test`/test target placeholder (test infra present)
+- [X] T007 [P] Create `codec/platforms/platforms.bzl` with `config_setting_and_platform` macro and `video_codec_select()`
+- [X] T008 [P] Create `codec/platforms/BUILD` defining `android_arm64`, `linux_x86_64`, `darwin_arm64` (os+cpu constraint_values)
+- [X] T009 [P] Create `codec/third_party/ffmpeg/BUILD.bazel` wrapper (`ffmpeg_codec` cc_library over libavcodec/libavutil; **enable libx264/libx265 encoders**; platform `linkopts` only on matching platform)
+- [X] T010 [P] Create `codec/third_party/android_ndk/BUILD.bazel` wrapper exposing `media/NdkMediaCodec.h` for host-referenced headers
+- [X] T011 [P] Create `codec/src/framework/core/BUILD.bazel` empty `cc_library` stub (visibility `__subpackages__`, `tests`)
+- [X] T012 [P] Create `codec/src/framework/api/BUILD.bazel` empty `cc_library` stub (deps core)
+- [X] T013 [P] Create `codec/src/framework/utils/BUILD.bazel` empty `cc_library` stub (deps core)
+- [X] T014 [P] Create `codec/src/framework/backend/android/BUILD.bazel` empty `cc_library` stub (deps core, api, utils, `@androidndk`)
+- [X] T015 [P] Create `codec/src/framework/backend/ffmpeg/BUILD.bazel` empty `cc_library` stub (deps core, api, utils, `@ffmpeg`)
+- [X] T016 Create `codec/src/framework/public/BUILD.bazel` umbrella `cc_library` aggregating core/api/utils + `select()` backend, plus `include/video_codec/video_codec_export.h` defining `VIDEO_CODEC_API` (visibility `//visibility:public`)
+- [X] T017 [P] Create `codec/tests/BUILD.bazel` empty `cc_test`/test target placeholder (test infra present)
 
 **Checkpoint**: `bazel build //...` succeeds on host (Linux/macOS); `@ffmpeg` reachable only via `backend/ffmpeg`, NDK only via `backend/android`.
 
