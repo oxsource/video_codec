@@ -237,7 +237,7 @@ encodes a clip to `.h264` via `queue` + `FileSinkConsumer` and asserts the file 
       `codec/src/framework/public/include/video_codec/video_codec.h` per
       `contracts/public-api.md`; only `video_codec_export.h` exists today. Keep `public`
       as the only `//visibility:public` module.
-- [ ] T027 [US5] Add example `codec/src/examples/encode_to_file.cc` that wires
+- [ ] T027 [US5] Add example `codec/src/examples/ffmpeg_encode_file.cc` that wires
       `FFmpegVideoEncoder` → `EncodedPacketQueue` → `PacketPump` → `FileSinkConsumer`.
 - [ ] T028 [US5] Register the example + a smoke target in `codec/src/examples/BUILD.bazel`
       and add it to `codec/mk/` + `scripts/verify/` categorized validation (per spec 001
@@ -246,7 +246,7 @@ encodes a clip to `.h264` via `queue` + `FileSinkConsumer` and asserts the file 
       builds + tests on macOS ARM64 / Linux x86_64 / Android cross-build; add the
       example/smoke job if missing. **Currently MISSING** — no `.github/workflows/` yet.
 
-**Checkpoint**: A consumer can `encode_to_file` through the public API and the ring
+**Checkpoint**: A consumer can `ffmpeg_encode_file` through the public API and the ring
 buffer; CI is green on the target matrix.
 
 ---
@@ -339,7 +339,7 @@ Task: "Implement lifecycle state machine in api/encoder_lifecycle.{h,cc}"
 3. Add US3 (ring buffer) → encoder can push into a bounded SPSC queue. **Demo needs T020.** ✅ queue, ⚠️ wiring.
 4. Add US4 (consumer) → encoder → queue → `FileSinkConsumer` writes a valid file,
    transport-agnostic. **Demo** (T024 tests the consumer; real encoder→queue needs T020).
-5. Add US5 (public + example + CI) → `encode_to_file` example + green CI matrix. ⚠️ all pending.
+5. Add US5 (public + example + CI) → `ffmpeg_encode_file` example + green CI matrix. ⚠️ all pending.
 6. Polish (Phase N) → consistency audit, CHANGELOG, quickstart validation. ⚠️ pending.
 
 ### Parallel Team Strategy

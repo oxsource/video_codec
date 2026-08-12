@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Host verification: build //... + run ffmpeg_spike + run the encode_to_file
+# Host verification: build //... + run ffmpeg_spike + run the ffmpeg_encode_file
 # example + assert both outputs are valid H.264 streams with ffprobe.
 # Invoked by `make host-verify`.
 set -euo pipefail
@@ -13,8 +13,8 @@ bazel build //...
 echo "[host] 2/4 run ffmpeg_spike"
 bazel run //src/spike:ffmpeg_spike >/dev/null
 
-echo "[host] 3/4 run encode_to_file example"
-bash "$(dirname "$0")/host_example.sh"
+echo "[host] 3/4 run ffmpeg_encode_file example"
+bash "$(dirname "$0")/host_ffmpeg_example.sh"
 
 echo "[host] 4/4 validate spike output with ffprobe"
 OUT="$(find -L bazel-bin -name ffmpeg_spike.h264 2>/dev/null | head -1)"

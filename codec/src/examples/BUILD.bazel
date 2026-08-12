@@ -4,8 +4,8 @@ package(default_visibility = ["//visibility:public"])
 # PacketPump -> FileSinkConsumer -> .h264. The FFmpeg static archive is
 # force-loaded (ADR-001) exactly like the backend tests and ffmpeg_spike.
 cc_binary(
-    name = "encode_to_file",
-    srcs = ["encode_to_file.cc"],
+    name = "ffmpeg_encode_file",
+    srcs = ["ffmpeg_encode_file.cc"],
     data = [
         "@ffmpeg//:ffmpeg_codec_archive",
     ],

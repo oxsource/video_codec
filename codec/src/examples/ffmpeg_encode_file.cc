@@ -1,4 +1,4 @@
-// encode_to_file.cc
+// ffmpeg_encode_file.cc
 //
 // A complete, runnable example of the video_codec pipeline:
 //
@@ -11,10 +11,10 @@
 // Annex-B H.264 elementary stream to the output file.
 //
 // Usage:
-//   encode_to_file [output.h264] [seconds]
+//   ffmpeg_encode_file [output.h264] [seconds]
 //
 // Example:
-//   bazel run //src/examples:encode_to_file -- out.h264 5
+//   bazel run //src/examples:ffmpeg_encode_file -- out.h264 5
 
 #include <chrono>
 #include <cstdint>
@@ -138,15 +138,15 @@ int main(int argc, char** argv) {
 
   std::unique_ptr<vc::VideoEncoder> encoder = vc::CreateVideoEncoder(cfg);
   if (!encoder) {
-    std::fprintf(stderr, "encode_to_file: no FFmpeg backend available\n");
+    std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg backend available\n");
     return 1;
   }
   if (encoder->Init() != vc::StatusCode::kOk) {
-    std::fprintf(stderr, "encode_to_file: encoder Init failed\n");
+    std::fprintf(stderr, "ffmpeg_encode_file: encoder Init failed\n");
     return 1;
   }
   if (encoder->SetOutputSink(&queue) != vc::StatusCode::kOk) {
-    std::fprintf(stderr, "encode_to_file: push mode unavailable\n");
+    std::fprintf(stderr, "ffmpeg_encode_file: push mode unavailable\n");
     return 1;
   }
 
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
     vc::VideoFrame frame = MakeColorBarsFrame(width, height, fps, i);
     const auto r = encoder->Encode(frame);
     if (!r.ok()) {
-      std::fprintf(stderr, "encode_to_file: Encode error %d at frame %d\n",
+      std::fprintf(stderr, "ffmpeg_encode_file: Encode error %d at frame %d\n",
                    static_cast<int>(r.status()), i);
       break;
     }
@@ -177,7 +177,7 @@ int main(int argc, char** argv) {
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                               std::chrono::steady_clock::now() - start)
                               .count();
-  std::printf("encode_to_file: encoded %lld frames in %lld ms -> %s\n",
+  std::printf("ffmpeg_encode_file: encoded %lld frames in %lld ms -> %s\n",
               static_cast<long long>(produced),
               static_cast<long long>(elapsed_ms), out_path.c_str());
   return 0;
