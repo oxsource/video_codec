@@ -30,7 +30,7 @@ headers are referenced only under the Android toolchain; on host it is excluded 
 ```bash
 bazel run //src/spike:ffmpeg_spike
 # writes ffmpeg_spike.h264 into the runfiles dir (a real libx264-encoded
-# 320x240 H.264/Annex-B stream, ~14.8 KB), NOT codec/bazel-out/...
+# 320x240 H.264/Annex-B stream, 14778 bytes), NOT codec/bazel-out/...
 ```
 
 Validate the output is a real H.264 stream:
