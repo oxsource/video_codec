@@ -45,3 +45,30 @@ wrapper in the base design — it is a consumer/utility concern.
   serializes against its encode thread internally (per `nativebuffer-contract.md`).
 - `Encode(NativeBuffer)` expects `handle` to stay valid only for the call's duration; no
   cross-thread ownership is taken.
+
+## Consumer thread (drain loop)
+
+When output goes to a ring buffer (see [output-queue.md](output-queue.md)), a **second
+thread** runs the `PacketPump` drain loop:
+
+```mermaid
+flowchart LR
+    ET["Encoder thread<br/>(Submit → ring)"]
+    Q["EncodedPacketQueue"]
+    CT["Consumer thread<br/>(PacketPump: Pop → Consume)"]
+    ET --> Q
+    Q --> CT
+```
+
+- The encoder thread is the **producer** (calls `OutputSink::Submit`).
+- The consumer thread is the **reader** (calls `EncodedPacketSource::Pop` in a loop, then
+  `PacketConsumer::Consume`). This is the SPSC pairing the ring buffer assumes — exactly
+  one producer, exactly one reader.
+- The two threads communicate **only** through the ring buffer; no shared mutable state
+  outside it.
+- A slow consumer (e.g. blocked network socket in `StreamConsumer`) makes `Consume` slow
+  → the pump slows → the ring fills → `Submit` blocks (under `kBlock`) → the encoder
+  thread slows. This end-to-end back-pressure is intentional; the pump must not swallow
+  `Consume` errors and spin.
+- For simultaneous file + stream, run **two** consumer threads (one per `PacketConsumer`),
+  each with its own ring buffer (or a tee) — never two readers on one SPSC queue.

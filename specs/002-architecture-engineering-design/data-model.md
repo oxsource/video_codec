@@ -175,7 +175,7 @@ consumer side exposes `EncodedPacketSource`.
 | `capacity` | `size_t` (power of two) | ring slots (fixed at construction) |
 | `slots[]` | `EncodedPacket/AudioPacket[]` | pre-allocated, packets **moved** in/out |
 | `head_` / `tail_` | `std::atomic<size_t>` | consumer / producer indices (mod mask) |
-| `policy` | `Backpressure` | `kBlock` / `kDropOldest` / `kError` when full |
+| `policy` | `Backpressure` | back-pressure when full; default `kBlock` |
 
 ### Relationship to encoder
 
@@ -193,4 +193,37 @@ consumer side exposes `EncodedPacketSource`.
   back-pressure code).
 - `TryPop` on an empty queue returns `false` (non-blocking); a blocking `Pop(deadline)`
   variant is provided for consumers that must wait.
+
+### Consumer side (`PacketConsumer`)
+
+The consumer is decoupled from the encoder by a `PacketConsumer` interface; a
+`PacketPump` drain loop on the consumer thread bridges `EncodedPacketSource` →
+`PacketConsumer`.
+
+```cpp
+class PacketConsumer {
+  public:
+    virtual ~PacketConsumer() = default;
+    virtual StatusCode Consume(EncodedPacket&& pkt) = 0;   // video
+    virtual StatusCode Consume(AudioPacket&& pkt) = 0;     // audio
+    virtual StatusCode Flush() { return StatusCode::kOk; }
+    virtual StatusCode Finish() { return StatusCode::kOk; } // EOS / teardown
+};
+```
+
+Two target consumers implement this (both deferred to implementation, designed now):
+
+| Consumer | Role | Key obligations |
+|----------|------|-----------------|
+| `FileSinkConsumer` | Save `.h264`/`.aac` or mux to `.mp4`/`.mkv` | preserve order + keyframe/SPS-PPS; flush on `Finish()` |
+| `StreamConsumer` | 推流: RTMP / SRT / WebRTC | frame Annex-B → protocol units; connection lifecycle + reconnect; pace by `pts_us`; propagate back-pressure (slow socket → slow `Consume` → ring fills → encoder slows) |
+
+`PacketPump::Run(src, consumer)` loops `Pop` → `Consume`; calls `Finish()` at EOS. A
+blocking `Pop(deadline)` avoids busy-spin.
+
+### Multiple consumers (record + stream)
+
+One ring buffer = one reader (SPSC). For simultaneous file + stream, instantiate **two**
+`EncodedPacketQueue`s off the encoder, or insert a **tee** fanning one source to N sinks.
+The queue + `PacketConsumer` contract stay SPSC-clean either way.
 

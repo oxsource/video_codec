@@ -141,6 +141,7 @@ graph TD
             UTILS["utils<br/>YUV420P↔NV12, stride, PCM convert"]
             BFF["backend/*<br/>android / ffmpeg / darwin(reserved)"]
             QUEUE["queue<br/>EncodedPacketQueue (ring buffer)"]
+            CONSUMER["consumer<br/>PacketConsumer, PacketPump,<br/>FileSinkConsumer / StreamConsumer"]
             PUBLIC["public<br/>Umbrella header, VIDEO_CODEC_API export"]
         end
 
@@ -156,6 +157,7 @@ graph TD
         PUBLIC --> UTILS
         PUBLIC --> BFF
         PUBLIC --> QUEUE
+        PUBLIC --> CONSUMER
         API --> CORE
         UTILS --> CORE
         BFF --> API
@@ -165,7 +167,10 @@ graph TD
         BFF --> NDK
         BFF --> VT
         BFF -.->|EncodedPacket / AudioPacket| QUEUE
-        QUEUE -.->|pop| APP
+        CONSUMER --> QUEUE
+        CONSUMER --> API
+        CONSUMER --> CORE
+        QUEUE -.->|pop| CONSUMER
     end
 
     style FFMPEG fill:#f96,stroke:#333
@@ -246,10 +251,15 @@ flowchart LR
 ```
 
 Encoded output is handed off through a **bounded SPSC ring buffer**
-(`EncodedPacketQueue`): the encoder (producer) calls `OutputSink::Submit(...)`; the
-consumer (muxer / network sender / file writer) calls `EncodedPacketSource::Pop(...)`.
-This decouples encode rate from consume rate and is the inter-thread hand-off that lets
-the encoder run synchronously on its own thread while the consumer drains on another.
+(`EncodedPacketQueue`): the encoder (producer) calls `OutputSink::Submit(...)`; a
+`PacketPump` drain loop on the consumer thread calls `EncodedPacketSource::Pop(...)` and
+forwards each packet to a `PacketConsumer`. The consumer is **transport-agnostic** — both
+target consumers implement `PacketConsumer`: `FileSinkConsumer` (save `.h264`/`.aac` or
+mux to `.mp4`) and `StreamConsumer` (推流: RTMP / SRT / WebRTC). Swapping file output for
+streaming is a one-line `PacketConsumer` change; the encoder is untouched. This decouples
+encode rate from consume rate and is the inter-thread hand-off that lets the encoder run
+synchronously on its own thread while the consumer drains on another. Back-pressure
+propagates end-to-end (slow socket → slow `Consume` → ring fills → encoder slows).
 Full design in `codec/doc/architecture/output-queue.md`; contract in
 `contracts/output-queue-contract.md`; decision in `codec/doc/adrs/ADR-005-ringbuffer-transport.md`.
 

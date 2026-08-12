@@ -168,8 +168,10 @@ buffer** (`EncodedPacketQueue`), exposed as two interfaces — `OutputSink` (pro
 encoder writes via `Submit`) and `EncodedPacketSource` (consumer pops via `TryPop`/`Pop`).
 Implementation is lock-free via atomic `head_`/`tail_` indices over a fixed power-of-two
 slot array; packets are **moved** in and out (no per-packet allocation on the hot path).
-Back-pressure when full is configurable: `kBlock`, `kDropOldest`, or `kError` (default —
-fail loud so a misconfigured/slow consumer surfaces instead of silently losing or hanging).
+Back-pressure when full is configurable: `kBlock` (default), `kDropOldest`, or `kError`.
+`kBlock` provides natural flow control — a slow consumer slows the encoder rather than
+dropping frames — and is the safe default for both recording and streaming; `kDropOldest`
+(lossy, for real-time) and `kError` (strict pipelines) are opt-in.
 
 **Rationale**:
 - The encoder runs synchronously on its own thread (see `threading.md`); the consumer
@@ -191,6 +193,33 @@ fail loud so a misconfigured/slow consumer surfaces instead of silently losing o
   lock-free is strictly better for the common single-consumer case.
 - *MPMC queue*: more general than needed; harder to make wait-free and to reason about
   for the single-producer/single-consumer encode→mux path.
+
+## R10. Consumer abstraction: file writer vs streamer
+
+**Decision**: Define a `PacketConsumer` interface (`Consume` / `Flush` / `Finish`) that
+both `FileSinkConsumer` (save `.h264`/`.aac` or mux to `.mp4`) and `StreamConsumer`
+(RTMP / SRT / WebRTC 推流) implement. A `PacketPump` drain loop on the consumer thread
+pops from `EncodedPacketSource` and forwards to the `PacketConsumer`. The encoder is
+never aware of which consumer is attached. Back-pressure propagates end-to-end: a slow
+socket makes `Consume` slow → pump slows → ring fills → encoder slows (under `kBlock`).
+
+**Rationale**:
+- The two consumers are implemented later (`project_bootstrap.md` defers container
+  muxing and network push), but the architecture must anticipate both now so the encoder
+  and the ring buffer are not redesigned when they land.
+- A single `PacketConsumer` contract makes file↔stream a one-line swap, satisfies
+  "write once, encode anywhere", and lets the same encoded packets be recorded and
+  streamed (two queues / a tee) without encoder changes.
+- Putting framing, connection lifecycle, reconnect, and pacing inside the consumer (not
+  the encoder) keeps the encoder protocol-agnostic and testable in isolation.
+
+**Alternatives considered**:
+- *Encoder writes to file/socket directly*: couples encoder to each sink; cannot add
+  streaming later without editing the encoder.
+- *One monolithic "output" class handling file+stream*: mixes two unrelated
+  responsibilities and their very different failure modes (disk full vs network drop).
+- *Consumer polls the encoder*: inverts ownership and breaks the clean producer→consumer
+  flow; the ring buffer + pump is the standard shape.
 
 ## Open clarifications — resolved
 
