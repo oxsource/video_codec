@@ -65,7 +65,7 @@ and produces a valid H.264 bitstream from a synthetic NV12 frame on the dev host
 
 - [X] T018 [US1] Implement `codec/src/spike/ffmpeg_spike.cc`: allocate `AVCodecContext` for `libx264`, build a synthetic NV12 `AVFrame`, encode to `AVPacket`, write Annex-B bytes to `ffmpeg_spike.h264`
 - [X] T019 [US1] Add `ffmpeg_spike` `cc_binary` target to `codec/src/spike/BUILD.bazel` (deps `@ffmpeg//:ffmpeg_codec`, `//src/framework/core`)
-- [X] T020 [US1] Verify output `.h264` is a valid, decodable H.264 stream. NOTE: Bazel `http_archive` fetch is gated by the placeholder FFmpeg sha256 in `video_codec_deps.bzl` (deferred env item), so runtime proof was done by compiling+running the spike against system Homebrew FFmpeg 8.1.2 (libx264 enabled): produced a 14,778-byte Annex-B stream that `ffprobe` decodes as `h264` 320x240. The spike C++ logic is fully validated; `bazel run` will pass once the real sha256 is pinned.
+- [X] T020 [US1] Verify output `.h264` is a valid, decodable H.264 stream. Runtime proof first done against system Homebrew FFmpeg 8.1.2 (libx264 enabled): 14,778-byte Annex-B stream, `ffprobe` decodes as `h264` 320x240. The Bazel build now compiles FFmpeg 6.1 from source via `rules_foreign_cc` (`third_party/ffmpeg/BUILD.bazel`: `configure_make` → merged `libffmpeg.a` → `genrule` + `cc_import` + `alwayslink` + explicit `-force_load`) and `bazel run //src/spike:ffmpeg_spike` produces the same 14,778-byte, `ffprobe`-valid `h264` 320x240 stream. US1 fully validated via Bazel.
 
 **Checkpoint**: FFmpeg encode pipeline validated end-to-end on host (via system FFmpeg; Bazel fetch gated on sha256 pin). User Story 1 independently functional.
 
@@ -90,8 +90,8 @@ without breaking the host build.
 
 **Purpose**: Validate the whole scaffold and align docs.
 
-- [ ] T024 [P] Run `bazel build //...` and `bazel test //...` on host (Linux x86_64 / macOS ARM64) and confirm clean
-- [ ] T025 [P] Execute `specs/001-project-scaffold/quickstart.md` steps; confirm `ffmpeg_spike` output validity
+- [X] T024 [P] Run `bazel build //...` and `bazel test //...` on host (Linux x86_64 / macOS ARM64) and confirm clean. `bazel build //...` passes on macOS ARM64 (FFmpeg builds from source via rules_foreign_cc; `mediacodec_spike` correctly skipped as Android-incompatible). No `bazel test //...` targets exist yet (tests deferred to Phase 2).
+- [X] T025 [P] Execute `specs/001-project-scaffold/quickstart.md` steps; confirm `ffmpeg_spike` output validity. `bazel run //src/spike:ffmpeg_spike` writes a 14,778-byte `ffmpeg_spike.h264` that `ffprobe` decodes as `h264` 320x240.
 - [ ] T026 Documentation: confirm `codec/doc/project_bootstrap.md` and `specs/001-project-scaffold/quickstart.md` match the produced layout; note `examples/` and `backend/darwin` deferred to Phase 2
 
 ---

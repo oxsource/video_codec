@@ -31,6 +31,15 @@ def _bazel_skylib():
         strip_prefix = "bazel-skylib-1.6.1",
     )
 
+def _rules_foreign_cc():
+    # Builds FFmpeg (and future native deps) from source via configure_make.
+    http_archive(
+        name = "rules_foreign_cc",
+        sha256 = "5816f4198184a1e0e682d7e6b817331219929401e2f18358fac7f7b172737976",
+        strip_prefix = "rules_foreign_cc-0.10.0",
+        url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.10.0.tar.gz",
+    )
+
 def video_codec_setup():
     if not native.existing_rule("bazel_skylib"):
         _bazel_skylib()
@@ -38,3 +47,5 @@ def video_codec_setup():
         _ffmpeg()
     if not native.existing_rule("com_google_googletest"):
         _googletest()
+    if not native.existing_rule("rules_foreign_cc"):
+        _rules_foreign_cc()

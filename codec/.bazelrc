@@ -2,12 +2,13 @@ build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
 build --features=visibility=hidden
 
-# Platform aliases
+# Platform aliases (select explicitly for cross-compiles)
 build:android_arm64 --platforms=//platforms:android_arm64_platform
 build:linux_x86_64 --platforms=//platforms:linux_x86_64_platform
 build:darwin_arm64 --platforms=//platforms:darwin_arm64_platform
 
-# Default to Linux x86_64 for desktop development
-build --platforms=//platforms:linux_x86_64_platform
+# No forced default --platforms: Bazel uses the host platform automatically, so
+# a macOS dev builds for darwin_arm64 and Linux CI builds for linux_x86_64.
+# Cross-compiles (e.g. Android) pass --config android_arm64 explicitly.
 
 test --test_output=errors

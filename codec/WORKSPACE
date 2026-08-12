@@ -1,5 +1,20 @@
 workspace(name = "video_codec")
 
 load("//:video_codec_deps.bzl", "video_codec_setup")
+load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
 
 video_codec_setup()
+
+# Register the host C/C++ toolchain so cc_library / foreign_cc targets can be
+# built on the dev host (no C++ toolchain is available by default on macOS).
+cc_configure()
+
+# FFmpeg is built from source via rules_foreign_cc (configure_make). We rely on
+# the preinstalled `make` and `pkg-config` on the dev host, so we skip building
+# cmake/ninja/meson/pkg-config from source.
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+
+rules_foreign_cc_dependencies(
+    register_built_tools = False,
+    register_built_pkgconfig_toolchain = False,
+)

@@ -5,7 +5,26 @@ cc_binary(
     srcs = ["ffmpeg_spike.cc"],
     deps = [
         "@ffmpeg//:ffmpeg_codec",
-        "//src/framework/core",
+        # Pull in the full FFmpeg include dir (generated + public headers) for
+        # compilation. Its own (lazily-linked) archive adds nothing new next to
+        # the force-loaded @ffmpeg//:ffmpeg_codec_archive copy.
+        "@ffmpeg//:ffmpeg_codec_impl",
+    ],
+    # ffmpeg_codec_archive is the single-output .a we force-load; list it in
+    # data so $(execpath ...) below resolves to its path.
+    data = [
+        "@ffmpeg//:ffmpeg_codec_archive",
+    ],
+    # Force-load the whole merged FFmpeg archive. A static archive is linked
+    # lazily, so unreferenced internal members (e.g. the aarch64 helper
+    # _ff_prefetch_aarch64, defined in NEON asm and only called by other FFmpeg
+    # code) would be dropped and dyld would fail at load time with "symbol not
+    # found in flat namespace". We reference the single-output genrule
+    # ffmpeg_codec_archive explicitly so the link-line ordering does not matter.
+    # (The alwayslink wrapper above is belt-and-suspenders; this is what
+    # actually pulls every member in.)
+    linkopts = [
+        "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
     ],
 )
 
