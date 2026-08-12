@@ -18,10 +18,13 @@ A consumer program MUST be able to do:
 ```
 
 and obtain, with no further includes, the full public surface:
-`VideoEncoder`, `AudioEncoder`, `EncoderFactory`, `VideoFrame`, `AudioFrame`,
+`VideoEncoder`, `AudioEncoder`, the factory entry points (`CreateVideoEncoder`,
+`CreateAudioEncoder`, `ResolveBackend`, `RegisterVideoEncoder`, `RegisterAudioEncoder`),
+`VideoFrame`, `AudioFrame`,
 `EncodedPacket`, `AudioPacket`, `NativeBuffer`, `PixelFormat`, `SampleFormat`,
 `VideoCodecType`, `AudioCodecType`, `Backend`, `StatusCode`, `Result<T>`, `LogSlot`,
-`InputSurface`, and the `*EncoderConfig` structs — all decorated with `VIDEO_CODEC_API`.
+`InputSurface`, and the `*EncoderConfig` structs — the public API intended to be decorated
+with `VIDEO_CODEC_API` (see §3).
 
 ## 2. Visibility contract
 
@@ -41,6 +44,12 @@ and obtain, with no further includes, the full public surface:
 
 Public symbols MUST be tagged with `VIDEO_CODEC_API`; internal symbols MUST NOT be, and the
 library is compiled with `-fvisibility=hidden` so untagged symbols stay internal.
+
+**Current status**: static builds are the default distribution form and are unaffected
+(the macro expands to nothing). Decorating the individual public API types with
+`VIDEO_CODEC_API` for shared-library symbol export is a tracked follow-up; the umbrella
+header and the header-only `public:video_codec_hdrs` target already carry the correct
+include/export plumbing.
 
 ## 4. Utilities sub-contract (consumed via the same umbrella or directly)
 

@@ -1,0 +1,12 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_test(
+    name = "umbrella_compile_test",
+    srcs = ["umbrella_compile_test.cc"],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/public:video_codec_hdrs",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

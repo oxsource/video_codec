@@ -17,14 +17,20 @@ int main() {
     // Build a config, create an encoder through the factory.
     video_codec::VideoEncoderConfig cfg;
     cfg.codec = video_codec::VideoCodecType::kH264;
-    auto result = video_codec::VideoEncoderFactory::Create(cfg);
-    if (!result) return 1;                      // StatusCode, never an exception
-    auto encoder = std::move(result).value();
-    // ... use encoder ...
+    cfg.width = 1280;
+    cfg.height = 720;
+    // Returns nullptr if no backend is linked/registered for this config.
+    std::unique_ptr<video_codec::VideoEncoder> encoder =
+        video_codec::CreateVideoEncoder(cfg);
+    if (!encoder) return 1;
+    if (encoder->Init() != video_codec::StatusCode::kOk) return 1;
+    // ... feed frames via encoder->Encode(frame) ...
 }
 ```
 
 - No other header is needed or should be included by consumer code.
+- To force a backend (debug/tests), set `cfg.force_backend` or call
+  `video_codec::ResolveBackend(...)` directly.
 - Public symbols are exported automatically for shared-library builds; static builds need
   no extra setup.
 

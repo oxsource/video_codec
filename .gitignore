@@ -1,0 +1,30 @@
+# ---- C/C++ build artifacts ----
+build/
+bin/
+obj/
+out/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.dll
+*.obj
+
+# ---- Bazel ----
+bazel-*
+bazel-bin
+bazel-out
+bazel-testlogs
+
+# ---- IDEs / editors / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+
+# ---- logs / env ----
+*.log
+.env*

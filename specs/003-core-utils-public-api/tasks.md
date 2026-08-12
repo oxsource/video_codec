@@ -28,10 +28,10 @@ foundation, so they can run in parallel.
 **Purpose**: Create the one missing Bazel package (the `utils` test package) and confirm the
 existing `utils` / `public` stubs expose the right visibility for this feature.
 
-- [ ] T001 Create the `utils` test package `codec/tests/utils/BUILD.bazel` with
+- [x] T001 Create the `utils` test package `codec/tests/utils/BUILD.bazel` with
       `package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__"])`
       and a `cc_test` target wired to googletest, so the conversion/stride/PCM tests have a home.
-- [ ] T002 [P] Verify (no change expected) that `codec/src/framework/utils/BUILD.bazel` globs
+- [x] T002 [P] Verify (no change expected) that `codec/src/framework/utils/BUILD.bazel` globs
       `*.cc`/`*.h` and deps only `//src/framework/core`, and that
       `codec/src/framework/public/BUILD.bazel` globs `include/video_codec/*.h` and is
       `//visibility:public`. Document confirmation in the task.
@@ -48,7 +48,7 @@ and is visible inside the framework; `public` remains the only public-visibility
 implemented (commit `628e5be`). Enforce the architecture rule that `utils` must stay
 `core`-only.
 
-- [ ] T003 [P] Enforce the `utils`-only-`core` dependency rule: confirm
+- [x] T003 [P] Enforce the `utils`-only-`core` dependency rule: confirm
       `codec/src/framework/utils/BUILD.bazel` has NO dependency on `api`, `backend/*`,
       `queue`, or `consumer` (only `//src/framework/core`). If any leaked in, remove it. This
       guards the architecture constraint from `module-dependencies.md`.
@@ -70,26 +70,26 @@ references, and unsupported conversions return an error status rather than corru
 
 ### Tests for User Story 1 (write FIRST, ensure they FAIL)
 
-- [ ] T004 [P] [US1] Add YUV conversion round-trip test in
+- [x] T004 [P] [US1] Add YUV conversion round-trip test in
       `codec/tests/utils/yuv_convert_test.cc`: `kI420 → kNV12 → kI420` is bit-exact on a
       reference buffer; an unsupported format pair returns an error `StatusCode`.
-- [ ] T005 [P] [US1] Add stride reference test in `codec/tests/utils/stride_test.cc`:
+- [x] T005 [P] [US1] Add stride reference test in `codec/tests/utils/stride_test.cc`:
       `RowStride(width, PixelFormat)` matches expected byte layouts for representative
       widths/formats; `width == 0` returns an error status.
-- [ ] T006 [P] [US1] Add PCM conversion test in `codec/tests/utils/pcm_convert_test.cc`:
+- [x] T006 [P] [US1] Add PCM conversion test in `codec/tests/utils/pcm_convert_test.cc`:
       `kS16 ↔ kF32Planar` (and other supported pairs) round-trip within tolerance; an
       unsupported pair returns an error status.
 
 ### Implementation for User Story 1
 
-- [ ] T007 [P] [US1] Implement `yuv_convert.h` / `yuv_convert.cc` in
+- [x] T007 [P] [US1] Implement `yuv_convert.h` / `yuv_convert.cc` in
       `codec/src/framework/utils/` — `ConvertPixelFormat(VideoFrame, PixelFormat::kNV12, ...)`
       doing planar YUV420P ↔ semi-planar NV12 with explicit per-plane strides; returns
       `StatusCode`.
-- [ ] T008 [P] [US1] Implement `stride.h` / `stride.cc` in `codec/src/framework/utils/` —
+- [x] T008 [P] [US1] Implement `stride.h` / `stride.cc` in `codec/src/framework/utils/` —
       `RowStride(width, PixelFormat)` and `SampleStride(...)` returning padded byte counts;
       returns error status for invalid input.
-- [ ] T009 [P] [US1] Implement `pcm_convert.h` / `pcm_convert.cc` in
+- [x] T009 [P] [US1] Implement `pcm_convert.h` / `pcm_convert.cc` in
       `codec/src/framework/utils/` — `ConvertSampleFormat(...)` among `kS16`/`kF32` ×
       interleaved/planar; returns `StatusCode`.
 
@@ -110,7 +110,7 @@ exclusively public symbols (no internal header reachable).
 
 ### Tests for User Story 2 (write FIRST, ensure they FAIL)
 
-- [ ] T010 [P] [US2] Add header-only public compile/link test in
+- [x] T010 [P] [US2] Add header-only public compile/link test in
       `codec/tests/public/umbrella_compile_test.cc` (+ `codec/tests/public/BUILD.bazel`):
       include only `<video_codec/video_codec.h>`, reference `VideoEncoderFactory` /
       `VideoEncoder` / core types / `LogSlot`, and assert the target builds and links. This
@@ -118,7 +118,7 @@ exclusively public symbols (no internal header reachable).
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Create the umbrella header
+- [x] T011 [US2] Create the umbrella header
       `codec/src/framework/public/include/video_codec/video_codec.h` that `#include`s the
       public contracts — `core/types.h`, `core/status.h`, `core/result.h`, `core/log_slot.h`,
       `api/video_encoder.h`, `api/audio_encoder.h`, `api/input_surface.h`,
@@ -135,12 +135,12 @@ surface re-exports exactly the intended contracts and nothing internal.
 
 **Purpose**: Validate the quickstart end-to-end and record the addition.
 
-- [ ] T012 [P] Run `quickstart.md` validation: `bazel build //src/framework/...` and
+- [x] T012 [P] Run `quickstart.md` validation: `bazel build //src/framework/...` and
       `bazel test //tests/utils/... //tests/public/...` all pass; the snippet in
       `quickstart.md` compiles.
-- [ ] T013 [P] Update `CHANGELOG.md` "Unreleased" with the `utils` module and the public
+- [x] T013 [P] Update `CHANGELOG.md` "Unreleased" with the `utils` module and the public
       umbrella/export surface added by this feature.
-- [ ] T014 [P] Confirm `contracts/public-api.md` matches the final umbrella (re-export list
+- [x] T014 [P] Confirm `contracts/public-api.md` matches the final umbrella (re-export list
       and `VIDEO_CODEC_API` behavior); fix any drift.
 
 ---

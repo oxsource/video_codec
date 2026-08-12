@@ -25,3 +25,17 @@ cc_library(
         ],
     }),
 )
+
+# Header-only slice of the public surface (no backend linkage). Used by the
+# umbrella compile test so it validates the include contract without pulling in
+# the FFmpeg/MediaCodec backend.
+cc_library(
+    name = "video_codec_hdrs",
+    hdrs = glob(["include/video_codec/*.h"]),
+    strip_include_prefix = "include",
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/utils",
+    ],
+)

@@ -3,6 +3,7 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include <libavcodec/bsf.h>
 #include <libavutil/avutil.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
@@ -129,20 +130,20 @@ StatusCode FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
 }
 
 Result<EncodedPacket> FFmpegVideoEncoder::Encode(const VideoFrame& frame) {
-  if (lifecycle_.Encode() != StatusCode::kOk) return Err(StatusCode::kNotInitialized);
-  if (CopyFrame(frame) != StatusCode::kOk) return Err(StatusCode::kInvalidArgument);
+  if (lifecycle_.Encode() != StatusCode::kOk) return Err<EncodedPacket>(StatusCode::kNotInitialized);
+  if (CopyFrame(frame) != StatusCode::kOk) return Err<EncodedPacket>(StatusCode::kInvalidArgument);
 
-  if (avcodec_send_frame(ctx_, frame_) < 0) return Err(StatusCode::kEncodeFailed);
+  if (avcodec_send_frame(ctx_, frame_) < 0) return Err<EncodedPacket>(StatusCode::kEncodeFailed);
   return Drain(/*drain_eof=*/false);
 }
 
 Result<EncodedPacket> FFmpegVideoEncoder::Encode(const NativeBuffer&) {
   // Software FFmpeg path has no hardware surface.
-  return Err(StatusCode::kUnsupportedOperation);
+  return Err<EncodedPacket>(StatusCode::kUnsupportedOperation);
 }
 
 Result<EncodedPacket> FFmpegVideoEncoder::Flush() {
-  if (lifecycle_.Flush() != StatusCode::kOk) return Err(StatusCode::kNotInitialized);
+  if (lifecycle_.Flush() != StatusCode::kOk) return Err<EncodedPacket>(StatusCode::kNotInitialized);
   if (avcodec_send_frame(ctx_, nullptr) < 0) {
     // Already drained; still try to pull remaining bsf output.
   }
@@ -154,13 +155,13 @@ Result<EncodedPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
   for (;;) {
     int ret = avcodec_receive_packet(ctx_, pkt_);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
-    if (ret < 0) return Err(StatusCode::kEncodeFailed);
+    if (ret < 0) return Err<EncodedPacket>(StatusCode::kEncodeFailed);
 
     // Convert this codec packet to Annex-B via the bsf.
     AVPacket* bsf_out = av_packet_alloc();
     if (av_bsf_send_packet(bsf_, pkt_) < 0) {
       av_packet_free(&bsf_out);
-      return Err(StatusCode::kEncodeFailed);
+      return Err<EncodedPacket>(StatusCode::kEncodeFailed);
     }
     while (av_bsf_receive_packet(bsf_, bsf_out) == 0) {
       out.data.assign(bsf_out->data, bsf_out->data + bsf_out->size);
