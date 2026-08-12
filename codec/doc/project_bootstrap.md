@@ -337,6 +337,14 @@ codec/                              # Bazel workspace root
 └── .gitignore
 ```
 
+> **Scope note (scaffold phase vs. design):** The tree above is the *target* layout.
+> In the current scaffold phase, `examples/` and `src/framework/backend/darwin/`
+> (VideoToolbox) are **intentionally NOT produced** — both are deferred to the
+> Phase 2 implementation. The scaffold ships `backend/android` / `backend/ffmpeg`
+> stubs plus the two spikes (`src/spike/`), and builds FFmpeg from source via
+> `rules_foreign_cc`. `backend/darwin` exists only as a reserved location (the
+> `Create` factory currently falls back to FFmpeg on Apple platforms).
+
 ## 3.4 Core Type Model
 
 ### Enums
@@ -574,13 +582,14 @@ build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
 build --features=visibility=hidden
 
-# Platform aliases
+# Platform aliases (select explicitly for cross-compiles)
 build:android_arm64 --platforms=//platforms:android_arm64_platform
 build:linux_x86_64 --platforms=//platforms:linux_x86_64_platform
 build:darwin_arm64 --platforms=//platforms:darwin_arm64_platform
 
-# Default to Linux x86_64 for desktop development
-build --platforms=//platforms:linux_x86_64_platform
+# No forced default --platforms: Bazel uses the host platform automatically, so
+# a macOS dev builds for darwin_arm64 and Linux CI builds for linux_x86_64.
+# Cross-compiles (e.g. Android) pass --config android_arm64 explicitly.
 
 test --test_output=errors
 ```
@@ -591,8 +600,23 @@ test --test_output=errors
 workspace(name = "video_codec")
 
 load("//:video_codec_deps.bzl", "video_codec_setup")
+load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
 
 video_codec_setup()
+
+# Register the host C/C++ toolchain so cc_library / foreign_cc targets build
+# on the dev host (no C++ toolchain is available by default on macOS).
+cc_configure()
+
+# FFmpeg is built from source via rules_foreign_cc (configure_make). We rely on
+# the preinstalled make / pkg-config on the dev host, so we skip building them
+# from source.
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+
+rules_foreign_cc_dependencies(
+    register_built_tools = False,
+    register_built_pkgconfig_toolchain = False,
+)
 ```
 
 ## 4.5 Root BUILD.bazel
@@ -608,19 +632,20 @@ alias(
 
 ## 4.6 video_codec_deps.bzl
 
-统一管理所有第三方依赖（FFmpeg、Android NDK、googletest、bazel_skylib）：
+统一管理所有第三方依赖（FFmpeg、rules_foreign_cc、Android NDK、googletest、bazel_skylib）：
 
 ```python
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 def _ffmpeg():
-    # Pin FFmpeg release; build_file wraps libavcodec/libavutil as cc_library
+    # FFmpeg 6.1 release. It is BUILT FROM SOURCE (not globbed) — see
+    # third_party/ffmpeg/BUILD.bazel which uses rules_foreign_cc configure_make.
+    # sha256 pinned to the official ffmpeg-6.1.tar.xz (verified 2026-08-11).
     http_archive(
         name = "ffmpeg",
         urls = ["https://ffmpeg.org/releases/ffmpeg-6.1.tar.xz"],
-        sha256 = "<pinned-sha256>",
+        sha256 = "488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144207c270",
         strip_prefix = "ffmpeg-6.1",
-        build_file = "//third_party/ffmpeg:BUILD.bazel",
     )
 
 def _googletest():
@@ -639,6 +664,15 @@ def _bazel_skylib():
         strip_prefix = "bazel-skylib-1.6.1",
     )
 
+def _rules_foreign_cc():
+    # Builds FFmpeg (and future native deps) from source via configure_make.
+    http_archive(
+        name = "rules_foreign_cc",
+        sha256 = "5816f4198184a1e0e682d7e6b817331219929401e2f18358fac7f7b172737976",
+        strip_prefix = "rules_foreign_cc-0.10.0",
+        url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.10.0.tar.gz",
+    )
+
 def video_codec_setup():
     if not native.existing_rule("bazel_skylib"):
         _bazel_skylib()
@@ -646,9 +680,11 @@ def video_codec_setup():
         _ffmpeg()
     if not native.existing_rule("com_google_googletest"):
         _googletest()
+    if not native.existing_rule("rules_foreign_cc"):
+        _rules_foreign_cc()
 ```
 
-> **Note**: Android NDK 依赖通过 Bazel `android_ndk_repository` 或 `@androidndk` 引入，不在 `http_archive` 中处理；具体接入方式在 `/speckit.plan` 阶段细化。
+> **Note**: FFmpeg is **compiled from source** by `third_party/ffmpeg/BUILD.bazel` (`rules_foreign_cc` `configure_make`); only the release tarball is fetched here. Android NDK 依赖通过 Bazel `android_ndk_repository` 或 `@androidndk` 引入，不在 `http_archive` 中处理；具体接入方式在 `/speckit.plan` 阶段细化。
 
 ## 4.7 Platforms
 
@@ -704,26 +740,77 @@ def video_codec_select(select_map):
 
 ### third_party/ffmpeg/BUILD.bazel
 
+FFmpeg 6.1 is **compiled from source** via `rules_foreign_cc` `configure_make`, not
+globbed into a `cc_library` (a glob can't supply the `configure`-generated `config.h`
+and won't cross-compile). The build produces a single BSD-format static archive
+`libffmpeg.a` (libavcodec + libavutil merged) plus the install include dir, then
+exposes it through a `genrule` → `cc_import` → `alwayslink` `cc_library` so consumers
+can force-load the whole archive.
+
 ```python
+load("@rules_foreign_cc//foreign_cc:configure.bzl", "configure_make")
+
 package(default_visibility = ["//visibility:public"])
 
-cc_library(
-    name = "ffmpeg_codec",
-    hdrs = glob(["libavcodec/*.h", "libavutil/*.h"]),
-    srcs = glob([
-        "libavcodec/**/*.c",
-        "libavutil/**/*.c",
-    ]),
-    includes = ["."],
-    copts = ["-Wno-unused-parameter"],
-    linkopts = select({
-        "//platforms:android_arm64": [],
-        "//platforms:darwin_arm64": ["-framework VideoToolbox", "-framework CoreMedia"],
-        "//conditions:default": [],
-    }),
-    visibility = ["//visibility:public"],
+# Full FFmpeg source tree, globbed so configure_make can copy it into its sandbox.
+filegroup(name = "ffmpeg_source", srcs = glob(["**/*"]))
+
+configure_make(
+    name = "ffmpeg_codec_impl",
+    lib_source = "@ffmpeg//:ffmpeg_source",
+    configure_command = "configure",
+    configure_options = [
+        "--disable-avdevice", "--disable-avfilter", "--disable-avformat",
+        "--disable-postproc", "--disable-swresample", "--disable-swscale",
+        "--enable-gpl", "--enable-libx264", "--enable-encoder=libx264",
+        "--enable-decoder=h264", "--enable-parser=h264",
+        "--disable-programs", "--enable-pic",
+        "--enable-neon",   # keep aarch64 helper asm (defines _ff_prefetch_aarch64)
+        "--extra-cflags='-I/opt/homebrew/include -Wno-implicit-function-declaration'",
+        "--extra-ldflags=-L/opt/homebrew/lib",
+    ],
+    env = {"PKG_CONFIG_PATH": "/opt/homebrew/lib/pkgconfig"},
+    targets = ["install"],
+    out_include_dir = "include",
+    out_static_libs = ["libffmpeg.a"],
+    # Merge into one BSD-format archive without extracting (ar -x would clobber
+    # the duplicate-basename videodsp.o members and drop the aarch64 definition).
+    postfix_script = """
+set -e
+cd "$$INSTALLDIR$$/lib"
+/usr/bin/libtool -static -o libffmpeg.a libavcodec.a libavutil.a
+/usr/bin/ranlib libffmpeg.a
+rm -f libavcodec.a libavutil.a
+""",
+    linkopts = ["-L/opt/homebrew/lib", "-lx264"],  # x264 from dev host
 )
+
+# configure_make emits two outputs (static lib + include dir); collapse to one .a
+# so $(execpath)/cc_import resolve a single file.
+genrule(
+    name = "ffmpeg_codec_archive",
+    srcs = [":ffmpeg_codec_impl"],
+    outs = ["libffmpeg.a"],
+    cmd = "for f in $(locations :ffmpeg_codec_impl); do case \"$$f\" in *.a) cp \"$$f\" $@;; esac; done",
+)
+
+cc_import(name = "ffmpeg_codec_import", static_library = ":ffmpeg_codec_archive")
+
+cc_library(name = "ffmpeg_codec", deps = [":ffmpeg_codec_import"], alwayslink = True)
 ```
+
+> **Why static + BSD-merged + force-load (not shared, not GNU-ar):** a shared
+> `.dylib` under rules_foreign_cc bakes the long sandbox prefix into each dylib's
+> `LC_ID_DYLIB`, overflowing `cmdsize` and corrupting the Mach-O. Homebrew `ar`
+> writes GNU-format members that macOS `ld64` rejects; merging via
+> `/usr/bin/libtool -static` yields BSD-format the linker accepts. NEON must stay
+> enabled or the aarch64 helper that defines `_ff_prefetch_aarch64` is dropped,
+> leaving the symbol undefined (dyld "symbol not found"). The consumer force-loads
+> the archive (see §4.9 / spike `linkopts`) so no member is lazily dropped.
+>
+> **Dev-host caveat:** x264 is linked from the dev host's Homebrew install
+> (`pkg-config` + explicit extra flags). A hermetic build would add x264 as its own
+> `rules_foreign_cc` target and point `--extra-cflags`/`--extra-ldflags` at it.
 
 ### third_party/android_ndk/BUILD.bazel
 
@@ -1005,7 +1092,10 @@ Surface 创建、`NativeBuffer` 消费与 SPS/PPS/关键帧标记，对外仅暴
 
 ## 8.2 Generic — FFmpeg
 
-FFmpeg 通过 `http_archive` 引入（见 §4.6），版本锁定为 6.1。
+FFmpeg 6.1 release 通过 `http_archive` 拉取（见 §4.6），但**实际从源码编译**：
+`third_party/ffmpeg/BUILD.bazel` 用 `rules_foreign_cc` `configure_make` 产出合并后的
+`libffmpeg.a`（libavcodec + libavutil），经 `genrule` / `cc_import` / `alwayslink`
+暴露给消费者，消费者通过显式 `-force_load` 拉入整个归档（见 §4.8 / §4.9）。
 `src/framework/backend/ffmpeg/` 子目录封装 `AVCodecContext` / `AVFrame` / `AVPacket`，
 以及 `NativeBuffer` 硬件句柄对接，对外仅暴露
 `video::codec::VideoEncoder` / `AudioEncoder` 接口。

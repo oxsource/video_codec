@@ -92,7 +92,7 @@ without breaking the host build.
 
 - [X] T024 [P] Run `bazel build //...` and `bazel test //...` on host (Linux x86_64 / macOS ARM64) and confirm clean. `bazel build //...` passes on macOS ARM64 (FFmpeg builds from source via rules_foreign_cc; `mediacodec_spike` correctly skipped as Android-incompatible). No `bazel test //...` targets exist yet (tests deferred to Phase 2).
 - [X] T025 [P] Execute `specs/001-project-scaffold/quickstart.md` steps; confirm `ffmpeg_spike` output validity. `bazel run //src/spike:ffmpeg_spike` writes a 14,778-byte `ffmpeg_spike.h264` that `ffprobe` decodes as `h264` 320x240.
-- [ ] T026 Documentation: confirm `codec/doc/project_bootstrap.md` and `specs/001-project-scaffold/quickstart.md` match the produced layout; note `examples/` and `backend/darwin` deferred to Phase 2
+- [X] T026 Documentation: confirm `codec/doc/project_bootstrap.md` and `specs/001-project-scaffold/quickstart.md` match the produced layout; note `examples/` and `backend/darwin` deferred to Phase 2. Both docs reconciled with the source-built FFmpeg layout (`rules_foreign_cc` `configure_make` → merged `libffmpeg.a` → `genrule`/`cc_import`/`force_load`); WORKSPACE now shows `cc_configure()` + `rules_foreign_cc_dependencies()`; `.bazelrc` forced-default note; deferral callouts added to both docs.
 
 ---
 
