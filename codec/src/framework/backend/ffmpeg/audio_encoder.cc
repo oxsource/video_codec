@@ -10,6 +10,8 @@ extern "C" {
 
 #include <cmath>
 
+#include "queue/queue_iface.h"
+
 namespace video {
 namespace codec {
 
@@ -84,19 +86,35 @@ Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
 Result<AudioPacket> FFmpegAudioEncoder::Flush() {
   if (lifecycle_.Flush() != StatusCode::kOk) return Err<AudioPacket>(StatusCode::kNotInitialized);
   avcodec_send_frame(ctx_, nullptr);
-  return Drain(/*drain_eof=*/true);
+  Result<AudioPacket> r = Drain(/*drain_eof=*/true);
+  if (sink_) sink_->Flush();
+  return r;
+}
+
+StatusCode FFmpegAudioEncoder::SetOutputSink(OutputSink* sink) {
+  sink_ = sink;
+  return StatusCode::kOk;
 }
 
 Result<AudioPacket> FFmpegAudioEncoder::Drain(bool drain_eof) {
-  AudioPacket out;
+  AudioPacket out;  // pull-mode result (push mode returns an empty packet)
   for (;;) {
     int ret = avcodec_receive_packet(ctx_, pkt_);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
     if (ret < 0) return Err<AudioPacket>(StatusCode::kEncodeFailed);
-    out.data.assign(pkt_->data, pkt_->data + pkt_->size);
-    out.pts_us = pkt_->pts * av_q2d(ctx_->time_base) * 1'000'000;
-    out.keyframe = false;
+    AudioPacket pkt;
+    pkt.data.assign(pkt_->data, pkt_->data + pkt_->size);
+    pkt.pts_us = pkt_->pts * av_q2d(ctx_->time_base) * 1'000'000;
+    pkt.keyframe = false;
     av_packet_unref(pkt_);
+    if (sink_) {
+      // Push mode: single destination is the sink.
+      if (sink_->Submit(std::move(pkt)) != StatusCode::kOk) {
+        return Err<AudioPacket>(StatusCode::kEncodeFailed);
+      }
+    } else {
+      out = std::move(pkt);
+    }
     if (drain_eof) break;
   }
   return Ok(std::move(out));
@@ -104,6 +122,7 @@ Result<AudioPacket> FFmpegAudioEncoder::Drain(bool drain_eof) {
 
 void FFmpegAudioEncoder::Release() {
   lifecycle_.Release();
+  sink_ = nullptr;  // non-owning; caller owns the sink lifetime
   if (pkt_) {
     av_packet_free(&pkt_);
     pkt_ = nullptr;

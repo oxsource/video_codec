@@ -9,3 +9,13 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "encoder_push_contract_test",
+    srcs = ["encoder_push_contract_test.cc"],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

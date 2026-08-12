@@ -15,6 +15,8 @@ struct AVBSFContext;
 namespace video {
 namespace codec {
 
+class OutputSink;  // defined in queue/queue_iface.h (included by the .cc)
+
 // FFmpeg (libx264 / libx265) video encoder. Software path: CPU frames only;
 // Encode(NativeBuffer) returns kUnsupportedOperation (no HW surface).
 class FFmpegVideoEncoder : public VideoEncoder {
@@ -27,6 +29,7 @@ class FFmpegVideoEncoder : public VideoEncoder {
   Result<EncodedPacket> Encode(const NativeBuffer& buf) override;
   Result<EncodedPacket> Flush() override;
   void Release() override;
+  StatusCode SetOutputSink(OutputSink* sink) override;
 
  private:
   // Copy a framework VideoFrame into `frame_`, honoring stride. Returns
@@ -43,6 +46,7 @@ class FFmpegVideoEncoder : public VideoEncoder {
   AVFrame* frame_ = nullptr;
   AVBSFContext* bsf_ = nullptr;
   AVPacket* pkt_ = nullptr;
+  OutputSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
   int64_t pts_ = 0;
   bool initialized_ = false;
 };

@@ -171,13 +171,13 @@ capacity + blocking back-pressure in unit tests.
       `codec/src/framework/queue/encoded_packet_queue.h` / `.cc`; constructor
       `EncodedPacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock)`
       per ADR-005 / `output-queue.md`.
-- [ ] T020 [US3] Wire the encoder's optional `OutputSink` push mode: add an
-      `OutputSink*` (or `std::shared_ptr<OutputSink>`) member to the encoder base and,
+- [x] T020 [US3] Wire the encoder's optional `OutputSink` push mode: add an
+      `OutputSink*` member to the encoder base and,
       after a successful `Encode()`, forward `EncodedPacket&&` to it (pull API still
-      the default; push is opt-in) per `data-model.md` §8. **Currently NOT wired** —
-      the backend never references `OutputSink`, so a real encoder does not yet feed
-      the queue. The standalone queue is testable, but the real "encoder → queue" path
-      is unproven.
+      the default; push is opt-in) per `data-model.md` §8. **Done in spec 004
+      (`004-encoder-queue-wiring`)**: `SetOutputSink` on the abstract encoders (default
+      `kUnsupportedOperation`), FFmpeg video/audio backends push produced packets to the
+      sink, caller owns `MarkEos`. Validated end-to-end with a real encoder.
 - [x] T021 [US3] Add ring-buffer unit tests in `codec/tests/queue/encoded_packet_queue_test.cc`:
       SPSC correctness, power-of-two masking, `kBlock` blocks, `kDropOldest` overwrites,
       `kError` returns back-pressure code (contract *Acceptance*).

@@ -10,6 +10,7 @@ extern "C" {
 }
 
 #include "core/log_slot.h"
+#include "queue/queue_iface.h"
 
 namespace video {
 namespace codec {
@@ -90,6 +91,15 @@ StatusCode FFmpegVideoEncoder::Init() {
   }
   AVCodecParameters* par = avcodec_parameters_alloc();
   avcodec_parameters_from_context(par, ctx_);
+  // av_bsf_alloc leaves par_in/par_out NULL; allocate par_in before copying.
+  bsf_->par_in = avcodec_parameters_alloc();
+  if (!bsf_->par_in) {
+    avcodec_parameters_free(&par);
+    av_bsf_free(&bsf_);
+    av_frame_free(&frame_);
+    avcodec_free_context(&ctx_);
+    return StatusCode::kEncodeFailed;
+  }
   avcodec_parameters_copy(bsf_->par_in, par);
   avcodec_parameters_free(&par);
   if (av_bsf_init(bsf_) < 0) {
@@ -119,10 +129,16 @@ StatusCode FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
     int rows = (p == 0) ? frame.height
                          : (frame.format == PixelFormat::kNV12 ? frame.height / 2
                                                               : frame.height / 2);
+    // Bytes per row copied: luma = width; NV12 UV = width (interleaved); I420
+    // U/V = width/2.
+    int copy_bytes = (p == 0)
+                         ? frame_->width
+                         : ((frame.format == PixelFormat::kNV12)
+                                ? frame_->width
+                                : frame_->width / 2);
     for (int y = 0; y < rows; ++y) {
       std::memcpy(dst + y * frame_->linesize[p], src + y * src_stride,
-                  static_cast<size_t>(frame_->width *
-                                      (p == 0 ? 1 : (frame.format == PixelFormat::kNV12 ? 2 : 1))));
+                  static_cast<size_t>(copy_bytes));
     }
   }
   frame_->pts = pts_++;
@@ -147,11 +163,18 @@ Result<EncodedPacket> FFmpegVideoEncoder::Flush() {
   if (avcodec_send_frame(ctx_, nullptr) < 0) {
     // Already drained; still try to pull remaining bsf output.
   }
-  return Drain(/*drain_eof=*/true);
+  Result<EncodedPacket> r = Drain(/*drain_eof=*/true);
+  if (sink_) sink_->Flush();
+  return r;
+}
+
+StatusCode FFmpegVideoEncoder::SetOutputSink(OutputSink* sink) {
+  sink_ = sink;
+  return StatusCode::kOk;
 }
 
 Result<EncodedPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
-  EncodedPacket out;
+  EncodedPacket out;  // pull-mode result (push mode returns an empty packet)
   for (;;) {
     int ret = avcodec_receive_packet(ctx_, pkt_);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
@@ -164,10 +187,21 @@ Result<EncodedPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
       return Err<EncodedPacket>(StatusCode::kEncodeFailed);
     }
     while (av_bsf_receive_packet(bsf_, bsf_out) == 0) {
-      out.data.assign(bsf_out->data, bsf_out->data + bsf_out->size);
-      out.pts_us = bsf_out->pts * av_q2d(ctx_->time_base) * 1'000'000;
-      out.keyframe = (bsf_out->flags & AV_PKT_FLAG_KEY) != 0;
+      EncodedPacket pkt;
+      pkt.data.assign(bsf_out->data, bsf_out->data + bsf_out->size);
+      pkt.pts_us = bsf_out->pts * av_q2d(ctx_->time_base) * 1'000'000;
+      pkt.keyframe = (bsf_out->flags & AV_PKT_FLAG_KEY) != 0;
       av_packet_unref(bsf_out);
+      if (sink_) {
+        // Push mode: single destination is the sink.
+        if (sink_->Submit(std::move(pkt)) != StatusCode::kOk) {
+          av_packet_free(&bsf_out);
+          av_packet_unref(pkt_);
+          return Err<EncodedPacket>(StatusCode::kEncodeFailed);
+        }
+      } else {
+        out = std::move(pkt);
+      }
     }
     av_packet_free(&bsf_out);
     av_packet_unref(pkt_);
@@ -178,6 +212,7 @@ Result<EncodedPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
 
 void FFmpegVideoEncoder::Release() {
   lifecycle_.Release();
+  sink_ = nullptr;  // non-owning; caller owns the sink lifetime
   if (bsf_) {
     av_bsf_free(&bsf_);
     bsf_ = nullptr;

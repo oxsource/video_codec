@@ -1,0 +1,48 @@
+package(default_visibility = ["//visibility:public"])
+
+# These tests drive the real FFmpeg backend, so they force-load the merged
+# FFmpeg static archive (ADR-001) exactly like ffmpeg_spike does. Without the
+# force_load, lazily-linked internal FFmpeg members (codec registration lists,
+# _ff_prefetch_aarch64) are dropped and avcodec_find_encoder() crashes at runtime.
+
+cc_test(
+    name = "encode_push_test",
+    srcs = ["encode_push_test.cc"],
+    data = [
+        "@ffmpeg//:ffmpeg_codec_archive",
+    ],
+    linkopts = [
+        "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
+    ],
+    # Force static linkage: Bazel otherwise builds backend/ffmpeg as a dylib,
+    # where the lazy-linked FFmpeg archive members are dropped (crash in
+    # avcodec_find_encoder). Static linking lets the force_load above pull the
+    # whole archive into this binary.
+    linkstatic = True,
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/queue",
+        "//src/framework/backend/ffmpeg",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "audio_push_test",
+    srcs = ["audio_push_test.cc"],
+    data = [
+        "@ffmpeg//:ffmpeg_codec_archive",
+    ],
+    linkopts = [
+        "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
+    ],
+    linkstatic = True,
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/queue",
+        "//src/framework/backend/ffmpeg",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

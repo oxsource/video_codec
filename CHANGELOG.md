@@ -19,6 +19,14 @@ All notable changes to video_codec are documented here. The format is based on
   (YUV420P↔NV12 conversion, stride helpers, PCM sample-format conversion) and the single
   public umbrella header `video_codec/video_codec.h` re-exporting the frozen public contracts
   via the existing `VIDEO_CODEC_API` export macro.
+- Encoder-to-queue push wiring (spec `004-encoder-queue-wiring`): optional `SetOutputSink`
+  on `VideoEncoder`/`AudioEncoder` enables push mode — every produced packet is handed to
+  the output queue (single destination) while the pull API stays the default. Includes
+  end-to-end tests with the real FFmpeg encoder (order, zero-loss under `kBlock`,
+  back-pressure pacing, flush + caller-owned end-of-stream). Also fixes pre-existing
+  FFmpeg backend bugs exposed by these first runtime tests: force-loaded archive linking
+  (ADR-001), `av_bsf` `par_in` allocation, I420 chroma `CopyFrame` width, and
+  `Err<T>` template deduction.
 
 ## [0.1.0] - 2026-08-11
 

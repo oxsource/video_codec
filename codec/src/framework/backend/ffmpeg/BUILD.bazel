@@ -2,15 +2,28 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 
 # Generic FFmpeg backend (libx264 / libx265 / AAC / Opus). Default backend on all
 # non-Android platforms.
+#
+# NOTE: FFmpeg is linked as a static force-loaded archive (ADR-001). The
+# -Wl,-force_load linkopt is applied by each consuming binary (mirroring
+# ffmpeg_spike), because Bazel cannot expand $(execpath) in a cc_library's
+# linkopts when it is linked into a dylib. Consumers of this backend MUST add:
+#   data = ["@ffmpeg//:ffmpeg_codec_archive"],
+#   linkopts = ["-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)"],
 cc_library(
     name = "ffmpeg",
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.h"]),
     includes = [".."],
+    # alwayslink force-loads this library's objects (including register.cc,
+    # whose static initializer self-registers the backend in the factory).
+    # Without it, register.o is unreferenced and dropped, so CreateVideoEncoder
+    # returns nullptr at runtime.
+    alwayslink = True,
     deps = [
         "//src/framework/core",
         "//src/framework/api",
         "//src/framework/utils",
+        "//src/framework/queue",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],

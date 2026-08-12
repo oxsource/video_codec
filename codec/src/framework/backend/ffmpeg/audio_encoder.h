@@ -14,6 +14,8 @@ struct AVPacket;
 namespace video {
 namespace codec {
 
+class OutputSink;  // defined in queue/queue_iface.h (included by the .cc)
+
 // FFmpeg (AAC) audio encoder. Converts interleaved S16 PCM (AudioFrame) to the
 // planar-float layout libavcodec's AAC encoder requires.
 class FFmpegAudioEncoder : public AudioEncoder {
@@ -25,6 +27,7 @@ class FFmpegAudioEncoder : public AudioEncoder {
   Result<AudioPacket> Encode(const AudioFrame& frame) override;
   Result<AudioPacket> Flush() override;
   void Release() override;
+  StatusCode SetOutputSink(OutputSink* sink) override;
 
  private:
   Result<AudioPacket> Drain(bool drain_eof);
@@ -34,6 +37,7 @@ class FFmpegAudioEncoder : public AudioEncoder {
   AVCodecContext* ctx_ = nullptr;
   AVFrame* frame_ = nullptr;
   AVPacket* pkt_ = nullptr;
+  OutputSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
   int64_t pts_ = 0;
 };
 
