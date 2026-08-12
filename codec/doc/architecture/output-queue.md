@@ -81,24 +81,54 @@ class PacketConsumer {
 
 ### PacketPump (drain loop)
 
-Runs on the consumer thread; bridges `EncodedPacketSource` → `PacketConsumer`:
+Runs on the consumer thread; bridges `EncodedPacketSource` → `PacketConsumer`. It is the
+pump that moves encoded packets out of the ring buffer and into a transport consumer
+(file / stream). Reference: `codec/src/framework/consumer/packet_pump.cc`.
 
 ```cpp
-void PacketPump::Run(EncodedPacketSource& src, PacketConsumer& c) {
-    for (;;) {
-        EncodedPacket pkt;
-        PopResult r = src.Pop(pkt, kSomeDeadline);   // blocking, not busy-spin
-        if (r == PopResult::kEos) break;
-        if (r == PopResult::kEmpty) continue;        // timed out, retry
-        StatusCode s = c.Consume(std::move(pkt));
-        if (s != StatusCode::kOk) { /* log + back-off or stop */ }
+void PacketPump::Run(EncodedPacketSource& src, PacketConsumer& c,
+                     int64_t deadline_us = 100'000) {
+  bool video_done = false, audio_done = false;
+  while (!video_done || !audio_done) {
+    EncodedPacket vp;
+    AudioPacket    ap;
+    // Video and audio are drained alternately; each channel is tracked
+    // independently so a video-only or audio-only queue still drains cleanly.
+    if (!video_done) {
+      PopResult r = src.Pop(vp, deadline_us);   // blocking, not busy-spin
+      if (r == PopResult::kOk) {
+        if (c.Consume(std::move(vp)) != StatusCode::kOk) { c.Finish(); return; }
+      } else if (r == PopResult::kEos) {
+        video_done = true;
+      }
     }
-    c.Finish();
+    if (!audio_done) {
+      PopResult r = src.Pop(ap, deadline_us);
+      if (r == PopResult::kOk) {
+        if (c.Consume(std::move(ap)) != StatusCode::kOk) { c.Finish(); return; }
+      } else if (r == PopResult::kEos) {
+        audio_done = true;
+      }
+    }
+  }
+  c.Finish();  // both streams drained -> flush + close the consumer
 }
 ```
 
-`Pop(deadline)` (blocking) is preferred over `TryPop` in the pump to avoid busy-spinning
-when the queue is momentarily empty.
+Behavior:
+
+- **Blocking drain**: `Pop(deadline)` (default 100 ms) blocks instead of busy-spinning when
+  the queue is momentarily empty (`kEmpty` → try the other channel / retry next iteration).
+- **Video + audio**: the two channels are popped alternately and finished independently, so
+  a video-only or audio-only queue still ends in a clean `Finish()`.
+- **EOS handling**: a channel reaches `kEos` once the queue is marked end-of-stream and fully
+  drained; when both are done the pump calls `PacketConsumer::Finish()` (e.g. `FileSinkConsumer`
+  flushes and closes the file).
+- **Failure safety**: a failing `Consume` is logged, `Finish()` is called once, and the pump
+  stops — it must NOT swallow errors and spin.
+- **Decoupling**: the pump runs on the consumer thread while the encoder pushes on its own
+  thread; a slow consumer back-pressures the queue (`kBlock`), which naturally slows the
+  encoder (end-to-end flow control).
 
 ## 4. Concrete consumers (implement later, design now)
 
