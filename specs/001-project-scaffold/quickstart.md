@@ -56,6 +56,34 @@ default `bazel build //...` never requires the NDK.
 bazel test //...
 ```
 
+## Quick validation (make)
+
+The repo ships an AOSP-style `Makefile` at the workspace root (`codec/Makefile`)
+that categorizes validation into self-describing modules under `codec/mk/` and
+delegates the real work to `codec/scripts/verify/*.sh`. Each category owns
+prefixed targets (`host-*`, `android-*`, `docs-*`) so they never clash; friendly
+short aliases live in `codec/mk/aliases.mk`. Run from the workspace root:
+
+```bash
+make              # list all targets (same as `make help`)
+make modules      # list registered categories (host / android / docs)
+make build        # host-build:   bazel build //...
+make spike        # host-spike:   run the FFmpeg encode spike only
+make verify       # host-verify:  build + run spike + ffprobe assert (320x240 h264)
+make docs         # docs-check:   quick doc/layout consistency (no build)
+make build-android  # android-build: cross-build mediacodec_spike (needs NDK, deferred)
+make verify-android # alias of android-build
+```
+
+`make verify` is the one-command scaffold proof: it builds everything, runs the
+FFmpeg libx264 spike, and asserts the output is a valid 320x240 H.264 stream with
+`ffprobe`. `make build-android` / `make verify-android` require the deferred
+`android_ndk_repository(name = "androidndk")` registration in `WORKSPACE` (see T022/T023).
+
+To add a category, drop a new `codec/mk/<name>.mk` that calls
+`$(call register_module,<name>)` and declares its `<name>-<action>` targets —
+it is picked up automatically. Duplicate module/target/alias names abort the build.
+
 ## Common issues
 
 | Symptom | Fix |
