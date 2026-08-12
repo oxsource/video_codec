@@ -1,0 +1,23 @@
+package(default_visibility = ["//visibility:public"])
+
+# Runnable example: SMPTE color bars -> FFmpeg encoder (push) -> queue ->
+# PacketPump -> FileSinkConsumer -> .h264. The FFmpeg static archive is
+# force-loaded (ADR-001) exactly like the backend tests and ffmpeg_spike.
+cc_binary(
+    name = "encode_to_file",
+    srcs = ["encode_to_file.cc"],
+    data = [
+        "@ffmpeg//:ffmpeg_codec_archive",
+    ],
+    linkopts = [
+        "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
+    ],
+    # Static linkage so the force_load above pulls the whole FFmpeg archive into
+    # this binary (Bazel otherwise builds the backend as a dylib).
+    linkstatic = True,
+    deps = [
+        "//src/framework/public:video_codec",  # encoder API + FFmpeg backend
+        "//src/framework/queue",              # EncodedPacketQueue
+        "//src/framework/consumer",           # PacketPump + FileSinkConsumer
+    ],
+)

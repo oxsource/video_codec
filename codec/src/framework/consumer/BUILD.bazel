@@ -1,4 +1,4 @@
-package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__"])
+package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__", "//src/examples:__subpackages__"])
 
 # PacketConsumer interface, PacketPump drain loop, FileSinkConsumer.
 # Depends on core (types), queue (EncodedPacketSource), api (per module graph).
