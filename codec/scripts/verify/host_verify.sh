@@ -11,14 +11,15 @@ echo "[host] 1/4 build //..."
 bazel build //...
 
 echo "[host] 2/4 run ffmpeg_spike"
-bazel run //src/spike:ffmpeg_spike >/dev/null
+bash "$(dirname "$0")/host_spike.sh" >/dev/null
 
 echo "[host] 3/4 run ffmpeg_encode_file example"
 bash "$(dirname "$0")/host_ffmpeg_example.sh"
 
 echo "[host] 4/4 validate spike output with ffprobe"
-OUT="$(find -L bazel-bin -name ffmpeg_spike.h264 2>/dev/null | head -1)"
-[ -n "$OUT" ] || { echo "[host] FAIL: ffmpeg_spike.h264 not found"; exit 1; }
+mkdir -p "$ROOT/out"
+OUT="$ROOT/out/ffmpeg_spike.h264"
+[ -f "$OUT" ] || { echo "[host] FAIL: ffmpeg_spike.h264 not found in out/"; exit 1; }
 
 SIZE="$(wc -c < "$OUT" | tr -d ' ')"
 INFO="$(ffprobe -v error -show_entries stream=codec_name,width,height \

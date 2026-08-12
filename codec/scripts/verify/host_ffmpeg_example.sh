@@ -17,7 +17,8 @@ bazel build //src/examples:ffmpeg_encode_file
 BIN="$(find -L bazel-bin -path '*/examples/ffmpeg_encode_file' -type f | head -1)"
 [ -n "$BIN" ] || { echo "[host] FAIL: ffmpeg_encode_file binary not found"; exit 1; }
 
-OUT="$ROOT/bazel-bin/example_out.h264"
+mkdir -p "$ROOT/out"          # shared test-output directory (gitignored)
+OUT="$ROOT/out/example_out.h264"
 rm -f "$OUT"
 
 echo "[host] run ffmpeg_encode_file ($DURATION s clip)"
