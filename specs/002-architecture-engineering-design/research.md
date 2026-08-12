@@ -161,6 +161,37 @@ overflows `cmdsize`; lazy static linking drops unreferenced internal members →
 
 ---
 
+## R9. Encoded-output transport (ring buffer)
+
+**Decision**: Hand off encoded packets to consumers through a **bounded SPSC ring
+buffer** (`EncodedPacketQueue`), exposed as two interfaces — `OutputSink` (producer /
+encoder writes via `Submit`) and `EncodedPacketSource` (consumer pops via `TryPop`/`Pop`).
+Implementation is lock-free via atomic `head_`/`tail_` indices over a fixed power-of-two
+slot array; packets are **moved** in and out (no per-packet allocation on the hot path).
+Back-pressure when full is configurable: `kBlock`, `kDropOldest`, or `kError` (default —
+fail loud so a misconfigured/slow consumer surfaces instead of silently losing or hanging).
+
+**Rationale**:
+- The encoder runs synchronously on its own thread (see `threading.md`); the consumer
+  (muxer / network / file) runs on another. A ring buffer is the standard
+  producer→consumer hand-off that decouples their rates without copying through the
+  caller on every frame.
+- SPSC lock-free is the simplest correct shape (one writer, one reader); it avoids mutex
+  contention on the encode hot path.
+- Move semantics keep allocation off the critical path; fixed slots avoid runtime
+  `new`/`delete` per packet.
+- Configurable back-pressure makes the same queue usable for live streaming (`kBlock`),
+  lossy real-time (`kDropOldest`), and strict pipelines (`kError`).
+
+**Alternatives considered**:
+- *Return packet to caller, let app manage a queue*: shifts the (non-trivial) MPMC/SPSC
+  decision onto every consumer; no shared, tested component.
+- *Unbounded queue*: risks unbounded memory under a slow consumer (live capture).
+- *Mutex + `std::queue`*: correct but adds lock contention on every encode; SPSC
+  lock-free is strictly better for the common single-consumer case.
+- *MPMC queue*: more general than needed; harder to make wait-free and to reason about
+  for the single-producer/single-consumer encode→mux path.
+
 ## Open clarifications — resolved
 
 All `NEEDS CLARIFICATION` items from the Technical Context are resolved above; none

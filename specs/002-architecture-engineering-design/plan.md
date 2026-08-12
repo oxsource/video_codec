@@ -78,7 +78,8 @@ specs/002-architecture-engineering-design/
 │   ├── public-api.md    # Public API surface contract
 │   ├── encoder-contract.md
 │   ├── backend-contract.md
-│   └── nativebuffer-contract.md
+│   ├── nativebuffer-contract.md
+│   └── output-queue-contract.md   # Ring-buffer transport: OutputSink / PacketSource
 └── tasks.md             # Phase 2 task breakdown (created by /speckit.tasks)
 ```
 
@@ -91,7 +92,8 @@ codec/doc/architecture/
 ├── error-handling.md            # StatusCode / Result<T> propagation strategy
 ├── lifecycle-model.md           # Encoder lifecycle state machine
 ├── backend-selection.md         # Factory + select() + force_backend model
-└── logging-slot.md              # LogSlot abstract interface, plug-in by consumer
+├── logging-slot.md              # LogSlot abstract interface, plug-in by consumer
+└── output-queue.md              # Ring-buffer transport: encoder → consumer
 
 codec/doc/
 ├── build-conventions.md         # BUILD file conventions, dep prefix rules, visibility
@@ -103,7 +105,8 @@ codec/doc/adrs/
 ├── ADR-001-ffmpeg-static-forceload.md
 ├── ADR-002-select-per-platform-backend.md
 ├── ADR-003-bsd-libtool-merge.md
-└── ADR-004-deferred-videotoolbox.md
+├── ADR-004-deferred-videotoolbox.md
+└── ADR-005-ringbuffer-transport.md
 
 .github/workflows/
 ├── ci.yml                       # CI: bazel build + test on macOS ARM64 / Linux x86_64
@@ -137,6 +140,7 @@ graph TD
             API["api<br/>VideoEncoder / AudioEncoder abstract,<br/>InputSurface, factory"]
             UTILS["utils<br/>YUV420P↔NV12, stride, PCM convert"]
             BFF["backend/*<br/>android / ffmpeg / darwin(reserved)"]
+            QUEUE["queue<br/>EncodedPacketQueue (ring buffer)"]
             PUBLIC["public<br/>Umbrella header, VIDEO_CODEC_API export"]
         end
 
@@ -151,6 +155,7 @@ graph TD
         PUBLIC --> CORE
         PUBLIC --> UTILS
         PUBLIC --> BFF
+        PUBLIC --> QUEUE
         API --> CORE
         UTILS --> CORE
         BFF --> API
@@ -159,6 +164,8 @@ graph TD
         BFF --> FFMPEG
         BFF --> NDK
         BFF --> VT
+        BFF -.->|EncodedPacket / AudioPacket| QUEUE
+        QUEUE -.->|pop| APP
     end
 
     style FFMPEG fill:#f96,stroke:#333
@@ -225,6 +232,26 @@ Default: synchronous, caller-owns-the-thread. An optional async wrapper (encode 
 worker) is allowed but each `Encoder` instance is not internally thread-safe — callers
 serialize or give one instance per thread. Full model in
 `codec/doc/architecture/threading.md`.
+
+### Output Transport (Ring Buffer)
+
+```mermaid
+flowchart LR
+    ENC["Encoder instance<br/>(backend thread)"]
+    Q["EncodedPacketQueue<br/>(bounded SPSC ring buffer)"]
+    CON["Consumer<br/>(muxer / network / file)"]
+    ENC -->|Submit(EncodedPacket)| Q
+    Q -->|Pop()| CON
+    CON -->|back-pressure / drain| ENC
+```
+
+Encoded output is handed off through a **bounded SPSC ring buffer**
+(`EncodedPacketQueue`): the encoder (producer) calls `OutputSink::Submit(...)`; the
+consumer (muxer / network sender / file writer) calls `EncodedPacketSource::Pop(...)`.
+This decouples encode rate from consume rate and is the inter-thread hand-off that lets
+the encoder run synchronously on its own thread while the consumer drains on another.
+Full design in `codec/doc/architecture/output-queue.md`; contract in
+`contracts/output-queue-contract.md`; decision in `codec/doc/adrs/ADR-005-ringbuffer-transport.md`.
 
 ### CI Pipeline
 

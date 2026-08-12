@@ -138,3 +138,59 @@ Bazel `select()` links **only** the resolved backend + its external dep. Diagram
 - Non-owning references (config, callback targets): raw pointers / references.
 - Zero-copy handles: `NativeBuffer` is a **pointer object** — the framework never takes
   ownership of `handle`; the caller keeps it alive for the encode call's duration.
+
+## 8. Output Transport Model (ring buffer)
+
+Encoded packets are handed off to consumers through a bounded **SPSC ring buffer**
+(`EncodedPacketQueue`). This decouples the encoder (producer) from the consumer (muxer /
+network sender / file writer).
+
+### Interfaces
+
+```cpp
+class OutputSink {                       // producer endpoint (encoder writes here)
+  public:
+    virtual ~OutputSink() = default;
+    virtual StatusCode Submit(EncodedPacket&& pkt) = 0;   // video
+    virtual StatusCode Submit(AudioPacket&& pkt) = 0;     // audio
+    virtual StatusCode Flush() { return StatusCode::kOk; }
+};
+
+class EncodedPacketSource {              // consumer endpoint (pops here)
+  public:
+    virtual ~EncodedPacketSource() = default;
+    // Non-blocking: returns false if empty. Blocking variant takes a deadline.
+    virtual bool TryPop(EncodedPacket& out) = 0;
+    virtual bool TryPop(AudioPacket& out) = 0;
+};
+```
+
+`EncodedPacketQueue` implements **both** interfaces: producer side exposes `OutputSink`,
+consumer side exposes `EncodedPacketSource`.
+
+### Entity: EncodedPacketQueue
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `capacity` | `size_t` (power of two) | ring slots (fixed at construction) |
+| `slots[]` | `EncodedPacket/AudioPacket[]` | pre-allocated, packets **moved** in/out |
+| `head_` / `tail_` | `std::atomic<size_t>` | consumer / producer indices (mod mask) |
+| `policy` | `Backpressure` | `kBlock` / `kDropOldest` / `kError` when full |
+
+### Relationship to encoder
+
+- The encoder, after a successful `Encode()`, forwards the packet to a configured
+  `OutputSink` (see `output-queue-contract.md`). The pull API (`Encode()` returning
+  `Result<EncodedPacket>`) is unchanged; pushing is an **optional** sink mode.
+- Ownership transfers to the queue via move; the producer no longer references the packet
+  after `Submit()` returns.
+
+### Validation rules
+
+- `capacity > 0` and a power of two (fast index masking).
+- `Submit` on a full queue honors `policy`: `kBlock` waits, `kDropOldest` overwrites the
+  oldest unconsumed slot, `kError` returns `kBackendUnavailable` (or a dedicated
+  back-pressure code).
+- `TryPop` on an empty queue returns `false` (non-blocking); a blocking `Pop(deadline)`
+  variant is provided for consumers that must wait.
+

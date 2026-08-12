@@ -5,7 +5,7 @@ produces **design artifacts only** — the implementation phase follows these co
 
 ## Modules
 
-`core` · `api` · `utils` · `backend/{android,ffmpeg,darwin}` · `public`
+`core` · `api` · `utils` · `backend/{android,ffmpeg,darwin}` · `public` · `queue`
 
 Dependency rule: arrows point inward; backends never depend on each other; only `public`
 is externally visible. See [module-dependencies.md](module-dependencies.md).
@@ -17,6 +17,7 @@ is externally visible. See [module-dependencies.md](module-dependencies.md).
 - [threading.md](threading.md) — sync-by-default, caller-owns-thread
 - [error-handling.md](error-handling.md) — `StatusCode` / `Result<T>`, no exceptions
 - [logging-slot.md](logging-slot.md) — pluggable `LogSlot`
+- [output-queue.md](output-queue.md) — ring-buffer transport (encoder → consumer)
 
 ## Engineering standards (repo root `doc/`)
 
@@ -33,3 +34,4 @@ is externally visible. See [module-dependencies.md](module-dependencies.md).
 - [ADR-002](../../adrs/ADR-002-select-per-platform-backend.md) — `select()` per platform
 - [ADR-003](../../adrs/ADR-003-bsd-libtool-merge.md) — BSD `libtool` merge
 - [ADR-004](../../adrs/ADR-004-deferred-videotoolbox.md) — deferred VideoToolbox
+- [ADR-005](../../adrs/ADR-005-ringbuffer-transport.md) — SPSC ring-buffer output transport
