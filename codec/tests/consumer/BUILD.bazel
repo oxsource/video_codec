@@ -1,0 +1,12 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_test(
+    name = "file_sink_consumer_test",
+    srcs = ["file_sink_consumer_test.cc"],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/queue",
+        "//src/framework/consumer",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

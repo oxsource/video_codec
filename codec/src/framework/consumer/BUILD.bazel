@@ -1,17 +1,15 @@
 package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__"])
 
-# Generic FFmpeg backend (libx264 / libx265 / AAC / Opus). Default backend on all
-# non-Android platforms.
+# PacketConsumer interface, PacketPump drain loop, FileSinkConsumer.
+# Depends on core (types), queue (EncodedPacketSource), api (per module graph).
 cc_library(
-    name = "ffmpeg",
+    name = "consumer",
     srcs = glob(["*.cc"]),
     hdrs = glob(["*.h"]),
     includes = [".."],
     deps = [
         "//src/framework/core",
         "//src/framework/api",
-        "//src/framework/utils",
-        "@ffmpeg//:ffmpeg_codec",
-        "@ffmpeg//:ffmpeg_codec_impl",
+        "//src/framework/queue",
     ],
 )

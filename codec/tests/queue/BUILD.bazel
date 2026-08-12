@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_test(
+    name = "encoded_packet_queue_test",
+    srcs = ["encoded_packet_queue_test.cc"],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/queue",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

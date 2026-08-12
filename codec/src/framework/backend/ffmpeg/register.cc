@@ -1,0 +1,29 @@
+// register.cc
+// Backend self-registration. When this library is linked (selected by `public`
+// via select()), its static initializer registers the FFmpeg creators so the
+// factory in `api` can instantiate them without `api` depending on `backend/*`.
+#include "api/encoder_factory.h"
+#include "backend/ffmpeg/audio_encoder.h"
+#include "backend/ffmpeg/video_encoder.h"
+
+namespace video {
+namespace codec {
+namespace {
+
+struct RegisterFFmpeg {
+  RegisterFFmpeg() {
+    RegisterVideoEncoder(Backend::kFFmpeg, [](const VideoEncoderConfig& c) {
+      return std::make_unique<FFmpegVideoEncoder>(c);
+    });
+    RegisterAudioEncoder(Backend::kFFmpeg, [](const AudioEncoderConfig& c) {
+      return std::make_unique<FFmpegAudioEncoder>(c);
+    });
+  }
+};
+
+// Force the registration to run when this library is loaded.
+RegisterFFmpeg g_register_ffmpeg;
+
+}  // namespace
+}  // namespace codec
+}  // namespace video

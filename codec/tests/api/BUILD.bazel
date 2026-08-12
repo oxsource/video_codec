@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_test(
+    name = "encoder_lifecycle_test",
+    srcs = ["encoder_lifecycle_test.cc"],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
