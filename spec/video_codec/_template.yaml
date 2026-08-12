@@ -1,0 +1,36 @@
+# Spec-kit template for video_codec features.
+# Copy to specs/<nnn>-<name>/spec.yaml and fill in.
+
+feature:
+  id: "<nnn>"
+  name: "<human name>"
+  type: "library-design | runtime-feature"
+  status: "draft"
+
+summary: >
+  One-paragraph description of what this feature changes in the video_codec
+  framework (core/api/backend/utils/public) and why.
+
+requirements:
+  - id: "FR-1"
+    description: ""
+    acceptance: ""
+
+non_goals:
+  - ""
+
+interfaces:
+  # Reference the contract files this feature adds or changes.
+  - contracts/public-api.md
+  - contracts/encoder-contract.md
+  - contracts/backend-contract.md
+  - contracts/nativebuffer-contract.md
+
+platforms:
+  - macos-arm64
+  - linux-x86_64
+  - android-arm64
+
+references:
+  - docs: codec/doc/architecture/
+  - adrs: codec/doc/adrs/

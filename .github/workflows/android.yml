@@ -1,0 +1,22 @@
+name: Android cross-build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  android:
+    name: mediacodec_spike cross-build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Android NDK
+        uses: android-actions/setup-android@v3
+      - name: Cross-build mediacodec_spike
+        working-directory: codec
+        run: >
+          bazel build //src/spike:mediacodec_spike
+          --platforms=//platforms:android_arm64_platform
+          --android_platforms=//platforms:android_arm64_platform
+        # Requires android_ndk_repository(name = "androidndk") registered in WORKSPACE.
