@@ -115,7 +115,8 @@ Result<AudioPacket> FFmpegAudioEncoder::Drain(bool drain_eof) {
     } else {
       out = std::move(pkt);
     }
-    if (drain_eof) break;
+    // Do NOT break on drain_eof: AAC buffers frames; flush must drain every
+    // buffered codec packet so none are lost in push mode.
   }
   return Ok(std::move(out));
 }

@@ -3,18 +3,19 @@
 // A complete, runnable example of the video_codec pipeline:
 //
 //   SMPTE color-bars generator -> FFmpegVideoEncoder (push mode)
-//     -> EncodedPacketQueue -> PacketPump -> FileSinkConsumer -> .h264 file
+//     -> EncodedPacketQueue -> PacketPump -> consumer -> file
 //
 // Generates a synthetic SMPTE-style color-bars clip (with a moving white line
 // for motion), encodes it as H.264 at ~fps, paces itself to wall-clock time so
-// the default run takes about `seconds` (default 5) seconds, and writes a valid
-// Annex-B H.264 elementary stream to the output file.
+// the default run takes about `seconds` (default 5) seconds, and writes the
+// output. ".mp4" selects the MP4 muxer consumer; any other extension writes a
+// raw Annex-B H.264 elementary stream.
 //
 // Usage:
-//   ffmpeg_encode_file [output.h264] [seconds]
+//   ffmpeg_encode_file [output.mp4|output.h264] [seconds]
 //
 // Example:
-//   bazel run //src/examples:ffmpeg_encode_file -- out.h264 5
+//   bazel run //src/examples:ffmpeg_encode_file -- out.mp4 5
 
 #include <chrono>
 #include <cstdint>
@@ -27,7 +28,9 @@
 #include "api/encoder_factory.h"
 #include "api/video_encoder.h"
 #include "consumer/file_sink_consumer.h"
+#include "consumer/packet_consumer.h"
 #include "consumer/packet_pump.h"
+#include "mux/mp4_mux_consumer.h"
 #include "queue/encoded_packet_queue.h"
 
 namespace vc = video::codec;
@@ -114,7 +117,7 @@ vc::VideoFrame MakeColorBarsFrame(int w, int h, int fps, int frame_index) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  const std::string out_path = argc > 1 ? argv[1] : "out.h264";
+  const std::string out_path = argc > 1 ? argv[1] : "out.mp4";
   int seconds = argc > 2 ? std::atoi(argv[2]) : 5;
   if (seconds <= 0) seconds = 5;
 
@@ -132,9 +135,20 @@ int main(int argc, char** argv) {
   cfg.input_format = vc::PixelFormat::kI420;
   cfg.force_backend = vc::Backend::kFFmpeg;
 
-  // Transport: encoder (push) -> bounded ring buffer -> file sink.
+  // Transport: encoder (push) -> bounded ring buffer -> consumer.
   vc::EncodedPacketQueue queue(64, vc::Backpressure::kBlock);
-  vc::FileSinkConsumer sink(out_path);
+
+  // A consumer is transport-agnostic: ".mp4" -> MP4 muxer, otherwise raw
+  // Annex-B file. Swapping is a one-line change.
+  std::unique_ptr<vc::PacketConsumer> consumer;
+  const bool is_mp4 = out_path.size() >= 4 &&
+                      out_path.compare(out_path.size() - 4, 4, ".mp4") == 0;
+  if (is_mp4) {
+    consumer =
+        std::make_unique<vc::Mp4MuxConsumer>(out_path, width, height, fps);
+  } else {
+    consumer = std::make_unique<vc::FileSinkConsumer>(out_path);
+  }
 
   std::unique_ptr<vc::VideoEncoder> encoder = vc::CreateVideoEncoder(cfg);
   if (!encoder) {
@@ -150,8 +164,8 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  // Consumer thread drains the queue into the file.
-  std::thread pump([&] { vc::PacketPump::Run(queue, sink); });
+  // Consumer thread drains the queue into the output.
+  std::thread pump([&] { vc::PacketPump::Run(queue, *consumer); });
 
   const auto start = std::chrono::steady_clock::now();
   int64_t produced = 0;

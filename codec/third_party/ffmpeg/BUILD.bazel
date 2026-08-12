@@ -9,9 +9,10 @@ filegroup(
     srcs = glob(["**/*"]),
 )
 
-# Build a minimal FFmpeg (libavcodec + libavutil) with the libx264 encoder
-# enabled, using the NDK-free host toolchain. Output is a static lib + headers
-# that the ffmpeg_spike (and the real backend/ffmpeg) can consume.
+# Build a minimal FFmpeg (libavcodec + libavutil + libavformat) with the libx264
+# encoder enabled, using the NDK-free host toolchain. Output is a static lib +
+# headers that the ffmpeg_spike (and the real backend/ffmpeg) can consume.
+# libavformat is required for the MP4 muxer consumer (mux/mp4_mux_consumer).
 #
 # Why static + BSD-merged (not shared, not GNU-ar):
 #  * A shared .dylib under rules_foreign_cc bakes the very long sandbox install
@@ -36,18 +37,22 @@ configure_make(
     lib_source = "@ffmpeg//:ffmpeg_source",
     configure_command = "configure",
     configure_options = [
-        # We only build the libavcodec + libavutil libraries (the other
-        # libraries are disabled below), but we do NOT use --disable-everything:
+        # We build libavcodec + libavutil + libavformat (avformat for the MP4
+        # muxer consumer). Other libraries are disabled below. We do NOT use
+        # --disable-everything:
         # that strips the aarch64 helper assembly (e.g. prefetch.S, which
         # defines _ff_prefetch_aarch64) along with its DSP users, leaving the
         # symbol referenced-but-undefined and dyld failing at load. Keeping
         # codecs/optimizations enabled ensures the helper is compiled in.
         "--disable-avdevice",
         "--disable-avfilter",
-        "--disable-avformat",
         "--disable-postproc",
         "--disable-swresample",
         "--disable-swscale",
+        "--enable-avformat",
+        "--disable-network",  # only the file protocol + mp4 muxer; no sockets
+        "--enable-protocol=file",
+        "--enable-muxer=mov",  # mov muxer writes .mp4
         "--enable-gpl",
         "--enable-libx264",
         "--enable-encoder=libx264",
@@ -65,7 +70,7 @@ configure_make(
         # (and similar) to errors; relax so it compiles on the dev host.
         # Quote the value: foreign_cc shells out configure, so without quotes the
         # space-separated flags would be split into unknown configure options.
-        "--extra-cflags='-I/opt/homebrew/include -Wno-implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types'",
+        "--extra-cflags='-I/opt/homebrew/include -Wno-implicit-function-declaration -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=incompatible-function-pointer-types'",
         "--extra-ldflags=-L/opt/homebrew/lib",
     ],
     env = {
@@ -78,16 +83,16 @@ configure_make(
     postfix_script = """
 set -e
 cd "$$INSTALLDIR$$/lib"
-# Merge the two archives directly. Do NOT extract with `ar -x` first: FFmpeg's
+# Merge the three archives directly. Do NOT extract with `ar -x` first: FFmpeg's
 # libavcodec.a contains two members that share the basename `videodsp.o` (one
 # from libavcodec/videodsp.c, one from libavcodec/aarch64/videodsp.S which
 # *defines* ff_prefetch_aarch64). `ar -x` flattens to basenames and silently
 # clobbers one, dropping that aarch64 definition. libtool -static flattens the
 # input archives while preserving every member (including duplicate names) and
 # writes BSD-format output that macOS ld64 accepts.
-/usr/bin/libtool -static -o libffmpeg.a libavcodec.a libavutil.a
+/usr/bin/libtool -static -o libffmpeg.a libavcodec.a libavutil.a libavformat.a
 /usr/bin/ranlib libffmpeg.a
-rm -f libavcodec.a libavutil.a
+rm -f libavcodec.a libavutil.a libavformat.a
 """,
     # libx264 is not embedded in libavcodec.a (static archive); consumers must
     # link it. Link the dev-host x264 here so the dependency is transitive.

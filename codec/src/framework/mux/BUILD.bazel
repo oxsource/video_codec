@@ -1,0 +1,21 @@
+package(default_visibility = [
+    "//src/framework:__subpackages__",
+    "//tests:__subpackages__",
+    "//src/examples:__subpackages__",
+])
+
+# Container muxers implemented as PacketConsumers (FFmpeg-based). The encoder and
+# pump are transport-agnostic; swapping FileSinkConsumer for Mp4MuxConsumer is a
+# one-line change. Depends on FFmpeg's libavformat (see third_party/ffmpeg).
+cc_library(
+    name = "mux",
+    srcs = glob(["*.cc"]),
+    hdrs = glob(["*.h"]),
+    includes = [".."],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/consumer",
+        "@ffmpeg//:ffmpeg_codec",
+        "@ffmpeg//:ffmpeg_codec_impl",
+    ],
+)

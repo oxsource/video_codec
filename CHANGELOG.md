@@ -27,6 +27,13 @@ All notable changes to video_codec are documented here. The format is based on
   FFmpeg backend bugs exposed by these first runtime tests: force-loaded archive linking
   (ADR-001), `av_bsf` `par_in` allocation, I420 chroma `CopyFrame` width, and
   `Err<T>` template deduction.
+- MP4 muxing & runnable example: FFmpeg now also builds `libavformat` (mp4/mov muxer),
+  and a new `mux` package provides `Mp4MuxConsumer` — a `PacketConsumer` that converts
+  Annex-B packets to AVCC samples, builds avcC extradata from the first keyframe, and
+  writes a standard MP4 (verified: 60 frames @ 30fps, correct duration, fully decodable).
+  The `ffmpeg_encode_file` example outputs `.mp4` (or raw `.h264` by extension) and is
+  wired into `make host_ffmpeg_example` / `make verify`. Also fixes the encoder flush bug
+  that dropped x264's buffered frames (`if (drain_eof) break;` removed from Drain).
 
 ## [0.1.0] - 2026-08-11
 

@@ -205,7 +205,9 @@ Result<EncodedPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
     }
     av_packet_free(&bsf_out);
     av_packet_unref(pkt_);
-    if (drain_eof) break;  // return the last packet produced during flush
+    // Do NOT break on drain_eof: x264 buffers frames internally; flush must
+    // drain every buffered codec packet so none are lost (push mode submits
+    // each; pull mode returns the last one).
   }
   return Ok(std::move(out));
 }
