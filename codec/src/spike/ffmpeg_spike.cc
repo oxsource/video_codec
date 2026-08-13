@@ -28,15 +28,13 @@ void FillFrame(AVFrame* frame, int frame_index) {
   // Y plane
   for (int y = 0; y < kHeight; ++y) {
     for (int x = 0; x < kWidth; ++x) {
-      frame->data[0][y * frame->linesize[0] + x] =
-          static_cast<uint8_t>(x + y + frame_index * 3);
+      frame->data[0][y * frame->linesize[0] + x] = static_cast<uint8_t>(x + y + frame_index * 3);
     }
   }
   // UV (NV12 interleaved) plane
   for (int y = 0; y < kHeight / 2; ++y) {
     for (int x = 0; x < kWidth / 2; ++x) {
-      frame->data[1][y * frame->linesize[1] + 2 * x] =
-          static_cast<uint8_t>(128 + frame_index * 2);
+      frame->data[1][y * frame->linesize[1] + 2 * x] = static_cast<uint8_t>(128 + frame_index * 2);
       frame->data[1][y * frame->linesize[1] + 2 * x + 1] =
           static_cast<uint8_t>(64 + frame_index * 5);
     }
@@ -44,16 +42,14 @@ void FillFrame(AVFrame* frame, int frame_index) {
 }
 
 // Encode one frame (or flush with nullptr) and write every emitted packet.
-int EncodeAndWrite(AVCodecContext* enc, AVFrame* frame, AVPacket* pkt,
-                   FILE* out) {
+int EncodeAndWrite(AVCodecContext* enc, AVFrame* frame, AVPacket* pkt, FILE* out) {
   int ret = avcodec_send_frame(enc, frame);
   if (ret < 0) return ret;
   while (ret >= 0) {
     ret = avcodec_receive_packet(enc, pkt);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
     if (ret < 0) return ret;
-    if (fwrite(pkt->data, 1, pkt->size, out) !=
-        static_cast<size_t>(pkt->size)) {
+    if (fwrite(pkt->data, 1, pkt->size, out) != static_cast<size_t>(pkt->size)) {
       return AVERROR_UNKNOWN;
     }
     av_packet_unref(pkt);

@@ -15,8 +15,7 @@ extern "C" {
 namespace video {
 namespace codec {
 
-FFmpegAudioEncoder::FFmpegAudioEncoder(const AudioEncoderConfig& config)
-    : config_(config) {}
+FFmpegAudioEncoder::FFmpegAudioEncoder(const AudioEncoderConfig& config) : config_(config) {}
 
 FFmpegAudioEncoder::~FFmpegAudioEncoder() { Release(); }
 
@@ -63,18 +62,15 @@ Status FFmpegAudioEncoder::Init() {
 }
 
 Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
-  if (lifecycle_.Encode() != Status::kOk)
-    return Err<AudioPacket>(Status::kNotInitialized);
+  if (lifecycle_.Encode() != Status::kOk) return Err<AudioPacket>(Status::kNotInitialized);
   if (frame.data.empty()) return Err<AudioPacket>(Status::kInvalidArgument);
 
   const int channels = config_.channels;
   const int samples = frame_->nb_samples;
-  const int in_samples =
-      static_cast<int>(frame.data.size()) / (channels * 2);  // S16
+  const int in_samples = static_cast<int>(frame.data.size()) / (channels * 2);  // S16
   const int16_t* src = reinterpret_cast<const int16_t*>(frame.data.data());
 
-  if (av_frame_make_writable(frame_.get()) < 0)
-    return Err<AudioPacket>(Status::kEncodeFailed);
+  if (av_frame_make_writable(frame_.get()) < 0) return Err<AudioPacket>(Status::kEncodeFailed);
   for (int c = 0; c < channels; ++c) {
     float* dst = reinterpret_cast<float*>(frame_->data[c]);
     for (int i = 0; i < samples; ++i) {
@@ -93,8 +89,7 @@ Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
 }
 
 Result<AudioPacket> FFmpegAudioEncoder::Flush() {
-  if (lifecycle_.Flush() != Status::kOk)
-    return Err<AudioPacket>(Status::kNotInitialized);
+  if (lifecycle_.Flush() != Status::kOk) return Err<AudioPacket>(Status::kNotInitialized);
   avcodec_send_frame(ctx_.get(), nullptr);
   Result<AudioPacket> r = Drain(/*drain_eof=*/true);
   if (sink_) sink_->Flush();

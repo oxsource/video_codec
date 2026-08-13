@@ -12,8 +12,8 @@ namespace codec {
 // empty), kEos (end-of-stream and drained).
 enum class Status {
   kOk = 0,
-  kEmpty,  // no data available (e.g. Pop timed out / queue empty)
-  kEos,    // end-of-stream reached and drained (e.g. Pop after MarkEos)
+  kEmpty,                 // no data available (e.g. Pop timed out / queue empty)
+  kEos,                   // end-of-stream reached and drained (e.g. Pop after MarkEos)
   kInvalidArgument,       // bad config / null handle / invalid argument
   kNotInitialized,        // operation requires Init() first
   kEncodeFailed,          // external encoder rejected a frame / flush

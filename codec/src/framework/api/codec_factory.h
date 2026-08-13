@@ -16,10 +16,8 @@ class AudioEncoder;
 class Muxer;
 
 // Backend creator functions self-registered by each backend.
-using VideoEncoderCreator =
-    std::function<std::unique_ptr<VideoEncoder>(const VideoEncoderConfig&)>;
-using AudioEncoderCreator =
-    std::function<std::unique_ptr<AudioEncoder>(const AudioEncoderConfig&)>;
+using VideoEncoderCreator = std::function<std::unique_ptr<VideoEncoder>(const VideoEncoderConfig&)>;
+using AudioEncoderCreator = std::function<std::unique_ptr<AudioEncoder>(const AudioEncoderConfig&)>;
 using MuxerCreator = std::function<std::unique_ptr<Muxer>(const MuxerConfig&)>;
 
 // Central factory for all codec capabilities (encoders + muxer). Backends
@@ -40,10 +38,8 @@ class CodecFactory {
   // Create an instance for the config's backend (kAuto -> platform default).
   // Returns nullptr if no matching backend is registered for the resolved
   // platform/config.
-  static std::unique_ptr<VideoEncoder> CreateVideoEncoder(
-      const VideoEncoderConfig& cfg);
-  static std::unique_ptr<AudioEncoder> CreateAudioEncoder(
-      const AudioEncoderConfig& cfg);
+  static std::unique_ptr<VideoEncoder> CreateVideoEncoder(const VideoEncoderConfig& cfg);
+  static std::unique_ptr<AudioEncoder> CreateAudioEncoder(const AudioEncoderConfig& cfg);
   static std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig& cfg);
 
  private:

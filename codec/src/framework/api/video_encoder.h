@@ -35,9 +35,8 @@ class VideoEncoder {
   // support (FFmpeg software path returns nullptr).
   virtual std::unique_ptr<InputSurface> CreateInputSurface() { return nullptr; }
 
-  virtual Result<VideoPacket>
-  Flush() = 0;                 // -> Flushed (drain + emit final pkt)
-  virtual void Release() = 0;  // free external resources -> Released
+  virtual Result<VideoPacket> Flush() = 0;  // -> Flushed (drain + emit final pkt)
+  virtual void Release() = 0;               // free external resources -> Released
 
   // Attach a packet sink to enable push mode: every produced packet is handed
   // to the sink (Push) instead of returned (single destination). Pass

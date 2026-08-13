@@ -21,8 +21,7 @@ namespace codec {
 class FileSinkConsumer : public PacketConsumer {
  public:
   // `video_path` is required; `audio_path` is optional.
-  explicit FileSinkConsumer(std::string video_path,
-                            std::string audio_path = "");
+  explicit FileSinkConsumer(std::string video_path, std::string audio_path = "");
 
   Status Push(VideoPacket&& pkt) override;
   Status Push(AudioPacket&& pkt) override;

@@ -107,8 +107,7 @@ bool HasFtypAtOffset4(const std::vector<uint8_t>& bytes) {
 // US1/A1+A2+A3: encoder -> queue -> muxer produces a valid fragmented MP4.
 TEST(MuxerTest, EncoderToQueueToMuxerProducesMp4) {
   PacketQueue q(64, Backpressure::kBlock);
-  std::unique_ptr<VideoEncoder> encoder =
-      CodecFactory::CreateVideoEncoder(MakeEncoderConfig());
+  std::unique_ptr<VideoEncoder> encoder = CodecFactory::CreateVideoEncoder(MakeEncoderConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);
@@ -133,10 +132,8 @@ TEST(MuxerTest, EncoderToQueueToMuxerProducesMp4) {
   EXPECT_GT(sink.bytes_.size(), 0u);
   EXPECT_TRUE(HasFtypAtOffset4(sink.bytes_))
       << "output must begin with an MP4 box (4-byte size + 'ftyp')";
-  EXPECT_TRUE(Contains(sink.bytes_, "moov"))
-      << "finished output must contain moov";
-  EXPECT_TRUE(Contains(sink.bytes_, "mdat"))
-      << "finished output must contain mdat";
+  EXPECT_TRUE(Contains(sink.bytes_, "moov")) << "finished output must contain moov";
+  EXPECT_TRUE(Contains(sink.bytes_, "mdat")) << "finished output must contain mdat";
 }
 
 }  // namespace

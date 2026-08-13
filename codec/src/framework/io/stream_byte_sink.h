@@ -24,9 +24,7 @@ class StreamByteSink : public ByteSink {
   StreamByteSink(WriteFn write, FlushFn flush)
       : write_(std::move(write)), flush_(std::move(flush)) {}
 
-  bool Write(const uint8_t* data, size_t size) override {
-    return write_(data, size);
-  }
+  bool Write(const uint8_t* data, size_t size) override { return write_(data, size); }
   bool Seek(int64_t) override { return false; }  // sequential only
   int64_t Tell() override { return -1; }
   bool Flush() override { return flush_(); }

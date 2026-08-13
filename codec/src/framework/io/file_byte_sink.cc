@@ -23,9 +23,7 @@ int64_t FileByteSink::Tell() {
   return file_ != nullptr ? static_cast<int64_t>(std::ftell(file_)) : -1;
 }
 
-bool FileByteSink::Flush() {
-  return file_ != nullptr && std::fflush(file_) == 0;
-}
+bool FileByteSink::Flush() { return file_ != nullptr && std::fflush(file_) == 0; }
 
 }  // namespace codec
 }  // namespace video

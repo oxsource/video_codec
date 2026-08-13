@@ -14,9 +14,7 @@ namespace video {
 namespace codec {
 namespace {
 
-std::string TempPath(const std::string& name) {
-  return std::string("/tmp/") + name;
-}
+std::string TempPath(const std::string& name) { return std::string("/tmp/") + name; }
 
 // A stand-in for a future StreamConsumer, proving the encoder is transport
 // agnostic: swapping FileSinkConsumer for this requires no encoder change.
@@ -37,8 +35,7 @@ class StubConsumer : public PacketConsumer {
 
 // Producer runs on its OWN thread (SPSC: one producer, one consumer). Pushes
 // `n` packets then marks EOS. Returns the packets it pushed (for comparison).
-std::vector<std::vector<uint8_t>> RunProducer(PacketQueue& q, int n,
-                                              std::thread& producer) {
+std::vector<std::vector<uint8_t>> RunProducer(PacketQueue& q, int n, std::thread& producer) {
   std::vector<std::vector<uint8_t>> expected;
   producer = std::thread([&q, n, &expected] {
     for (int i = 0; i < n; ++i) {
@@ -78,8 +75,7 @@ TEST(FileSinkConsumerTest, EncoderToRingToFile) {
   for (const auto& pkt : expected) {
     concatenated.insert(concatenated.end(), pkt.begin(), pkt.end());
   }
-  ASSERT_EQ(file, concatenated)
-      << "file content must equal concatenated packets";
+  ASSERT_EQ(file, concatenated) << "file content must equal concatenated packets";
   std::remove(path.c_str());
 }
 

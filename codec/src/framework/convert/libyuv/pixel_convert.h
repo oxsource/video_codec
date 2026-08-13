@@ -16,8 +16,7 @@ class PixelConverter {
   // Convert `src` into `dst_format`, filling `dst` (planes, stride, format,
   // timestamp). Supported v1: kI420 <-> kNV12. A same-format request copies
   // the source. Any other pair returns Status::kUnsupportedFormat.
-  static Status Convert(const VideoFrame& src, PixelFormat dst_format,
-                            VideoFrame& dst);
+  static Status Convert(const VideoFrame& src, PixelFormat dst_format, VideoFrame& dst);
 };
 
 }  // namespace codec

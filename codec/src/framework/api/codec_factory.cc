@@ -36,8 +36,7 @@ void CodecFactory::RegisterAudioEncoder(Backend b, AudioEncoderCreator fn) {
   reg().audio[b] = std::move(fn);
 }
 
-std::unique_ptr<VideoEncoder> CodecFactory::CreateVideoEncoder(
-    const VideoEncoderConfig& cfg) {
+std::unique_ptr<VideoEncoder> CodecFactory::CreateVideoEncoder(const VideoEncoderConfig& cfg) {
   Backend b = ResolveBackend(cfg.backend);
   std::lock_guard<std::mutex> lk(reg().mu);
   auto it = reg().video.find(b);
@@ -45,8 +44,7 @@ std::unique_ptr<VideoEncoder> CodecFactory::CreateVideoEncoder(
   return it->second(cfg);
 }
 
-std::unique_ptr<AudioEncoder> CodecFactory::CreateAudioEncoder(
-    const AudioEncoderConfig& cfg) {
+std::unique_ptr<AudioEncoder> CodecFactory::CreateAudioEncoder(const AudioEncoderConfig& cfg) {
   Backend b = ResolveBackend(cfg.backend);
   std::lock_guard<std::mutex> lk(reg().mu);
   auto it = reg().audio.find(b);
@@ -68,19 +66,15 @@ std::unique_ptr<Muxer> CodecFactory::CreateMuxer(const MuxerConfig& cfg) {
 }
 
 // Static factory entry points declared on the abstract classes.
-std::unique_ptr<VideoEncoder> VideoEncoder::Create(
-    const VideoEncoderConfig& c) {
+std::unique_ptr<VideoEncoder> VideoEncoder::Create(const VideoEncoderConfig& c) {
   return CodecFactory::CreateVideoEncoder(c);
 }
 
-std::unique_ptr<AudioEncoder> AudioEncoder::Create(
-    const AudioEncoderConfig& c) {
+std::unique_ptr<AudioEncoder> AudioEncoder::Create(const AudioEncoderConfig& c) {
   return CodecFactory::CreateAudioEncoder(c);
 }
 
-std::unique_ptr<Muxer> Muxer::Create(const MuxerConfig& c) {
-  return CodecFactory::CreateMuxer(c);
-}
+std::unique_ptr<Muxer> Muxer::Create(const MuxerConfig& c) { return CodecFactory::CreateMuxer(c); }
 
 }  // namespace codec
 }  // namespace video

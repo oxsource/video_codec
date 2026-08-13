@@ -4,8 +4,7 @@
 namespace video {
 namespace codec {
 
-FileSinkConsumer::FileSinkConsumer(std::string video_path,
-                                   std::string audio_path) {
+FileSinkConsumer::FileSinkConsumer(std::string video_path, std::string audio_path) {
   if (!video_path.empty()) {
     video_sink_ = std::make_unique<FileByteSink>(std::move(video_path));
   }
@@ -16,8 +15,7 @@ FileSinkConsumer::FileSinkConsumer(std::string video_path,
 
 Status FileSinkConsumer::Push(VideoPacket&& pkt) {
   if (!video_sink_ || !video_sink_->IsOpen()) return Status::kInvalidArgument;
-  if (!pkt.data.empty() &&
-      !video_sink_->Write(pkt.data.data(), pkt.data.size())) {
+  if (!pkt.data.empty() && !video_sink_->Write(pkt.data.data(), pkt.data.size())) {
     return Status::kEncodeFailed;
   }
   return Status::kOk;
@@ -27,8 +25,7 @@ Status FileSinkConsumer::Push(AudioPacket&& pkt) {
   if (!audio_sink_ || !audio_sink_->IsOpen()) {
     return Status::kOk;  // no audio sink configured: no-op success
   }
-  if (!pkt.data.empty() &&
-      !audio_sink_->Write(pkt.data.data(), pkt.data.size())) {
+  if (!pkt.data.empty() && !audio_sink_->Write(pkt.data.data(), pkt.data.size())) {
     return Status::kEncodeFailed;
   }
   return Status::kOk;

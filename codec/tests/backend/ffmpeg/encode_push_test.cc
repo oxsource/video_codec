@@ -54,8 +54,7 @@ VideoEncoderConfig MakeConfig() {
 // US1/A1: push mode delivers all packets to the queue, in order, zero loss.
 TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
   PacketQueue q(64, Backpressure::kBlock);
-  std::unique_ptr<VideoEncoder> encoder =
-      CodecFactory::CreateVideoEncoder(MakeConfig());
+  std::unique_ptr<VideoEncoder> encoder = CodecFactory::CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);
@@ -81,15 +80,13 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
   EXPECT_GT(packets.size(), 0u);
   for (size_t i = 1; i < packets.size(); ++i) {
     EXPECT_FALSE(packets[i].data.empty());
-    EXPECT_GT(packets[i].pts_us, packets[i - 1].pts_us)
-        << "packets out of order";
+    EXPECT_GT(packets[i].pts_us, packets[i - 1].pts_us) << "packets out of order";
   }
 }
 
 // US1/A2: without a sink, the pull API is unchanged and returns packets.
 TEST(EncodePushTest, PullModeUnchangedWithoutSink) {
-  std::unique_ptr<VideoEncoder> encoder =
-      CodecFactory::CreateVideoEncoder(MakeConfig());
+  std::unique_ptr<VideoEncoder> encoder = CodecFactory::CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
 
@@ -109,8 +106,7 @@ TEST(EncodePushTest, PullModeUnchangedWithoutSink) {
 // (kBlock) instead of dropping, and every packet arrives in order afterwards.
 TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
   PacketQueue q(4, Backpressure::kBlock);
-  std::unique_ptr<VideoEncoder> encoder =
-      CodecFactory::CreateVideoEncoder(MakeConfig());
+  std::unique_ptr<VideoEncoder> encoder = CodecFactory::CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);
@@ -140,12 +136,10 @@ TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
   EXPECT_FALSE(producer_failed.load());
   EXPECT_TRUE(producer_done.load());
 
-  EXPECT_GT(drained.size(), 4u)
-      << "more than one full queue of packets expected";
+  EXPECT_GT(drained.size(), 4u) << "more than one full queue of packets expected";
   for (size_t i = 1; i < drained.size(); ++i) {
     EXPECT_FALSE(drained[i].data.empty());
-    EXPECT_GT(drained[i].pts_us, drained[i - 1].pts_us)
-        << "packets out of order";
+    EXPECT_GT(drained[i].pts_us, drained[i - 1].pts_us) << "packets out of order";
   }
 }
 

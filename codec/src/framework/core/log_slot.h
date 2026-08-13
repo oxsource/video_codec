@@ -15,8 +15,7 @@ enum class LogLevel { kInfo, kDebug, kWarn, kError };
 class LogSlot {
  public:
   virtual ~LogSlot() = default;
-  virtual void Write(LogLevel level, const char* file, int line,
-                     const std::string& msg) = 0;
+  virtual void Write(LogLevel level, const char* file, int line, const std::string& msg) = 0;
 };
 
 // Returns the current slot. Never null: before SetLogSlot() it returns a
@@ -32,5 +31,4 @@ void Log(LogLevel level, const char* file, int line, const std::string& msg);
 }  // namespace codec
 }  // namespace video
 
-#define VC_LOG(level, msg) \
-  ::video::codec::Log((level), __FILE__, __LINE__, (msg))
+#define VC_LOG(level, msg) ::video::codec::Log((level), __FILE__, __LINE__, (msg))

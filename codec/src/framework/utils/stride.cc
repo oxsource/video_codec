@@ -24,8 +24,7 @@ size_t Stride::Row(int width, PixelFormat fmt, int plane) {
   switch (fmt) {
     case PixelFormat::kI420:
       // Y full width; U/V quarter width.
-      return (plane == 0) ? static_cast<size_t>(width)
-                          : static_cast<size_t>(width) / 2;
+      return (plane == 0) ? static_cast<size_t>(width) : static_cast<size_t>(width) / 2;
     case PixelFormat::kNV12:
       // Y full width; UV interleaved -> width bytes per row.
       return static_cast<size_t>(width);
@@ -39,8 +38,7 @@ size_t Stride::Sample(int channels, SampleFormat fmt) {
   if (channels <= 0) return 0;
   const size_t bps = BytesPerSample(fmt);
   if (bps == 0) return 0;
-  const bool planar =
-      (fmt == SampleFormat::kS16Planar || fmt == SampleFormat::kF32Planar);
+  const bool planar = (fmt == SampleFormat::kS16Planar || fmt == SampleFormat::kF32Planar);
   return planar ? bps : bps * static_cast<size_t>(channels);
 }
 

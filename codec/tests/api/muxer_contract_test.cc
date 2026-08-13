@@ -23,9 +23,7 @@ class StubMuxer : public Muxer {
   Status Push(VideoPacket&& pkt) override {
     if (!sink_) return Status::kInvalidArgument;
     pushed_ += pkt.data.size();
-    return sink_->Write(pkt.data.data(), pkt.data.size())
-               ? Status::kOk
-               : Status::kEncodeFailed;
+    return sink_->Write(pkt.data.data(), pkt.data.size()) ? Status::kOk : Status::kEncodeFailed;
   }
 
   Status Flush() override { return Status::kOk; }
@@ -99,9 +97,8 @@ TEST(MuxerContractTest, CreateMuxerResolvesRegisteredBackend) {
   // Register a stub muxer under a specific backend key, then ask for it.
   // This validates the registration/selection mechanism itself without
   // depending on the real FFmpeg backend (contract test links api only).
-  CodecFactory::RegisterMuxer(Backend::kDarwin, [](const MuxerConfig&) {
-    return std::make_unique<StubMuxer>();
-  });
+  CodecFactory::RegisterMuxer(Backend::kDarwin,
+                              [](const MuxerConfig&) { return std::make_unique<StubMuxer>(); });
 
   MuxerConfig cfg;
   cfg.format = MuxFormat::kMp4;

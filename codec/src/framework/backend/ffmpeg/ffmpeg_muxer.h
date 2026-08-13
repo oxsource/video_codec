@@ -38,12 +38,10 @@ class FFmpegMuxer : public Muxer {
   Status OpenMuxer(const VideoPacket& first_keyframe);
 
   // Parse Annex-B SPS/PPS into an avcC (length-prefixed) extradata block.
-  Status BuildExtradata(const uint8_t* data, size_t size,
-                        std::vector<uint8_t>* out);
+  Status BuildExtradata(const uint8_t* data, size_t size, std::vector<uint8_t>* out);
 
   // Convert one Annex-B packet to AVCC (4-byte lengths, SPS/PPS dropped).
-  Status AnnexBToAvcc(const uint8_t* data, size_t size,
-                      std::vector<uint8_t>* out);
+  Status AnnexBToAvcc(const uint8_t* data, size_t size, std::vector<uint8_t>* out);
 
   // avio write callback: forward muxer output bytes to the attached sink.
   static int SinkWrite(void* opaque, uint8_t* buf, int size);

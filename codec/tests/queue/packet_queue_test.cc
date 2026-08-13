@@ -27,8 +27,7 @@ TEST(PacketQueueTest, SpscInOrderNoLoss) {
 
   std::thread producer([&] {
     for (int i = 0; i < kN; ++i) {
-      ASSERT_EQ(q.Push(MakePkt(static_cast<uint8_t>('a' + (i % 26)))),
-                Status::kOk);
+      ASSERT_EQ(q.Push(MakePkt(static_cast<uint8_t>('a' + (i % 26)))), Status::kOk);
     }
   });
 

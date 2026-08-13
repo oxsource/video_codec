@@ -36,8 +36,7 @@ bool IsStartCode(const uint8_t* p, const uint8_t* end, int* len) {
   return false;
 }
 
-void AppendLenPrefixed(std::vector<uint8_t>* out, const uint8_t* nal,
-                       size_t nalen) {
+void AppendLenPrefixed(std::vector<uint8_t>* out, const uint8_t* nal, size_t nalen) {
   out->push_back(static_cast<uint8_t>(nalen >> 24));
   out->push_back(static_cast<uint8_t>(nalen >> 16));
   out->push_back(static_cast<uint8_t>(nalen >> 8));
@@ -49,9 +48,7 @@ void AppendLenPrefixed(std::vector<uint8_t>* out, const uint8_t* nal,
 
 int FFmpegMuxer::SinkWrite(void* opaque, uint8_t* buf, int size) {
   auto* muxer = static_cast<FFmpegMuxer*>(opaque);
-  return muxer->sink_ && muxer->sink_->Write(buf, static_cast<size_t>(size))
-             ? size
-             : AVERROR(EIO);
+  return muxer->sink_ && muxer->sink_->Write(buf, static_cast<size_t>(size)) ? size : AVERROR(EIO);
 }
 
 FFmpegMuxer::FFmpegMuxer(const MuxerConfig& config) : config_(config) {}
@@ -76,8 +73,7 @@ Status FFmpegMuxer::SetOutput(ByteSink* sink) {
   return Status::kOk;
 }
 
-Status FFmpegMuxer::BuildExtradata(const uint8_t* data, size_t size,
-                                   std::vector<uint8_t>* out) {
+Status FFmpegMuxer::BuildExtradata(const uint8_t* data, size_t size, std::vector<uint8_t>* out) {
   const uint8_t* p = data;
   const uint8_t* end = data + size;
   std::vector<uint8_t> sps, pps;
@@ -120,8 +116,7 @@ Status FFmpegMuxer::BuildExtradata(const uint8_t* data, size_t size,
   return Status::kOk;
 }
 
-Status FFmpegMuxer::AnnexBToAvcc(const uint8_t* data, size_t size,
-                                 std::vector<uint8_t>* out) {
+Status FFmpegMuxer::AnnexBToAvcc(const uint8_t* data, size_t size, std::vector<uint8_t>* out) {
   out->clear();
   const uint8_t* p = data;
   const uint8_t* end = data + size;
@@ -144,8 +139,7 @@ Status FFmpegMuxer::AnnexBToAvcc(const uint8_t* data, size_t size,
 }
 
 Status FFmpegMuxer::OpenMuxer(const VideoPacket& first_keyframe) {
-  if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", nullptr) < 0 ||
-      !fmt_) {
+  if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", nullptr) < 0 || !fmt_) {
     fmt_ = nullptr;
     return Status::kEncodeFailed;
   }
@@ -165,10 +159,10 @@ Status FFmpegMuxer::OpenMuxer(const VideoPacket& first_keyframe) {
   par->height = config_.height;
 
   std::vector<uint8_t> extradata;
-  if (BuildExtradata(first_keyframe.data.data(), first_keyframe.data.size(),
-                     &extradata) == Status::kOk) {
-    par->extradata = static_cast<uint8_t*>(
-        av_mallocz(extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE));
+  if (BuildExtradata(first_keyframe.data.data(), first_keyframe.data.size(), &extradata) ==
+      Status::kOk) {
+    par->extradata =
+        static_cast<uint8_t*>(av_mallocz(extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE));
     if (!par->extradata) {
       avformat_free_context(fmt_);
       fmt_ = nullptr;
@@ -185,8 +179,8 @@ Status FFmpegMuxer::OpenMuxer(const VideoPacket& first_keyframe) {
     fmt_ = nullptr;
     return Status::kEncodeFailed;
   }
-  fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, this, nullptr,
-                                &FFmpegMuxer::SinkWrite, nullptr);
+  fmt_->pb =
+      avio_alloc_context(iobuf, kIoBufferSize, 1, this, nullptr, &FFmpegMuxer::SinkWrite, nullptr);
   if (!fmt_->pb) {
     av_free(iobuf);
     avformat_free_context(fmt_);
@@ -253,7 +247,7 @@ Status FFmpegMuxer::Push(VideoPacket&& pkt) {
   if (config_.fragmented) {
     ret = av_write_frame(fmt_, avpkt);
     if (ret >= 0 && pkt.keyframe) {
-      avio_flush(fmt_->pb);  // push the completed fragment bytes to the sink
+      avio_flush(fmt_->pb);                    // push the completed fragment bytes to the sink
       if (sink_ && !sink_->Flush()) ret = -1;  // commit point
     }
   } else {

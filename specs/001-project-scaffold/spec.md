@@ -74,7 +74,7 @@ building under the Android toolchain / CI. It must not break the default host bu
 
 ### FR-007 Code Style & Conventions
 
-Adopt Google C++ Style (2-space indent, 80-col) and Conventional Commits, mirrored
+Adopt Google C++ Style (2-space indent, 100-col) and Conventional Commits, mirrored
 from `project_bootstrap.md` §5–§6.
 
 ## 3. Non-Functional Requirements

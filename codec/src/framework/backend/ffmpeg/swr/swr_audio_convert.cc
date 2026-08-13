@@ -51,9 +51,7 @@ bool SwrAudioConverter::IsPlanar(SampleFormat fmt) {
   return fmt == SampleFormat::kS16Planar || fmt == SampleFormat::kF32Planar;
 }
 
-Status SwrAudioConverter::Convert(const AudioFrame& src,
-                                      SampleFormat dst_format,
-                                      AudioFrame& dst) {
+Status SwrAudioConverter::Convert(const AudioFrame& src, SampleFormat dst_format, AudioFrame& dst) {
   if (src.channels <= 0 || src.sample_rate <= 0) {
     return Status::kInvalidArgument;
   }
@@ -66,8 +64,7 @@ Status SwrAudioConverter::Convert(const AudioFrame& src,
   const int in_bps = av_get_bytes_per_sample(in_fmt);
   const int out_bps = av_get_bytes_per_sample(out_fmt);
   const size_t frame_bytes = static_cast<size_t>(in_bps) * src.channels;
-  const int n =
-      frame_bytes == 0 ? 0 : static_cast<int>(src.data.size() / frame_bytes);
+  const int n = frame_bytes == 0 ? 0 : static_cast<int>(src.data.size() / frame_bytes);
 
   // Frame metadata is preserved; only the sample format changes.
   dst.format = dst_format;
@@ -86,9 +83,8 @@ Status SwrAudioConverter::Convert(const AudioFrame& src,
   SwrContext* swr = nullptr;
   // swr_alloc_set_opts2 frees the context and sets `swr` to null on failure;
   // never call swr_init on a null context.
-  if (swr_alloc_set_opts2(&swr, &out_layout, out_fmt, src.sample_rate,
-                          &in_layout, in_fmt, src.sample_rate, 0,
-                          nullptr) < 0 ||
+  if (swr_alloc_set_opts2(&swr, &out_layout, out_fmt, src.sample_rate, &in_layout, in_fmt,
+                          src.sample_rate, 0, nullptr) < 0 ||
       swr == nullptr || swr_init(swr) < 0) {
     swr_free(&swr);
     av_channel_layout_uninit(&in_layout);
@@ -112,8 +108,7 @@ Status SwrAudioConverter::Convert(const AudioFrame& src,
   // Output buffers hold the same sample count (no resampling requested).
   const bool out_planar = av_sample_fmt_is_planar(out_fmt);
   const size_t planes = out_planar ? src.channels : 1;
-  const size_t plane_bytes =
-      static_cast<size_t>(n) * out_bps * (out_planar ? 1 : src.channels);
+  const size_t plane_bytes = static_cast<size_t>(n) * out_bps * (out_planar ? 1 : src.channels);
   std::vector<std::vector<uint8_t>> out_bufs(planes);
   std::vector<uint8_t*> out_planes(planes);
   for (size_t p = 0; p < planes; ++p) {
@@ -121,8 +116,7 @@ Status SwrAudioConverter::Convert(const AudioFrame& src,
     out_planes[p] = out_bufs[p].data();
   }
 
-  const int converted =
-      swr_convert(swr, out_planes.data(), n, in_planes.data(), n);
+  const int converted = swr_convert(swr, out_planes.data(), n, in_planes.data(), n);
   swr_free(&swr);
   if (converted < 0) return Status::kEncodeFailed;
 
@@ -130,9 +124,8 @@ Status SwrAudioConverter::Convert(const AudioFrame& src,
   dst.data.resize(static_cast<size_t>(converted) * out_bps * src.channels);
   if (out_planar) {
     for (int c = 0; c < src.channels; ++c) {
-      std::memcpy(
-          dst.data.data() + static_cast<size_t>(c) * converted * out_bps,
-          out_planes[c], static_cast<size_t>(converted) * out_bps);
+      std::memcpy(dst.data.data() + static_cast<size_t>(c) * converted * out_bps, out_planes[c],
+                  static_cast<size_t>(converted) * out_bps);
     }
   } else {
     std::memcpy(dst.data.data(), out_planes[0], dst.data.size());

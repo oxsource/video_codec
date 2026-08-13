@@ -23,8 +23,7 @@ class SwrAudioConverter {
   // AudioFrame convention; planar layouts store channel 0, then channel 1,
   // ...). Supported v1: any pair among kS16, kF32, kS16Planar, kF32Planar.
   // Unknown formats return Status::kUnsupportedFormat.
-  static Status Convert(const AudioFrame& src, SampleFormat dst_format,
-                            AudioFrame& dst);
+  static Status Convert(const AudioFrame& src, SampleFormat dst_format, AudioFrame& dst);
 };
 
 }  // namespace codec

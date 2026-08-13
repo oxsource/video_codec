@@ -13,17 +13,14 @@ namespace {
 
 struct RegisterFFmpeg {
   RegisterFFmpeg() {
-    CodecFactory::RegisterVideoEncoder(
-        Backend::kFFmpeg, [](const VideoEncoderConfig& c) {
-          return std::make_unique<FFmpegVideoEncoder>(c);
-        });
-    CodecFactory::RegisterAudioEncoder(
-        Backend::kFFmpeg, [](const AudioEncoderConfig& c) {
-          return std::make_unique<FFmpegAudioEncoder>(c);
-        });
-    CodecFactory::RegisterMuxer(Backend::kFFmpeg, [](const MuxerConfig& c) {
-      return std::make_unique<FFmpegMuxer>(c);
+    CodecFactory::RegisterVideoEncoder(Backend::kFFmpeg, [](const VideoEncoderConfig& c) {
+      return std::make_unique<FFmpegVideoEncoder>(c);
     });
+    CodecFactory::RegisterAudioEncoder(Backend::kFFmpeg, [](const AudioEncoderConfig& c) {
+      return std::make_unique<FFmpegAudioEncoder>(c);
+    });
+    CodecFactory::RegisterMuxer(
+        Backend::kFFmpeg, [](const MuxerConfig& c) { return std::make_unique<FFmpegMuxer>(c); });
   }
 };
 

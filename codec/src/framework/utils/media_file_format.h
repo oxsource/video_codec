@@ -37,8 +37,7 @@ class MediaFileFormat {
   }
 };
 
-inline bool MediaFileFormat::HasExtension(std::string_view path,
-                                          std::string_view ext) {
+inline bool MediaFileFormat::HasExtension(std::string_view path, std::string_view ext) {
   if (ext.empty() || path.size() < ext.size()) return false;
   const std::string_view suffix = path.substr(path.size() - ext.size());
   for (size_t i = 0; i < ext.size(); ++i) {

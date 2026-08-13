@@ -16,8 +16,7 @@ namespace codec {
 // succeed only when ALL writers support them.
 class TeeByteSink : public ByteSink {
  public:
-  explicit TeeByteSink(std::vector<ByteSink*> writers)
-      : writers_(std::move(writers)) {}
+  explicit TeeByteSink(std::vector<ByteSink*> writers) : writers_(std::move(writers)) {}
 
   bool Write(const uint8_t* data, size_t size) override {
     for (ByteSink* w : writers_) {

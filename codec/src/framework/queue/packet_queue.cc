@@ -12,10 +12,7 @@ namespace codec {
 
 template <typename Pkt>
 Ring<Pkt>::Ring(size_t capacity, Backpressure policy)
-    : capacity_(capacity),
-      mask_(capacity - 1),
-      policy_(policy),
-      slots_(capacity) {
+    : capacity_(capacity), mask_(capacity - 1), policy_(policy), slots_(capacity) {
   // A non-power-of-two capacity corrupts index masking (data loss); capacity 0
   // deadlocks under kBlock and is UB under kLatest (empty slots_).
   assert(capacity > 0 && (capacity & (capacity - 1)) == 0);
@@ -48,8 +45,7 @@ Status Ring<Pkt>::Pop(Pkt& out, int64_t deadline_us) {
   std::unique_lock<std::mutex> lk(mu_);
   if (deadline_us > 0) {
     auto ts = std::chrono::microseconds(deadline_us);
-    bool signaled =
-        not_empty_.wait_for(lk, ts, [this] { return count_ > 0 || eos_; });
+    bool signaled = not_empty_.wait_for(lk, ts, [this] { return count_ > 0 || eos_; });
     if (!signaled && count_ == 0) return Status::kEmpty;
   } else if (count_ == 0) {
     return eos_ ? Status::kEos : Status::kEmpty;
@@ -103,14 +99,13 @@ namespace {
 // whole await must abort. Sets `done` when that media's stream hit EOS; a done
 // stream is a no-op so the loop can call this unconditionally.
 template <typename Pkt>
-bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink,
-              int64_t deadline_us, const char* what) {
+bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink, int64_t deadline_us,
+              const char* what) {
   if (done) return true;
   switch (src.Pull(out, deadline_us)) {
     case Status::kOk:
       if (sink.Push(std::move(out)) != Status::kOk) {
-        VC_LOG(LogLevel::kError,
-               std::string("PacketQueue::Await: ") + what + " Push failed");
+        VC_LOG(LogLevel::kError, std::string("PacketQueue::Await: ") + what + " Push failed");
         sink.Finish();
         return false;
       }

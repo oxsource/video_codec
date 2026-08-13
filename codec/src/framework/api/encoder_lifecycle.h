@@ -22,16 +22,13 @@ class EncoderLifecycle {
 
   State state() const { return state_; }
   bool ready() const {  // Init() has succeeded and not yet Released
-    return state_ == State::kInitialized || state_ == State::kEncoding ||
-           state_ == State::kFlushed;
+    return state_ == State::kInitialized || state_ == State::kEncoding || state_ == State::kFlushed;
   }
   // True if Init() is a legal transition from the current state (Created or
   // Flushed). Backends use this to GUARD entry before doing real init work,
   // then call Init() only after the work succeeds to COMMIT the transition —
   // a failed init leaves the encoder in its previous state and reusable.
-  bool CanInit() const {
-    return state_ == State::kCreated || state_ == State::kFlushed;
-  }
+  bool CanInit() const { return state_ == State::kCreated || state_ == State::kFlushed; }
 
  private:
   State state_ = State::kCreated;

@@ -67,8 +67,7 @@ TEST(SmpteBarsTest, MovingLineSweepsBottomRow) {
 
   // Inside the line: near-white (235). Outside it, at the same row: a bar.
   EXPECT_EQ(f.planes[0][static_cast<size_t>(line_top) * w + line_x], 235);
-  EXPECT_EQ(f.planes[0][static_cast<size_t>(h - 1) * w + line_x + line_w / 2],
-            235);
+  EXPECT_EQ(f.planes[0][static_cast<size_t>(h - 1) * w + line_x + line_w / 2], 235);
   EXPECT_LT(f.planes[0][static_cast<size_t>(line_top) * w], 200);
 }
 
@@ -78,8 +77,7 @@ TEST(SmpteBarsTest, MovingLineCanBeDisabled) {
   const VideoFrame f = SmpteBars::MakeFrame(w, h, fps, 15, opts);
   const int line_x = (15 * w / fps) % w;
   const int line_w = w / 40;
-  EXPECT_LT(f.planes[0][static_cast<size_t>(h - 1) * w + line_x + line_w / 2],
-            200);
+  EXPECT_LT(f.planes[0][static_cast<size_t>(h - 1) * w + line_x + line_w / 2], 200);
 }
 
 TEST(SmpteBarsTest, Deterministic) {

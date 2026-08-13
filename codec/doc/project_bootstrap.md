@@ -1155,7 +1155,7 @@ spec/
 Agent 在实现时遵循：
 
 1. 读取对应 `spec/` 文件，理解接口契约
-2. 按 Google C++ Style 编写代码（2-space indent, 80-col width, etc.）
+2. 按 Google C++ Style 编写代码（2-space indent, 100-col width, etc.）
 3. 每个功能带对应 `*_test.cc` 单元测试
 4. 提交前运行 `bazel test //...` 验证
 5. Commit message 遵循 Conventional Commits 格式

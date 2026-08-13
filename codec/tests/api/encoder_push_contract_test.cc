@@ -16,9 +16,7 @@ namespace {
 class StubVideoEncoder : public VideoEncoder {
  public:
   Status Init() override { return Status::kOk; }
-  Result<VideoPacket> Encode(const VideoFrame&) override {
-    return Ok(VideoPacket{});
-  }
+  Result<VideoPacket> Encode(const VideoFrame&) override { return Ok(VideoPacket{}); }
   Result<VideoPacket> Encode(const NativeBuffer&) override {
     return Err<VideoPacket>(Status::kUnsupportedOperation);
   }
@@ -29,9 +27,7 @@ class StubVideoEncoder : public VideoEncoder {
 class StubAudioEncoder : public AudioEncoder {
  public:
   Status Init() override { return Status::kOk; }
-  Result<AudioPacket> Encode(const AudioFrame&) override {
-    return Ok(AudioPacket{});
-  }
+  Result<AudioPacket> Encode(const AudioFrame&) override { return Ok(AudioPacket{}); }
   Result<AudioPacket> Flush() override { return Ok(AudioPacket{}); }
   void Release() override {}
 };

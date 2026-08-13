@@ -49,8 +49,7 @@ class SmpteBars {
       {191, 0, 0},      // red
       {0, 0, 191},      // blue
   };
-  inline static constexpr size_t kCount =
-      sizeof(kPalette) / sizeof(kPalette[0]);
+  inline static constexpr size_t kCount = sizeof(kPalette) / sizeof(kPalette[0]);
 
   // BT.601 limited-range RGB -> YUV (studio swing: Y 16..235, U/V 16..240).
   static void RgbToYuv(const Color& c, uint8_t& y, uint8_t& u, uint8_t& v);

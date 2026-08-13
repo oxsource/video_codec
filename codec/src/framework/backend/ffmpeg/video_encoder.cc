@@ -35,8 +35,7 @@ AVPixelFormat ToAvPixFmt(PixelFormat f) {
 }
 }  // namespace
 
-FFmpegVideoEncoder::FFmpegVideoEncoder(const VideoEncoderConfig& config)
-    : config_(config) {}
+FFmpegVideoEncoder::FFmpegVideoEncoder(const VideoEncoderConfig& config) : config_(config) {}
 
 FFmpegVideoEncoder::~FFmpegVideoEncoder() { Release(); }
 
@@ -125,15 +124,13 @@ Status FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
   for (int p = 0; p < planes; ++p) {
     const uint8_t* src = frame.planes[p].data();
     uint8_t* dst = frame_->data[p];
-    int src_stride =
-        frame.stride[p] > 0 ? frame.stride[p] : frame_->linesize[p];
+    int src_stride = frame.stride[p] > 0 ? frame.stride[p] : frame_->linesize[p];
     // Chroma height is h/2 for both NV12 and I420.
     const int rows = (p == 0) ? frame.height : frame.height / 2;
     // Bytes per row: luma = width; NV12 chroma = width (interleaved UV); I420
     // chroma (U or V) = width/2.
-    const int copy_bytes = (p == 0 || frame.format == PixelFormat::kNV12)
-                               ? frame_->width
-                               : frame_->width / 2;
+    const int copy_bytes =
+        (p == 0 || frame.format == PixelFormat::kNV12) ? frame_->width : frame_->width / 2;
     for (int y = 0; y < rows; ++y) {
       std::memcpy(dst + y * frame_->linesize[p], src + y * src_stride,
                   static_cast<size_t>(copy_bytes));
@@ -144,10 +141,8 @@ Status FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
 }
 
 Result<VideoPacket> FFmpegVideoEncoder::Encode(const VideoFrame& frame) {
-  if (lifecycle_.Encode() != Status::kOk)
-    return Err<VideoPacket>(Status::kNotInitialized);
-  if (CopyFrame(frame) != Status::kOk)
-    return Err<VideoPacket>(Status::kInvalidArgument);
+  if (lifecycle_.Encode() != Status::kOk) return Err<VideoPacket>(Status::kNotInitialized);
+  if (CopyFrame(frame) != Status::kOk) return Err<VideoPacket>(Status::kInvalidArgument);
 
   if (avcodec_send_frame(ctx_.get(), frame_.get()) < 0)
     return Err<VideoPacket>(Status::kEncodeFailed);
@@ -160,8 +155,7 @@ Result<VideoPacket> FFmpegVideoEncoder::Encode(const NativeBuffer&) {
 }
 
 Result<VideoPacket> FFmpegVideoEncoder::Flush() {
-  if (lifecycle_.Flush() != Status::kOk)
-    return Err<VideoPacket>(Status::kNotInitialized);
+  if (lifecycle_.Flush() != Status::kOk) return Err<VideoPacket>(Status::kNotInitialized);
   if (avcodec_send_frame(ctx_.get(), nullptr) < 0) {
     // Already drained; still try to pull remaining bsf output.
   }

@@ -10,8 +10,7 @@ namespace {
 // Bar index (0..SmpteBars::kCount-1) covering luma pixel `x` of a `width` row.
 int BarAt(int x, int width) {
   const int bar =
-      static_cast<int>(static_cast<int64_t>(x) *
-                       static_cast<int64_t>(SmpteBars::kCount) / width);
+      static_cast<int>(static_cast<int64_t>(x) * static_cast<int64_t>(SmpteBars::kCount) / width);
   if (bar >= static_cast<int>(SmpteBars::kCount)) {
     return static_cast<int>(SmpteBars::kCount) - 1;
   }
@@ -32,8 +31,7 @@ void SmpteBars::RgbToYuv(const Color& c, uint8_t& y, uint8_t& u, uint8_t& v) {
 VideoFrame SmpteBars::MakeFrame(int width, int height, int fps, int frame_index,
                                 const Options& opts) {
   VideoFrame f;
-  if (width <= 0 || height <= 0 || width % 2 != 0 || height % 2 != 0 ||
-      fps <= 0) {
+  if (width <= 0 || height <= 0 || width % 2 != 0 || height % 2 != 0 || fps <= 0) {
     return f;  // empty frame (width == 0) on invalid input
   }
   f.format = PixelFormat::kI420;

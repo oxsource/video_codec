@@ -109,8 +109,7 @@ int main(int argc, char** argv) {
     muxer->SetOutput(mp4_sink.get());
   }
 
-  std::unique_ptr<vc::VideoEncoder> encoder =
-      vc::CodecFactory::CreateVideoEncoder(cfg);
+  std::unique_ptr<vc::VideoEncoder> encoder = vc::CodecFactory::CreateVideoEncoder(cfg);
   if (!encoder) {
     std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg backend available\n");
     return 1;
@@ -160,7 +159,7 @@ int main(int argc, char** argv) {
                               std::chrono::steady_clock::now() - start)
                               .count();
   std::printf("ffmpeg_encode_file: encoded %lld frames in %lld ms -> %s\n",
-              static_cast<long long>(produced),
-              static_cast<long long>(elapsed_ms), out_path.c_str());
+              static_cast<long long>(produced), static_cast<long long>(elapsed_ms),
+              out_path.c_str());
   return 0;
 }
