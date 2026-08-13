@@ -8,6 +8,36 @@
 namespace video {
 namespace codec {
 
+namespace {
+
+// Drain one packet of media type `Pkt` from `src` and forward it to `sink`.
+// Returns false only when the consumer failed (Finish() already called) — the
+// whole await must abort. Sets `done` when that media's stream hit EOS; a done
+// stream is a no-op so the loop can call this unconditionally.
+template <typename Pkt>
+bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink,
+              int64_t deadline_us, const char* what) {
+  if (done) return true;
+  switch (src.Pop(out, deadline_us)) {
+    case Status::kOk:
+      if (sink.Consume(std::move(out)) != Status::kOk) {
+        VC_LOG(LogLevel::kError,
+               std::string("PacketQueue::Await: ") + what + " Consume failed");
+        sink.Finish();
+        return false;
+      }
+      return true;
+    case Status::kEos:
+      done = true;
+      return true;
+    case Status::kEmpty:
+      return true;  // try the other media (or retry next iteration)
+  }
+  return true;  // Pop only yields kOk/kEmpty/kEos; keep draining otherwise
+}
+
+}  // namespace
+
 PacketQueue::PacketQueue(size_t capacity, Backpressure policy)
     : video_(capacity, policy), audio_(capacity, policy) {}
 
@@ -40,39 +70,9 @@ Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us) {
   bool audio_done = false;
 
   while (!video_done || !audio_done) {
-    if (!video_done) {
-      switch (Pop(vp, deadline_us)) {
-        case Status::kOk:
-          if (sink.Consume(std::move(vp)) != Status::kOk) {
-            VC_LOG(LogLevel::kError,
-                   "PacketQueue::Await: video Consume failed");
-            sink.Finish();
-            return Status::kEncodeFailed;
-          }
-          break;
-        case Status::kEos:
-          video_done = true;
-          break;
-        case Status::kEmpty:
-          break;  // try audio below (or retry next iteration)
-      }
-    }
-    if (!audio_done) {
-      switch (Pop(ap, deadline_us)) {
-        case Status::kOk:
-          if (sink.Consume(std::move(ap)) != Status::kOk) {
-            VC_LOG(LogLevel::kError,
-                   "PacketQueue::Await: audio Consume failed");
-            sink.Finish();
-            return Status::kEncodeFailed;
-          }
-          break;
-        case Status::kEos:
-          audio_done = true;
-          break;
-        case Status::kEmpty:
-          break;
-      }
+    if (!DrainOne(*this, vp, video_done, sink, deadline_us, "video") ||
+        !DrainOne(*this, ap, audio_done, sink, deadline_us, "audio")) {
+      return Status::kEncodeFailed;
     }
   }
   return sink.Finish();
