@@ -3,11 +3,9 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `consumer` target deps on all modules for backward compatibility.
 #   PacketConsumer (implements queue::PacketSink), FileSinkConsumer (raw
-#   Annex-B / ADTS), FileByteSink (file I/O), ByteStream + StreamByteSink
-#   (cloud/network push), TeeByteSink (fan-out), Mp4Consumer (any ByteSink +
-#   mux::Mp4Muxer).
-# The drain loop lives in PacketSource::Await (queue module); this module only
-# supplies sinks.
+#   Annex-B / ADTS), Mp4Consumer (any io::ByteSink + mux::Mp4Muxer).
+# Byte-level sinks (file / stream / tee) and the ByteStream transport live in
+# the `io` module; the drain loop lives in PacketSource::Await (queue module).
 
 cc_library(
     name = "packet_consumer",
@@ -18,38 +16,6 @@ cc_library(
         "//src/framework/core:types",
         "//src/framework/queue:queue_iface",
     ],
-)
-
-cc_library(
-    name = "byte_stream",
-    hdrs = ["byte_stream.h"],
-    includes = [".."],
-    deps = ["//src/framework/core:status"],
-)
-
-cc_library(
-    name = "file_byte_sink",
-    srcs = ["file_byte_sink.cc"],
-    hdrs = ["file_byte_sink.h"],
-    includes = [".."],
-    deps = ["//src/framework/mux:byte_sink"],
-)
-
-cc_library(
-    name = "stream_byte_sink",
-    hdrs = ["stream_byte_sink.h"],
-    includes = [".."],
-    deps = [
-        ":byte_stream",
-        "//src/framework/mux:byte_sink",
-    ],
-)
-
-cc_library(
-    name = "tee_byte_sink",
-    hdrs = ["tee_byte_sink.h"],
-    includes = [".."],
-    deps = ["//src/framework/mux:byte_sink"],
 )
 
 cc_library(
@@ -68,7 +34,7 @@ cc_library(
     deps = [
         ":packet_consumer",
         "//src/framework/core:types",
-        "//src/framework/mux:byte_sink",
+        "//src/framework/io:byte_sink",
         "//src/framework/mux:mp4_muxer",
     ],
 )
@@ -77,10 +43,6 @@ cc_library(
     name = "consumer",
     deps = [
         ":packet_consumer",
-        ":byte_stream",
-        ":file_byte_sink",
-        ":stream_byte_sink",
-        ":tee_byte_sink",
         ":file_sink_consumer",
         ":mp4_consumer",
     ],

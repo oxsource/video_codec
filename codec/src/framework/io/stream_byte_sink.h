@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "consumer/byte_stream.h"
-#include "mux/byte_sink.h"
+#include "io/byte_sink.h"
+#include "io/byte_stream.h"
 
 namespace video {
 namespace codec {

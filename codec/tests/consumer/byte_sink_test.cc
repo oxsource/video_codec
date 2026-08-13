@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "consumer/byte_stream.h"
-#include "consumer/file_byte_sink.h"
-#include "consumer/stream_byte_sink.h"
-#include "consumer/tee_byte_sink.h"
 #include "gtest/gtest.h"
+#include "io/byte_stream.h"
+#include "io/file_byte_sink.h"
+#include "io/stream_byte_sink.h"
+#include "io/tee_byte_sink.h"
 
 namespace video {
 namespace codec {

@@ -6,21 +6,24 @@
 public ──▶ api ──▶ core
    ├──▶ utils ──▶ core
    ├──▶ queue ──▶ core
-   ├──▶ mux ──▶ core, (external dep: @ffmpeg)
+   ├──▶ io ──▶ core
+   ├──▶ mux ──▶ core, io, (external dep: @ffmpeg)
    ├──▶ convert/libyuv ──▶ core, utils, (external dep: @libyuv)
-   ├──▶ consumer ──▶ api, core, queue, mux
+   ├──▶ consumer ──▶ api, core, queue, io, mux
    └──▶ backend/* ──▶ api, core, utils, (external dep)
 ```
 
 - `core` depends on **nothing** (leaf).
 - `api` → `core` only.
 - `utils` → `core` only.
-- `queue` → `core` only (ring buffer over the unified `Packet`; video and audio live on
-  two independent rings).
-- `mux` → `core` + `@ffmpeg` (pure MP4 format conversion; no consumer/io dependency).
+- `queue` → `core` only (ring buffer over `VideoPacket`/`AudioPacket` on two
+  independent rings).
+- `io` → `core` only (ByteSink/ByteStream contracts + file/stream/tee sinks).
+- `mux` → `core`, `io`, `@ffmpeg` (pure MP4 format conversion; writes through an
+  `io::ByteSink`).
 - `convert/libyuv` → `core`, `utils`, `@libyuv` (neutral pixel conversion).
-- `consumer` → `api`, `core`, `queue`, `mux` (implements `PacketConsumer`: file sink,
-  MP4 file consumer, byte sinks).
+- `consumer` → `api`, `core`, `queue`, `io`, `mux` (implements `PacketConsumer`:
+  file sink, MP4 consumer over any `io::ByteSink`).
 - Each `backend/<x>` → `api`, `core`, `utils`, **and exactly one** external dependency
   (`@ffmpeg` / `@androidndk` / `VideoToolbox.framework`).
 - `backends` NEVER depend on each other.
@@ -30,7 +33,7 @@ public ──▶ api ──▶ core
 
 | Package | `visibility` |
 |---------|--------------|
-| `core`, `api`, `utils`, `backend/*`, `queue`, `consumer` | `["//src/framework:__subpackages__", "//tests:__subpackages__"]` |
+| `core`, `api`, `utils`, `backend/*`, `queue`, `io`, `mux`, `consumer` | `["//src/framework:__subpackages__", "//tests:__subpackages__"]` |
 | `public` | `["//visibility:public"]` |
 | `third_party/ffmpeg`, `third_party/android_ndk` | `["//visibility:public"]` (only `backend/*` may consume) |
 

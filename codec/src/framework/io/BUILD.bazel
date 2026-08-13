@@ -1,0 +1,60 @@
+package(default_visibility = [
+    "//src/framework:__subpackages__",
+    "//src/examples:__subpackages__",
+    "//tests:__subpackages__",
+])
+
+# Byte-level I/O: the ByteSink output contract (used by muxers), the ByteStream
+# transport abstraction (cloud/network push), and their concrete sinks
+# (file / stream / tee). One cc_library per module; the aggregate `io` target
+# deps on all for backward compatibility.
+# Depends on core only (Status in byte_stream).
+
+cc_library(
+    name = "byte_sink",
+    hdrs = ["byte_sink.h"],
+    includes = [".."],
+)
+
+cc_library(
+    name = "byte_stream",
+    hdrs = ["byte_stream.h"],
+    includes = [".."],
+    deps = ["//src/framework/core:status"],
+)
+
+cc_library(
+    name = "file_byte_sink",
+    srcs = ["file_byte_sink.cc"],
+    hdrs = ["file_byte_sink.h"],
+    includes = [".."],
+    deps = [":byte_sink"],
+)
+
+cc_library(
+    name = "stream_byte_sink",
+    hdrs = ["stream_byte_sink.h"],
+    includes = [".."],
+    deps = [
+        ":byte_stream",
+        ":byte_sink",
+    ],
+)
+
+cc_library(
+    name = "tee_byte_sink",
+    hdrs = ["tee_byte_sink.h"],
+    includes = [".."],
+    deps = [":byte_sink"],
+)
+
+cc_library(
+    name = "io",
+    deps = [
+        ":byte_sink",
+        ":byte_stream",
+        ":file_byte_sink",
+        ":stream_byte_sink",
+        ":tee_byte_sink",
+    ],
+)

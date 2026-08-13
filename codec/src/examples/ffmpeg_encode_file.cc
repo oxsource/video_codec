@@ -32,10 +32,10 @@
 
 #include "api/encoder_factory.h"
 #include "api/video_encoder.h"
-#include "consumer/file_byte_sink.h"
 #include "consumer/file_sink_consumer.h"
 #include "consumer/mp4_consumer.h"
 #include "consumer/packet_consumer.h"
+#include "io/file_byte_sink.h"
 #include "queue/packet_queue.h"
 #include "utils/smpte_bars.h"
 

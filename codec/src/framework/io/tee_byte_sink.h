@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "mux/byte_sink.h"
+#include "io/byte_sink.h"
 
 namespace video {
 namespace codec {

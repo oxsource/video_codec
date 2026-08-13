@@ -3,7 +3,7 @@
 
 #include "consumer/packet_consumer.h"
 #include "core/types.h"
-#include "mux/byte_sink.h"
+#include "io/byte_sink.h"
 #include "mux/mp4_muxer.h"
 
 namespace video {
