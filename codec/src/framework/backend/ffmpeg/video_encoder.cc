@@ -41,7 +41,14 @@ FFmpegVideoEncoder::FFmpegVideoEncoder(const VideoEncoderConfig& config)
 FFmpegVideoEncoder::~FFmpegVideoEncoder() { Release(); }
 
 Status FFmpegVideoEncoder::Init() {
-  if (lifecycle_.Init() != Status::kOk) return Status::kInvalidArgument;
+  // Guard the entry state up front (Created or Flushed allowed) WITHOUT
+  // committing the transition: the lifecycle flips to Initialized only after
+  // the real FFmpeg init below succeeds, so a failed Init leaves the encoder
+  // in its previous state and reusable.
+  if (lifecycle_.state() != EncoderLifecycle::State::kCreated &&
+      lifecycle_.state() != EncoderLifecycle::State::kFlushed) {
+    return Status::kInvalidArgument;
+  }
 
   if (config_.width <= 0 || config_.height <= 0)
     return Status::kInvalidArgument;
@@ -114,7 +121,12 @@ Status FFmpegVideoEncoder::Init() {
   }
 
   pkt_ = av_packet_alloc();
-  initialized_ = true;
+
+  // All real init succeeded — only now commit the lifecycle transition.
+  if (lifecycle_.Init() != Status::kOk) {  // unreachable given the top guard
+    Release();
+    return Status::kInvalidArgument;
+  }
   return Status::kOk;
 }
 
@@ -130,10 +142,9 @@ Status FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
     uint8_t* dst = frame_->data[p];
     int src_stride =
         frame.stride[p] > 0 ? frame.stride[p] : frame_->linesize[p];
-    int rows = (p == 0)
-                   ? frame.height
-                   : (frame.format == PixelFormat::kNV12 ? frame.height / 2
-                                                         : frame.height / 2);
+    // Chroma height is h/2 for both NV12 and I420 (the original ternary was
+    // redundant).
+    const int rows = (p == 0) ? frame.height : frame.height / 2;
     // Bytes per row copied: luma = width; NV12 UV = width (interleaved); I420
     // U/V = width/2.
     int copy_bytes =
@@ -239,7 +250,6 @@ void FFmpegVideoEncoder::Release() {
     avcodec_free_context(&ctx_);
     ctx_ = nullptr;
   }
-  initialized_ = false;
 }
 
 }  // namespace codec

@@ -49,7 +49,6 @@ class FFmpegVideoEncoder : public VideoEncoder {
   AVPacket* pkt_ = nullptr;
   OutputSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
   int64_t pts_ = 0;
-  bool initialized_ = false;
 };
 
 }  // namespace codec

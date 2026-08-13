@@ -21,7 +21,14 @@ FFmpegAudioEncoder::FFmpegAudioEncoder(const AudioEncoderConfig& config)
 FFmpegAudioEncoder::~FFmpegAudioEncoder() { Release(); }
 
 Status FFmpegAudioEncoder::Init() {
-  if (lifecycle_.Init() != Status::kOk) return Status::kInvalidArgument;
+  // Guard the entry state up front (Created or Flushed allowed) WITHOUT
+  // committing the transition: the lifecycle flips to Initialized only after
+  // the real FFmpeg init below succeeds, so a failed Init leaves the encoder
+  // in its previous state and reusable.
+  if (lifecycle_.state() != EncoderLifecycle::State::kCreated &&
+      lifecycle_.state() != EncoderLifecycle::State::kFlushed) {
+    return Status::kInvalidArgument;
+  }
   if (config_.sample_rate <= 0 || config_.channels <= 0) {
     return Status::kInvalidArgument;
   }
@@ -54,6 +61,12 @@ Status FFmpegAudioEncoder::Init() {
   }
 
   pkt_ = av_packet_alloc();
+
+  // All real init succeeded — only now commit the lifecycle transition.
+  if (lifecycle_.Init() != Status::kOk) {  // unreachable given the top guard
+    Release();
+    return Status::kInvalidArgument;
+  }
   return Status::kOk;
 }
 
