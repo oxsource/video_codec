@@ -15,8 +15,8 @@
 //   ffmpeg_encode_file [--raw] output [seconds]
 //
 //   --raw  write a raw Annex-B H.264 elementary stream (FileSinkConsumer).
-//          Otherwise the output is muxed into an MP4 container (Mp4MuxConsumer),
-//          regardless of the file extension.
+//          Otherwise the output is muxed into an MP4 container
+//          (Mp4MuxConsumer), regardless of the file extension.
 //
 // Examples:
 //   bazel run //src/examples:ffmpeg_encode_file -- out.mp4 5

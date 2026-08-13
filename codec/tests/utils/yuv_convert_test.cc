@@ -41,7 +41,8 @@ TEST(YuvConvertTest, I420ToNV12RoundTrip) {
   EXPECT_EQ(nv12.planes[1].size(), static_cast<size_t>(16) * 8);
 
   VideoFrame back;
-  ASSERT_EQ(ConvertPixelFormat(nv12, PixelFormat::kI420, back), StatusCode::kOk);
+  ASSERT_EQ(ConvertPixelFormat(nv12, PixelFormat::kI420, back),
+            StatusCode::kOk);
   EXPECT_TRUE(Equals(src, back)) << "I420->NV12->I420 must be bit-exact";
 }
 

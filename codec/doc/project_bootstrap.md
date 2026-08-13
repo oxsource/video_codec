@@ -952,7 +952,7 @@ cc_binary(
 ### Formatting
 
 - Indentation: 2 spaces (no tabs)
-- Line length: 80 characters
+- Line length: 80 characters (Google C++ style; enforced via `codec/.clang-format`)
 - Use `nullptr`, not `NULL` or `0`
 - Use `auto` sparingly, only when type is obvious
 - Include order: related header, C++ standard library, third-party, project headers

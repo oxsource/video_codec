@@ -14,7 +14,7 @@ namespace codec {
 class PacketPump {
  public:
   static void Run(EncodedPacketSource& src, PacketConsumer& consumer,
-                   int64_t deadline_us = 100'000);
+                  int64_t deadline_us = 100'000);
 };
 
 }  // namespace codec

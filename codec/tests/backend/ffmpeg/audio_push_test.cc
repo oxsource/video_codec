@@ -3,14 +3,13 @@
 // Spec 004, US1/A5: the audio encoder's push mode delivers AudioPackets to the
 // output sink in order (single destination).
 
-#include "api/audio_encoder.h"
-#include "api/encoder_factory.h"
-#include "queue/encoded_packet_queue.h"
-
 #include <cstdint>
 #include <vector>
 
+#include "api/audio_encoder.h"
+#include "api/encoder_factory.h"
 #include "gtest/gtest.h"
+#include "queue/encoded_packet_queue.h"
 
 namespace video {
 namespace codec {
@@ -23,7 +22,8 @@ AudioFrame MakePcmFrame(int samples) {
   f.channels = 2;
   f.data.resize(static_cast<size_t>(samples) * 2 * 2);  // S16 interleaved
   auto* p = reinterpret_cast<int16_t*>(f.data.data());
-  for (int i = 0; i < samples * 2; ++i) p[i] = static_cast<int16_t>((i % 1000) - 500);
+  for (int i = 0; i < samples * 2; ++i)
+    p[i] = static_cast<int16_t>((i % 1000) - 500);
   return f;
 }
 
@@ -44,7 +44,8 @@ TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
   for (int i = 0; i < 10; ++i) {
     Result<AudioPacket> r = encoder->Encode(MakePcmFrame(1024));
     ASSERT_TRUE(r.ok());
-    EXPECT_TRUE(r.value().data.empty());  // push mode: single destination = sink
+    EXPECT_TRUE(
+        r.value().data.empty());  // push mode: single destination = sink
   }
   ASSERT_TRUE(encoder->Flush().ok());
   q.MarkEos();  // caller marks EOS after all producers are done
@@ -60,7 +61,8 @@ TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
   EXPECT_GT(packets.size(), 0u);
   for (size_t i = 1; i < packets.size(); ++i) {
     EXPECT_FALSE(packets[i].data.empty());
-    EXPECT_GT(packets[i].pts_us, packets[i - 1].pts_us) << "packets out of order";
+    EXPECT_GT(packets[i].pts_us, packets[i - 1].pts_us)
+        << "packets out of order";
   }
 }
 

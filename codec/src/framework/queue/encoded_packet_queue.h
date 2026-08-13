@@ -26,7 +26,9 @@ template <typename Pkt>
 class Ring {
  public:
   Ring(size_t capacity, Backpressure policy)
-      : capacity_(capacity), mask_(capacity - 1), policy_(policy),
+      : capacity_(capacity),
+        mask_(capacity - 1),
+        policy_(policy),
         slots_(capacity) {
     // Caller guarantees capacity is a power of two (> 0).
   }
@@ -60,9 +62,9 @@ class Ring {
   PopResult Pop(Pkt& out, int64_t deadline_us) {
     std::unique_lock<std::mutex> lk(mu_);
     if (deadline_us > 0) {
-      bool signaled = not_empty_.wait_for(
-          lk, std::chrono::microseconds(deadline_us),
-          [this] { return count_ > 0 || eos_; });
+      bool signaled =
+          not_empty_.wait_for(lk, std::chrono::microseconds(deadline_us),
+                              [this] { return count_ > 0 || eos_; });
       if (!signaled && count_ == 0) return PopResult::kEmpty;
     } else if (count_ == 0) {
       return eos_ ? PopResult::kEos : PopResult::kEmpty;
@@ -113,7 +115,8 @@ class Ring {
 class EncodedPacketQueue : public OutputSink, public EncodedPacketSource {
  public:
   // `capacity` MUST be > 0 and a power of two (index masking).
-  EncodedPacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
+  EncodedPacketQueue(size_t capacity,
+                     Backpressure policy = Backpressure::kBlock);
 
   // OutputSink (producer).
   StatusCode Submit(EncodedPacket&& pkt) override;

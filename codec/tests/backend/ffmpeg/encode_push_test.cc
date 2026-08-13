@@ -5,16 +5,15 @@
 //  - pull mode is unchanged when no sink is attached;
 //  - back-pressure paces the producer instead of dropping packets.
 
-#include "api/encoder_factory.h"
-#include "api/video_encoder.h"
-#include "queue/encoded_packet_queue.h"
-
 #include <atomic>
 #include <cstdint>
 #include <thread>
 #include <vector>
 
+#include "api/encoder_factory.h"
+#include "api/video_encoder.h"
 #include "gtest/gtest.h"
+#include "queue/encoded_packet_queue.h"
 
 namespace video {
 namespace codec {
@@ -81,7 +80,8 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
   EXPECT_GT(packets.size(), 0u);
   for (size_t i = 1; i < packets.size(); ++i) {
     EXPECT_FALSE(packets[i].data.empty());
-    EXPECT_GT(packets[i].pts_us, packets[i - 1].pts_us) << "packets out of order";
+    EXPECT_GT(packets[i].pts_us, packets[i - 1].pts_us)
+        << "packets out of order";
   }
 }
 
@@ -137,10 +137,12 @@ TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
   EXPECT_FALSE(producer_failed.load());
   EXPECT_TRUE(producer_done.load());
 
-  EXPECT_GT(drained.size(), 4u) << "more than one full queue of packets expected";
+  EXPECT_GT(drained.size(), 4u)
+      << "more than one full queue of packets expected";
   for (size_t i = 1; i < drained.size(); ++i) {
     EXPECT_FALSE(drained[i].data.empty());
-    EXPECT_GT(drained[i].pts_us, drained[i - 1].pts_us) << "packets out of order";
+    EXPECT_GT(drained[i].pts_us, drained[i - 1].pts_us)
+        << "packets out of order";
   }
 }
 

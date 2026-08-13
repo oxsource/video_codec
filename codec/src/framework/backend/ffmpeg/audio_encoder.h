@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include "api/encoder_lifecycle.h"
 #include "api/audio_encoder.h"
+#include "api/encoder_lifecycle.h"
 #include "core/types.h"
 
 struct AVCodecContext;

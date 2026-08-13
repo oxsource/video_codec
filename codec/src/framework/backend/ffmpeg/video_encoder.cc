@@ -21,14 +21,16 @@ AVCodecID ToCodecId(VideoCodecType t) {
 }
 // Annex-B bitstream filter name for the chosen codec.
 const char* BsfName(VideoCodecType t) {
-  return t == VideoCodecType::kHEVC ? "hevc_mp4toannexb"
-                                    : "h264_mp4toannexb";
+  return t == VideoCodecType::kHEVC ? "hevc_mp4toannexb" : "h264_mp4toannexb";
 }
 AVPixelFormat ToAvPixFmt(PixelFormat f) {
   switch (f) {
-    case PixelFormat::kI420: return AV_PIX_FMT_YUV420P;
-    case PixelFormat::kNV12: return AV_PIX_FMT_NV12;
-    default: return AV_PIX_FMT_NONE;  // RGBA not accepted by this backend
+    case PixelFormat::kI420:
+      return AV_PIX_FMT_YUV420P;
+    case PixelFormat::kNV12:
+      return AV_PIX_FMT_NV12;
+    default:
+      return AV_PIX_FMT_NONE;  // RGBA not accepted by this backend
   }
 }
 }  // namespace
@@ -41,7 +43,8 @@ FFmpegVideoEncoder::~FFmpegVideoEncoder() { Release(); }
 StatusCode FFmpegVideoEncoder::Init() {
   if (lifecycle_.Init() != StatusCode::kOk) return StatusCode::kInvalidArgument;
 
-  if (config_.width <= 0 || config_.height <= 0) return StatusCode::kInvalidArgument;
+  if (config_.width <= 0 || config_.height <= 0)
+    return StatusCode::kInvalidArgument;
 
   const AVCodec* codec = avcodec_find_encoder(ToCodecId(config_.codec));
   if (!codec) {
@@ -82,7 +85,8 @@ StatusCode FFmpegVideoEncoder::Init() {
   }
 
   // Annex-B bitstream filter: FFmpeg emits length-prefixed (AVCC); the bsf
-  // converts to start-code (Annex-B) and prepends SPS/PPS at the first keyframe.
+  // converts to start-code (Annex-B) and prepends SPS/PPS at the first
+  // keyframe.
   const AVBitStreamFilter* filter = av_bsf_get_by_name(BsfName(config_.codec));
   if (!filter || av_bsf_alloc(filter, &bsf_) < 0) {
     av_frame_free(&frame_);
@@ -124,18 +128,18 @@ StatusCode FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
   for (int p = 0; p < planes; ++p) {
     const uint8_t* src = frame.planes[p].data();
     uint8_t* dst = frame_->data[p];
-    int src_stride = frame.stride[p] > 0 ? frame.stride[p]
-                                        : frame_->linesize[p];
-    int rows = (p == 0) ? frame.height
-                         : (frame.format == PixelFormat::kNV12 ? frame.height / 2
-                                                              : frame.height / 2);
+    int src_stride =
+        frame.stride[p] > 0 ? frame.stride[p] : frame_->linesize[p];
+    int rows = (p == 0)
+                   ? frame.height
+                   : (frame.format == PixelFormat::kNV12 ? frame.height / 2
+                                                         : frame.height / 2);
     // Bytes per row copied: luma = width; NV12 UV = width (interleaved); I420
     // U/V = width/2.
-    int copy_bytes = (p == 0)
-                         ? frame_->width
-                         : ((frame.format == PixelFormat::kNV12)
-                                ? frame_->width
-                                : frame_->width / 2);
+    int copy_bytes =
+        (p == 0) ? frame_->width
+                 : ((frame.format == PixelFormat::kNV12) ? frame_->width
+                                                         : frame_->width / 2);
     for (int y = 0; y < rows; ++y) {
       std::memcpy(dst + y * frame_->linesize[p], src + y * src_stride,
                   static_cast<size_t>(copy_bytes));
@@ -146,10 +150,13 @@ StatusCode FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
 }
 
 Result<EncodedPacket> FFmpegVideoEncoder::Encode(const VideoFrame& frame) {
-  if (lifecycle_.Encode() != StatusCode::kOk) return Err<EncodedPacket>(StatusCode::kNotInitialized);
-  if (CopyFrame(frame) != StatusCode::kOk) return Err<EncodedPacket>(StatusCode::kInvalidArgument);
+  if (lifecycle_.Encode() != StatusCode::kOk)
+    return Err<EncodedPacket>(StatusCode::kNotInitialized);
+  if (CopyFrame(frame) != StatusCode::kOk)
+    return Err<EncodedPacket>(StatusCode::kInvalidArgument);
 
-  if (avcodec_send_frame(ctx_, frame_) < 0) return Err<EncodedPacket>(StatusCode::kEncodeFailed);
+  if (avcodec_send_frame(ctx_, frame_) < 0)
+    return Err<EncodedPacket>(StatusCode::kEncodeFailed);
   return Drain(/*drain_eof=*/false);
 }
 
@@ -159,7 +166,8 @@ Result<EncodedPacket> FFmpegVideoEncoder::Encode(const NativeBuffer&) {
 }
 
 Result<EncodedPacket> FFmpegVideoEncoder::Flush() {
-  if (lifecycle_.Flush() != StatusCode::kOk) return Err<EncodedPacket>(StatusCode::kNotInitialized);
+  if (lifecycle_.Flush() != StatusCode::kOk)
+    return Err<EncodedPacket>(StatusCode::kNotInitialized);
   if (avcodec_send_frame(ctx_, nullptr) < 0) {
     // Already drained; still try to pull remaining bsf output.
   }

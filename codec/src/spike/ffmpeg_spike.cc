@@ -44,14 +44,16 @@ void FillFrame(AVFrame* frame, int frame_index) {
 }
 
 // Encode one frame (or flush with nullptr) and write every emitted packet.
-int EncodeAndWrite(AVCodecContext* enc, AVFrame* frame, AVPacket* pkt, FILE* out) {
+int EncodeAndWrite(AVCodecContext* enc, AVFrame* frame, AVPacket* pkt,
+                   FILE* out) {
   int ret = avcodec_send_frame(enc, frame);
   if (ret < 0) return ret;
   while (ret >= 0) {
     ret = avcodec_receive_packet(enc, pkt);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
     if (ret < 0) return ret;
-    if (fwrite(pkt->data, 1, pkt->size, out) != static_cast<size_t>(pkt->size)) {
+    if (fwrite(pkt->data, 1, pkt->size, out) !=
+        static_cast<size_t>(pkt->size)) {
       return AVERROR_UNKNOWN;
     }
     av_packet_unref(pkt);

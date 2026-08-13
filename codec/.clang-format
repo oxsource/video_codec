@@ -1,0 +1,6 @@
+# .clang-format
+#
+# Project formatting config (mirrors doc/project_bootstrap.md "Formatting").
+# Plain Google style: 2-space indent, 80-column limit, Google include order.
+# Run `clang-format -i <files>` to apply.
+BasedOnStyle: Google

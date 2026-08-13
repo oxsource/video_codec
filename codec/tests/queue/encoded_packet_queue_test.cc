@@ -19,7 +19,8 @@ EncodedPacket MakePkt(uint8_t tag) {
   return p;
 }
 
-// --- SPSC correctness: producer pushes N, consumer drains N in order ----------
+// --- SPSC correctness: producer pushes N, consumer drains N in order
+// ----------
 TEST(EncodedPacketQueueTest, SpscInOrderNoLoss) {
   constexpr int kN = 200;
   EncodedPacketQueue q(16, Backpressure::kBlock);
@@ -55,7 +56,8 @@ TEST(EncodedPacketQueueTest, SpscInOrderNoLoss) {
   }
 }
 
-// --- kBlock back-pressure: producer blocks when the ring is full --------------
+// --- kBlock back-pressure: producer blocks when the ring is full
+// --------------
 TEST(EncodedPacketQueueTest, BlockWaitsForConsumer) {
   EncodedPacketQueue q(2, Backpressure::kBlock);
   // Fill the ring (capacity 2).
@@ -66,7 +68,8 @@ TEST(EncodedPacketQueueTest, BlockWaitsForConsumer) {
   std::atomic<int> produced{0};
   std::thread producer([&] {
     for (int i = 0; i < 5; ++i) {
-      ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>(3 + i))), StatusCode::kOk);
+      ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>(3 + i))),
+                StatusCode::kOk);
       produced.fetch_add(1);
     }
     producer_blocked = false;
@@ -82,15 +85,18 @@ TEST(EncodedPacketQueueTest, BlockWaitsForConsumer) {
   while (got < 2 + 5) {
     EncodedPacket p;
     PopResult r = q.Pop(p, 2'000'000);
-    if (r == PopResult::kOk) ++got;
-    else if (r == PopResult::kEos) break;
+    if (r == PopResult::kOk)
+      ++got;
+    else if (r == PopResult::kEos)
+      break;
   }
   producer.join();
   ASSERT_EQ(produced.load(), 5);
   ASSERT_EQ(got, 2 + 5);
 }
 
-// --- kDropOldest: full ring overwrites the oldest slot ------------------------
+// --- kDropOldest: full ring overwrites the oldest slot
+// ------------------------
 TEST(EncodedPacketQueueTest, DropOldestKeepsNewest) {
   EncodedPacketQueue q(4, Backpressure::kDropOldest);
   for (int i = 0; i < 10; ++i) {
@@ -105,7 +111,8 @@ TEST(EncodedPacketQueueTest, DropOldestKeepsNewest) {
   }
 }
 
-// --- kError: full ring rejects with kBackendUnavailable -----------------------
+// --- kError: full ring rejects with kBackendUnavailable
+// -----------------------
 TEST(EncodedPacketQueueTest, ErrorReturnsBackpressureCode) {
   EncodedPacketQueue q(2, Backpressure::kError);
   ASSERT_EQ(q.Submit(MakePkt(1)), StatusCode::kOk);

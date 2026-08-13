@@ -36,8 +36,7 @@ std::vector<std::vector<float>> Decode(const AudioFrame& f) {
   const int ch = f.channels;
   const int bps = BytesPerSample(f.format);
   const size_t frame_bytes = static_cast<size_t>(bps) * ch;
-  const size_t n =
-      frame_bytes == 0 ? 0 : f.data.size() / frame_bytes;
+  const size_t n = frame_bytes == 0 ? 0 : f.data.size() / frame_bytes;
   const bool planar = IsPlanar(f.format);
 
   std::vector<std::vector<float>> out(ch, std::vector<float>(n, 0.0f));
@@ -69,7 +68,8 @@ void Encode(const std::vector<std::vector<float>>& planes, SampleFormat fmt,
   const size_t n = planes.empty() ? 0 : planes[0].size();
   const int bps = BytesPerSample(fmt);
   const bool planar = IsPlanar(fmt);
-  // Total bytes is the same whether interleaved or planar: n samples * ch * bps.
+  // Total bytes is the same whether interleaved or planar: n samples * ch *
+  // bps.
   dst.data.resize(n * static_cast<size_t>(bps) * static_cast<size_t>(ch));
 
   for (size_t i = 0; i < n; ++i) {
@@ -93,7 +93,8 @@ void Encode(const std::vector<std::vector<float>>& planes, SampleFormat fmt,
 
 StatusCode ConvertSampleFormat(const AudioFrame& src, SampleFormat dst_format,
                                AudioFrame& dst) {
-  if (src.channels <= 0 || src.sample_rate <= 0) return StatusCode::kInvalidArgument;
+  if (src.channels <= 0 || src.sample_rate <= 0)
+    return StatusCode::kInvalidArgument;
   if (BytesPerSample(src.format) == 0 || BytesPerSample(dst_format) == 0)
     return StatusCode::kUnsupportedFormat;
 

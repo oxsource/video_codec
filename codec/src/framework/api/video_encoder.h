@@ -31,12 +31,13 @@ class VideoEncoder {
   // the handle type.
   virtual Result<EncodedPacket> Encode(const NativeBuffer& buf) = 0;
 
-  // Returns a drawable surface, or nullptr if the backend has no Surface support
-  // (FFmpeg software path returns nullptr).
+  // Returns a drawable surface, or nullptr if the backend has no Surface
+  // support (FFmpeg software path returns nullptr).
   virtual std::unique_ptr<InputSurface> CreateInputSurface() { return nullptr; }
 
-  virtual Result<EncodedPacket> Flush() = 0;  // -> Flushed (drain + emit final pkt)
-  virtual void Release() = 0;                 // free external resources -> Released
+  virtual Result<EncodedPacket>
+  Flush() = 0;                 // -> Flushed (drain + emit final pkt)
+  virtual void Release() = 0;  // free external resources -> Released
 
   // Attach an output sink to enable push mode: every produced packet is handed
   // to the sink instead of returned (single destination). Pass nullptr to

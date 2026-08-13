@@ -37,7 +37,8 @@ class FFmpegVideoEncoder : public VideoEncoder {
   StatusCode CopyFrame(const VideoFrame& frame);
 
   // Pull available packets from the codec, run them through the Annex-B
-  // bitstream filter, and return the resulting EncodedPacket (empty if none yet).
+  // bitstream filter, and return the resulting EncodedPacket (empty if none
+  // yet).
   Result<EncodedPacket> Drain(bool drain_eof);
 
   VideoEncoderConfig config_;

@@ -6,7 +6,8 @@
 namespace video {
 namespace codec {
 
-FileSinkConsumer::FileSinkConsumer(std::string video_path, std::string audio_path)
+FileSinkConsumer::FileSinkConsumer(std::string video_path,
+                                   std::string audio_path)
     : video_path_(std::move(video_path)), audio_path_(std::move(audio_path)) {
   if (!video_path_.empty()) {
     video_file_.open(video_path_, std::ios::binary);

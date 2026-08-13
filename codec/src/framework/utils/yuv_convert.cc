@@ -1,10 +1,10 @@
 // yuv_convert.cc
 #include "utils/yuv_convert.h"
 
-#include "utils/stride.h"
-
 #include <cstddef>
 #include <cstdint>
+
+#include "utils/stride.h"
 
 namespace video {
 namespace codec {
@@ -37,10 +37,10 @@ StatusCode ConvertPixelFormat(const VideoFrame& src, PixelFormat dst_format,
     dst = src;  // same-format request: plain copy
     return StatusCode::kOk;
   }
-  const bool to_nv12 = (src.format == PixelFormat::kI420 &&
-                        dst_format == PixelFormat::kNV12);
-  const bool to_i420 = (src.format == PixelFormat::kNV12 &&
-                        dst_format == PixelFormat::kI420);
+  const bool to_nv12 =
+      (src.format == PixelFormat::kI420 && dst_format == PixelFormat::kNV12);
+  const bool to_i420 =
+      (src.format == PixelFormat::kNV12 && dst_format == PixelFormat::kI420);
   if (!to_nv12 && !to_i420) return StatusCode::kUnsupportedFormat;
 
   dst.format = dst_format;

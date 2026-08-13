@@ -1,12 +1,12 @@
 // encoder_push_contract_test.cc
 //
-// Spec 004, US1/A4: the default `SetOutputSink` on the abstract encoders returns
-// kUnsupportedOperation (push-incapable backends stay in pull mode). The real
-// FFmpeg backends override this and return kOk (covered by encode_push_test).
+// Spec 004, US1/A4: the default `SetOutputSink` on the abstract encoders
+// returns kUnsupportedOperation (push-incapable backends stay in pull mode).
+// The real FFmpeg backends override this and return kOk (covered by
+// encode_push_test).
 
-#include "api/video_encoder.h"
 #include "api/audio_encoder.h"
-
+#include "api/video_encoder.h"
 #include "gtest/gtest.h"
 
 namespace video {

@@ -1,9 +1,9 @@
 // result.h
 #pragma once
 
-#include "core/status.h"
-
 #include <utility>
+
+#include "core/status.h"
 
 namespace video {
 namespace codec {

@@ -55,7 +55,8 @@ struct AudioPacket {
 // the caller keeps the underlying buffer alive for the Encode() call duration.
 struct NativeBuffer {
   Backend backend = Backend::kAuto;
-  void* handle = nullptr;  // AHardwareBuffer* (Android) / device ptr (FFmpeg HW)
+  void* handle =
+      nullptr;  // AHardwareBuffer* (Android) / device ptr (FFmpeg HW)
   PixelFormat format = PixelFormat::kNV12;
   int width = 0;
   int height = 0;

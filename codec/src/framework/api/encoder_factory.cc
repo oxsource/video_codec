@@ -1,10 +1,11 @@
 // encoder_factory.cc
 #include "api/encoder_factory.h"
-#include "api/audio_encoder.h"
-#include "api/video_encoder.h"
 
 #include <mutex>
 #include <unordered_map>
+
+#include "api/audio_encoder.h"
+#include "api/video_encoder.h"
 
 namespace video {
 namespace codec {
@@ -44,7 +45,8 @@ void RegisterAudioEncoder(Backend b, AudioEncoderCreator fn) {
   reg().audio[b] = std::move(fn);
 }
 
-std::unique_ptr<VideoEncoder> CreateVideoEncoder(const VideoEncoderConfig& cfg) {
+std::unique_ptr<VideoEncoder> CreateVideoEncoder(
+    const VideoEncoderConfig& cfg) {
   Backend b = ResolveBackend(cfg.force_backend);
   std::lock_guard<std::mutex> lk(reg().mu);
   auto it = reg().video.find(b);
@@ -52,7 +54,8 @@ std::unique_ptr<VideoEncoder> CreateVideoEncoder(const VideoEncoderConfig& cfg) 
   return it->second(cfg);
 }
 
-std::unique_ptr<AudioEncoder> CreateAudioEncoder(const AudioEncoderConfig& cfg) {
+std::unique_ptr<AudioEncoder> CreateAudioEncoder(
+    const AudioEncoderConfig& cfg) {
   Backend b = ResolveBackend(cfg.force_backend);
   std::lock_guard<std::mutex> lk(reg().mu);
   auto it = reg().audio.find(b);
@@ -61,11 +64,13 @@ std::unique_ptr<AudioEncoder> CreateAudioEncoder(const AudioEncoderConfig& cfg) 
 }
 
 // Static factory entry points declared on the abstract classes.
-std::unique_ptr<VideoEncoder> VideoEncoder::Create(const VideoEncoderConfig& c) {
+std::unique_ptr<VideoEncoder> VideoEncoder::Create(
+    const VideoEncoderConfig& c) {
   return CreateVideoEncoder(c);
 }
 
-std::unique_ptr<AudioEncoder> AudioEncoder::Create(const AudioEncoderConfig& c) {
+std::unique_ptr<AudioEncoder> AudioEncoder::Create(
+    const AudioEncoderConfig& c) {
   return CreateAudioEncoder(c);
 }
 

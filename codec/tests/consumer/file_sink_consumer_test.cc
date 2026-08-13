@@ -1,15 +1,15 @@
 // file_sink_consumer_test.cc
 #include "consumer/file_sink_consumer.h"
-#include "consumer/packet_consumer.h"
-#include "consumer/packet_pump.h"
-#include "queue/encoded_packet_queue.h"
 
 #include <cstdio>
 #include <fstream>
 #include <thread>
 #include <vector>
 
+#include "consumer/packet_consumer.h"
+#include "consumer/packet_pump.h"
 #include "gtest/gtest.h"
+#include "queue/encoded_packet_queue.h"
 
 namespace video {
 namespace codec {
@@ -60,7 +60,8 @@ std::vector<uint8_t> ReadFile(const std::string& path) {
                               std::istreambuf_iterator<char>());
 }
 
-// --- End-to-end: encoder thread -> ring -> PacketPump -> FileSinkConsumer -----
+// --- End-to-end: encoder thread -> ring -> PacketPump -> FileSinkConsumer
+// -----
 TEST(FileSinkConsumerTest, EncoderToRingToFile) {
   const std::string path = TempPath("vc_filesink_test.h264");
   std::remove(path.c_str());
@@ -78,11 +79,13 @@ TEST(FileSinkConsumerTest, EncoderToRingToFile) {
   for (const auto& pkt : expected) {
     concatenated.insert(concatenated.end(), pkt.begin(), pkt.end());
   }
-  ASSERT_EQ(file, concatenated) << "file content must equal concatenated packets";
+  ASSERT_EQ(file, concatenated)
+      << "file content must equal concatenated packets";
   std::remove(path.c_str());
 }
 
-// --- Transport-agnostic: swap FileSinkConsumer for a stub StreamConsumer ------
+// --- Transport-agnostic: swap FileSinkConsumer for a stub StreamConsumer
+// ------
 TEST(FileSinkConsumerTest, SwapConsumerNeedsNoEncoderChange) {
   EncodedPacketQueue q(16, Backpressure::kBlock);
   std::thread producer;

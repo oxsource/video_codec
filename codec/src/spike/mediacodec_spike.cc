@@ -43,10 +43,12 @@ int main() {
   AMediaFormat_setString(format, AMEDIAFORMAT_KEY_MIME, "video/avc");
   AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_WIDTH, kWidth);
   AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_HEIGHT, kHeight);
-  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_COLOR_FORMAT, kColorFormatNV12);
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_COLOR_FORMAT,
+                        kColorFormatNV12);
   AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_BIT_RATE, kBitrate);
   AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_FRAME_RATE, kFrameRate);
-  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_I_FRAME_INTERVAL, kIFrameInterval);
+  AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_I_FRAME_INTERVAL,
+                        kIFrameInterval);
 
   // AMEDIACODEC_CONFIGURE_FLAG_ENCODE == 1
   media_status_t status =
@@ -89,12 +91,12 @@ int main() {
   // Drain one output buffer.
   bool drained = false;
   AMediaCodecBufferInfo info{};
-  ssize_t out_idx = AMediaCodec_dequeueOutputBuffer(codec, &info, 1000000 /*us*/);
+  ssize_t out_idx =
+      AMediaCodec_dequeueOutputBuffer(codec, &info, 1000000 /*us*/);
   if (out_idx >= 0) {
     size_t out_size = 0;
     uint8_t* out = AMediaCodec_getOutputBuffer(codec, out_idx, &out_size);
-    std::fprintf(stderr,
-                 "spike: got output buffer idx=%zd size=%d flags=%u\n",
+    std::fprintf(stderr, "spike: got output buffer idx=%zd size=%d flags=%u\n",
                  out_idx, info.size, info.flags);
     drained = (out != nullptr);
     AMediaCodec_releaseOutputBuffer(codec, out_idx, false /*render*/);
@@ -112,8 +114,9 @@ int main() {
   std::fprintf(stderr, "spike: MediaCodec AVC encode path OK\n");
   return 0;
 #else
-  std::fprintf(stderr, "mediacodec_spike: compiled for Android only; "
-                       "nothing to run on this host.\n");
+  std::fprintf(stderr,
+               "mediacodec_spike: compiled for Android only; "
+               "nothing to run on this host.\n");
   return 0;
 #endif
 }

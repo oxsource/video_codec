@@ -1,9 +1,9 @@
 // encoder_lifecycle_test.cc
+#include "api/encoder_lifecycle.h"
+
 #include "api/audio_encoder.h"
 #include "api/encoder_factory.h"
-#include "api/encoder_lifecycle.h"
 #include "api/video_encoder.h"
-
 #include "gtest/gtest.h"
 
 namespace video {
@@ -40,7 +40,7 @@ TEST(EncoderLifecycleTest, FlushedReuse) {
   ASSERT_EQ(lc.Encode(), StatusCode::kOk);
   ASSERT_EQ(lc.Flush(), StatusCode::kOk);
   EXPECT_EQ(lc.Encode(), StatusCode::kNotInitialized);  // must Init again
-  EXPECT_EQ(lc.Init(), StatusCode::kOk);               // reuse from Flushed
+  EXPECT_EQ(lc.Init(), StatusCode::kOk);                // reuse from Flushed
   EXPECT_EQ(lc.state(), EncoderLifecycle::State::kInitialized);
 }
 

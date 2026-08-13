@@ -8,8 +8,8 @@ namespace video {
 namespace codec {
 
 // A drawable surface a caller renders into; the backend serializes against its
-// own encode thread. Only the Android backend returns a real surface; the FFmpeg
-// (software) backend returns nullptr.
+// own encode thread. Only the Android backend returns a real surface; the
+// FFmpeg (software) backend returns nullptr.
 class InputSurface {
  public:
   virtual ~InputSurface() = default;

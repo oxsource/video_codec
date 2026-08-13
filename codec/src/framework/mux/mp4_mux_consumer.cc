@@ -86,7 +86,7 @@ StatusCode Mp4MuxConsumer::BuildExtradata(const uint8_t* data, size_t size,
   out->push_back(sps[1]);
   out->push_back(sps[2]);
   out->push_back(sps[3]);
-  out->push_back(0xFF);  // lengthSizeMinusOne = 3 (4-byte NAL lengths)
+  out->push_back(0xFF);      // lengthSizeMinusOne = 3 (4-byte NAL lengths)
   out->push_back(0xE0 | 1);  // numOfSPS
   out->push_back(static_cast<uint8_t>(sps.size() >> 8));
   out->push_back(static_cast<uint8_t>(sps.size() & 0xFF));
@@ -122,7 +122,8 @@ StatusCode Mp4MuxConsumer::AnnexBToAvcc(const uint8_t* data, size_t size,
 }
 
 StatusCode Mp4MuxConsumer::OpenMuxer(const EncodedPacket& first_keyframe) {
-  if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", path_.c_str()) < 0 ||
+  if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", path_.c_str()) <
+          0 ||
       !fmt_) {
     fmt_ = nullptr;
     return StatusCode::kEncodeFailed;
@@ -144,9 +145,8 @@ StatusCode Mp4MuxConsumer::OpenMuxer(const EncodedPacket& first_keyframe) {
   std::vector<uint8_t> extradata;
   if (BuildExtradata(first_keyframe.data.data(), first_keyframe.data.size(),
                      &extradata) == StatusCode::kOk) {
-    par->extradata =
-        static_cast<uint8_t*>(av_mallocz(extradata.size() +
-                                         AV_INPUT_BUFFER_PADDING_SIZE));
+    par->extradata = static_cast<uint8_t*>(
+        av_mallocz(extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE));
     if (!par->extradata) {
       avformat_free_context(fmt_);
       fmt_ = nullptr;

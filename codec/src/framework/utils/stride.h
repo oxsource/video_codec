@@ -10,8 +10,8 @@ namespace codec {
 namespace utils {
 
 // Bytes per row for plane `plane` of a video frame (0 = luma/primary).
-// Uses the natural (tightly-packed) layout: no extra row padding beyond what the
-// format requires. Returns 0 if width <= 0 or plane is out of range.
+// Uses the natural (tightly-packed) layout: no extra row padding beyond what
+// the format requires. Returns 0 if width <= 0 or plane is out of range.
 size_t RowStride(int width, PixelFormat fmt, int plane = 0);
 
 // Bytes per single sample-frame for audio (one sample across all channels):
