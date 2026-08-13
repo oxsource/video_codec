@@ -40,6 +40,19 @@ def _rules_foreign_cc():
         url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.10.0.tar.gz",
     )
 
+def _libyuv():
+    # Google libyuv (BSD), pinned to a mirror commit. chromium.googlesource.com
+    # is unreachable from the dev network; lemenkov/libyuv tracks upstream
+    # master (verified 2026-08-13). The archive is content-stable for the
+    # pinned commit (top-level dir embeds the commit sha).
+    http_archive(
+        name = "libyuv",
+        sha256 = "119e44ae87da1f1362e7d005fcaaf36176f34df43df5e01619fcfec175490e26",
+        strip_prefix = "libyuv-79d22698bc2f11f6b0b014141fe94b82aa5a53b3",
+        urls = ["https://github.com/lemenkov/libyuv/archive/79d22698bc2f11f6b0b014141fe94b82aa5a53b3.tar.gz"],
+        build_file = "//third_party/libyuv:BUILD.bazel",
+    )
+
 def video_codec_setup():
     if not native.existing_rule("bazel_skylib"):
         _bazel_skylib()
@@ -49,3 +62,5 @@ def video_codec_setup():
         _googletest()
     if not native.existing_rule("rules_foreign_cc"):
         _rules_foreign_cc()
+    if not native.existing_rule("libyuv"):
+        _libyuv()

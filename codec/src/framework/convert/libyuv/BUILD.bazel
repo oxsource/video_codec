@@ -1,0 +1,19 @@
+package(default_visibility = [
+    "//src/framework:__subpackages__",
+    "//tests:__subpackages__",
+])
+
+# libyuv-backed pixel-format converter. libyuv is a neutral (non-FFmpeg)
+# cross-platform dependency, so this module is usable everywhere libyuv is
+# linked — unlike the FFmpeg-bound audio converter (backend/ffmpeg/swr).
+cc_library(
+    name = "pixel_convert",
+    srcs = ["pixel_convert.cc"],
+    hdrs = ["pixel_convert.h"],
+    includes = ["../.."],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/utils",
+        "@libyuv//:libyuv",
+    ],
+)

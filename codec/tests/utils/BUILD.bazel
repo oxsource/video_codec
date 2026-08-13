@@ -1,16 +1,6 @@
 package(default_visibility = ["//visibility:public"])
 
 cc_test(
-    name = "yuv_convert_test",
-    srcs = ["yuv_convert_test.cc"],
-    deps = [
-        "//src/framework/core",
-        "//src/framework/utils",
-        "@com_google_googletest//:gtest_main",
-    ],
-)
-
-cc_test(
     name = "smpte_bars_test",
     srcs = ["smpte_bars_test.cc"],
     deps = [

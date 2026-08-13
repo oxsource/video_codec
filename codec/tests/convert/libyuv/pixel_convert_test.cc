@@ -1,5 +1,5 @@
-// yuv_convert_test.cc
-#include "utils/yuv_convert.h"
+// pixel_convert_test.cc
+#include "convert/libyuv/pixel_convert.h"
 
 #include <cstdint>
 #include <vector>
@@ -8,7 +8,6 @@
 
 namespace video {
 namespace codec {
-namespace utils {
 namespace {
 
 VideoFrame MakeI420(int w, int h) {
@@ -33,42 +32,43 @@ bool Equals(const VideoFrame& a, const VideoFrame& b) {
          a.planes[2] == b.planes[2];
 }
 
-TEST(YuvConvertTest, I420ToNV12RoundTrip) {
+TEST(PixelConverterTest, I420ToNV12RoundTrip) {
   VideoFrame src = MakeI420(16, 16);
   VideoFrame nv12;
-  ASSERT_EQ(ConvertPixelFormat(src, PixelFormat::kNV12, nv12), StatusCode::kOk);
+  ASSERT_EQ(PixelConverter::Convert(src, PixelFormat::kNV12, nv12),
+            StatusCode::kOk);
   EXPECT_EQ(nv12.format, PixelFormat::kNV12);
   EXPECT_EQ(nv12.planes[1].size(), static_cast<size_t>(16) * 8);
 
   VideoFrame back;
-  ASSERT_EQ(ConvertPixelFormat(nv12, PixelFormat::kI420, back),
+  ASSERT_EQ(PixelConverter::Convert(nv12, PixelFormat::kI420, back),
             StatusCode::kOk);
   EXPECT_TRUE(Equals(src, back)) << "I420->NV12->I420 must be bit-exact";
 }
 
-TEST(YuvConvertTest, SameFormatCopies) {
+TEST(PixelConverterTest, SameFormatCopies) {
   VideoFrame src = MakeI420(8, 8);
   VideoFrame dst;
-  ASSERT_EQ(ConvertPixelFormat(src, PixelFormat::kI420, dst), StatusCode::kOk);
+  ASSERT_EQ(PixelConverter::Convert(src, PixelFormat::kI420, dst),
+            StatusCode::kOk);
   EXPECT_TRUE(Equals(src, dst));
 }
 
-TEST(YuvConvertTest, UnsupportedPairReturnsError) {
+TEST(PixelConverterTest, UnsupportedPairReturnsError) {
   VideoFrame src = MakeI420(8, 8);
   src.format = PixelFormat::kRGBA;  // kRGBA <-> kI420 not supported in v1
   VideoFrame dst;
-  EXPECT_EQ(ConvertPixelFormat(src, PixelFormat::kI420, dst),
+  EXPECT_EQ(PixelConverter::Convert(src, PixelFormat::kI420, dst),
             StatusCode::kUnsupportedFormat);
 }
 
-TEST(YuvConvertTest, InvalidDimensions) {
+TEST(PixelConverterTest, InvalidDimensions) {
   VideoFrame src = MakeI420(0, 8);
   VideoFrame dst;
-  EXPECT_EQ(ConvertPixelFormat(src, PixelFormat::kNV12, dst),
+  EXPECT_EQ(PixelConverter::Convert(src, PixelFormat::kNV12, dst),
             StatusCode::kInvalidArgument);
 }
 
 }  // namespace
-}  // namespace utils
 }  // namespace codec
 }  // namespace video
