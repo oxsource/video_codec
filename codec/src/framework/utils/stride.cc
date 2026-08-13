@@ -19,7 +19,7 @@ size_t BytesPerSample(SampleFormat fmt) {
 }
 }  // namespace
 
-size_t RowStride(int width, PixelFormat fmt, int plane) {
+size_t Stride::Row(int width, PixelFormat fmt, int plane) {
   if (width <= 0 || plane < 0 || plane > 2) return 0;
   switch (fmt) {
     case PixelFormat::kI420:
@@ -35,7 +35,7 @@ size_t RowStride(int width, PixelFormat fmt, int plane) {
   return 0;
 }
 
-size_t SampleStride(int channels, SampleFormat fmt) {
+size_t Stride::Sample(int channels, SampleFormat fmt) {
   if (channels <= 0) return 0;
   const size_t bps = BytesPerSample(fmt);
   if (bps == 0) return 0;
