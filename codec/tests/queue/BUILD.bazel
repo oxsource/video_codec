@@ -4,8 +4,8 @@ cc_test(
     name = "packet_queue_test",
     srcs = ["packet_queue_test.cc"],
     deps = [
-        "//src/framework/core",
-        "//src/framework/queue",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/queue",
         "@com_google_googletest//:gtest_main",
     ],
 )

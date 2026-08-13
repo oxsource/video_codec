@@ -5,8 +5,8 @@
 // The real FFmpeg backends override this and return kOk (covered by
 // encode_push_test).
 
-#include "api/audio_encoder.h"
-#include "api/video_encoder.h"
+#include "audio_encoder.h"
+#include "video_encoder.h"
 #include "gtest/gtest.h"
 
 namespace video {

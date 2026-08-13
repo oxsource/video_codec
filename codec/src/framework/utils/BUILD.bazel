@@ -1,6 +1,6 @@
 package(default_visibility = [
-    "//src/framework:__subpackages__",
-    "//src/examples:__subpackages__",
+    "@video_codec//src/framework:__subpackages__",
+    "@video_codec//src/examples:__subpackages__",
     "//tests:__subpackages__",
 ])
 
@@ -11,22 +11,22 @@ cc_library(
     name = "smpte_bars",
     srcs = ["smpte_bars.cc"],
     hdrs = ["smpte_bars.h"],
-    includes = [".."],
-    deps = ["//src/framework/core:types"],
+    includes = ["."],
+    deps = ["@video_codec//src/framework/core:types"],
 )
 
 cc_library(
     name = "stride",
     srcs = ["stride.cc"],
     hdrs = ["stride.h"],
-    includes = [".."],
-    deps = ["//src/framework/core:types"],
+    includes = ["."],
+    deps = ["@video_codec//src/framework/core:types"],
 )
 
 cc_library(
     name = "media_format",
     hdrs = ["media_format.h"],
-    includes = [".."],
+    includes = ["."],
 )
 
 cc_library(

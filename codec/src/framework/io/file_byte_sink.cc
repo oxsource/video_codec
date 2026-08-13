@@ -1,5 +1,5 @@
 // file_byte_sink.cc
-#include "io/file_byte_sink.h"
+#include "file_byte_sink.h"
 
 namespace video {
 namespace codec {

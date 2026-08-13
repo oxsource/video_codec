@@ -1,5 +1,5 @@
 package(default_visibility = [
-    "//src/framework:__subpackages__",
+    "@video_codec//src/framework:__subpackages__",
     "//tests:__subpackages__",
 ])
 
@@ -11,9 +11,9 @@ cc_library(
     name = "swr_audio",
     srcs = ["swr_audio_convert.cc"],
     hdrs = ["swr_audio_convert.h"],
-    includes = ["../.."],
+    includes = ["."],
     deps = [
-        "//src/framework/core",
+        "@video_codec//src/framework/core",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],

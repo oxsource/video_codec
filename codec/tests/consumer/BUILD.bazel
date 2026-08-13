@@ -4,9 +4,9 @@ cc_test(
     name = "file_consumer_test",
     srcs = ["file_consumer_test.cc"],
     deps = [
-        "//src/framework/core",
-        "//src/framework/queue",
-        "//src/framework/consumer",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/queue",
+        "@video_codec//src/framework/consumer",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -15,7 +15,7 @@ cc_test(
     name = "byte_sink_test",
     srcs = ["byte_sink_test.cc"],
     deps = [
-        "//src/framework/io",
+        "@video_codec//src/framework/io",
         "@com_google_googletest//:gtest_main",
     ],
 )

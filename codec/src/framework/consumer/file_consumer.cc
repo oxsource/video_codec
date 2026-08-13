@@ -1,5 +1,5 @@
 // file_consumer.cc
-#include "consumer/file_consumer.h"
+#include "file_consumer.h"
 
 namespace video {
 namespace codec {

@@ -4,8 +4,8 @@ cc_test(
     name = "smpte_bars_test",
     srcs = ["smpte_bars_test.cc"],
     deps = [
-        "//src/framework/core",
-        "//src/framework/utils",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/utils",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -14,8 +14,8 @@ cc_test(
     name = "stride_test",
     srcs = ["stride_test.cc"],
     deps = [
-        "//src/framework/core",
-        "//src/framework/utils",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/utils",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -24,7 +24,7 @@ cc_test(
     name = "media_format_test",
     srcs = ["media_format_test.cc"],
     deps = [
-        "//src/framework/utils",
+        "@video_codec//src/framework/utils",
         "@com_google_googletest//:gtest_main",
     ],
 )

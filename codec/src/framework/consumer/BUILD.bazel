@@ -1,4 +1,4 @@
-package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__", "//src/examples:__subpackages__"])
+package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//tests:__subpackages__", "@video_codec//src/examples:__subpackages__"])
 
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `consumer` target deps on all modules for backward compatibility.
@@ -11,11 +11,11 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 cc_library(
     name = "packet_consumer",
     hdrs = ["packet_consumer.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [
-        "//src/framework/core:packet_sink",
-        "//src/framework/core:status",
-        "//src/framework/core:types",
+        "@video_codec//src/framework/core:packet_sink",
+        "@video_codec//src/framework/core:status",
+        "@video_codec//src/framework/core:types",
     ],
 )
 
@@ -23,10 +23,10 @@ cc_library(
     name = "file_consumer",
     srcs = ["file_consumer.cc"],
     hdrs = ["file_consumer.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [
         ":packet_consumer",
-        "//src/framework/io:file_byte_sink",
+        "@video_codec//src/framework/io:file_byte_sink",
     ],
 )
 

@@ -1,11 +1,11 @@
 // packet_queue.cc
-#include "queue/packet_queue.h"
+#include "packet_queue.h"
 
 #include <cassert>
 #include <chrono>
 #include <string>
 
-#include "core/log_slot.h"
+#include "log_slot.h"
 
 namespace video {
 namespace codec {
@@ -115,8 +115,10 @@ bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink, int64_t
       return true;
     case Status::kEmpty:
       return true;  // try the other media (or retry next iteration)
+    default:
+      // Pull only yields kOk/kEmpty/kEos; keep draining on anything else.
+      return true;
   }
-  return true;  // Pull only yields kOk/kEmpty/kEos; keep draining otherwise
 }
 
 }  // namespace

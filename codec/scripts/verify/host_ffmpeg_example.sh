@@ -18,11 +18,14 @@ BIN="$(find -L bazel-bin -path '*/examples/ffmpeg_encode_file' -type f | head -1
 [ -n "$BIN" ] || { echo "[host] FAIL: ffmpeg_encode_file binary not found"; exit 1; }
 
 mkdir -p "$ROOT/out"          # shared test-output directory (gitignored)
-OUT="$ROOT/out/example_out.mp4"
+# The example appends the mode's extension (.mp4 by default), so pass a bare
+# path and verify the .mp4 file it produces.
+OUT_BASE="$ROOT/out/example_out"
+OUT="$OUT_BASE.mp4"
 rm -f "$OUT"
 
 echo "[host] run ffmpeg_encode_file ($DURATION s clip)"
-"$BIN" "$OUT" "$DURATION"
+"$BIN" "$OUT_BASE" "$DURATION"
 
 SIZE="$(wc -c < "$OUT" | tr -d ' ')"
 [ "$SIZE" -gt 0 ] || { echo "[host] FAIL: example_out.mp4 is empty"; exit 1; }

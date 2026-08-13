@@ -1,5 +1,5 @@
 // smpte_bars.cc
-#include "utils/smpte_bars.h"
+#include "smpte_bars.h"
 
 namespace video {
 namespace codec {

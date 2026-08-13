@@ -1,5 +1,5 @@
-// video_encoder.cc
-#include "backend/ffmpeg/video_encoder.h"
+// ffmpeg_video.cc
+#include "ffmpeg_video.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -9,8 +9,8 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
-#include "core/log_slot.h"
-#include "queue/queue_iface.h"
+#include "log_slot.h"
+#include "queue_iface.h"
 
 namespace video {
 namespace codec {

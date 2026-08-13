@@ -22,16 +22,16 @@
 #include "video_codec_export.h"
 
 // Core value types & uniform error model
-#include "core/log_slot.h"
-#include "core/result.h"
-#include "core/status.h"
-#include "core/types.h"
+#include "log_slot.h"
+#include "result.h"
+#include "status.h"
+#include "types.h"
 
 // Abstract encoder interfaces, surface input, and backend factory
-#include "api/audio_encoder.h"
-#include "api/codec_factory.h"
-#include "api/input_surface.h"
-#include "api/video_encoder.h"
+#include "audio_encoder.h"
+#include "codec_factory.h"
+#include "input_surface.h"
+#include "video_encoder.h"
 
 // Media file-format constants (common output extensions like .mp4 / .h264)
-#include "utils/media_format.h"
+#include "media_format.h"

@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include "core/result.h"
-#include "core/types.h"
+#include "result.h"
+#include "types.h"
 
 namespace video {
 namespace codec {

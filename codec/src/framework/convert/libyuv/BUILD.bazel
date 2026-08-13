@@ -1,5 +1,5 @@
 package(default_visibility = [
-    "//src/framework:__subpackages__",
+    "@video_codec//src/framework:__subpackages__",
     "//tests:__subpackages__",
 ])
 
@@ -10,10 +10,10 @@ cc_library(
     name = "pixel_convert",
     srcs = ["pixel_convert.cc"],
     hdrs = ["pixel_convert.h"],
-    includes = ["../.."],
+    includes = ["."],
     deps = [
-        "//src/framework/core",
-        "//src/framework/utils",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/utils",
         "@libyuv//:libyuv",
     ],
 )

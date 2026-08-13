@@ -32,15 +32,15 @@
 #include <string>
 #include <thread>
 
-#include "api/codec_factory.h"
-#include "api/muxer.h"
-#include "api/video_encoder.h"
-#include "consumer/file_consumer.h"
-#include "consumer/packet_consumer.h"
-#include "io/file_byte_sink.h"
-#include "queue/packet_queue.h"
-#include "utils/media_format.h"
-#include "utils/smpte_bars.h"
+#include "codec_factory.h"
+#include "muxer.h"
+#include "video_encoder.h"
+#include "file_consumer.h"
+#include "packet_consumer.h"
+#include "file_byte_sink.h"
+#include "packet_queue.h"
+#include "media_format.h"
+#include "smpte_bars.h"
 
 namespace vc = video::codec;
 namespace vcu = video::codec::utils;

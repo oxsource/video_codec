@@ -1,5 +1,5 @@
 // swr_audio_convert_test.cc
-#include "backend/ffmpeg/swr/swr_audio_convert.h"
+#include "swr_audio_convert.h"
 
 #include <cstdint>
 #include <cstdlib>

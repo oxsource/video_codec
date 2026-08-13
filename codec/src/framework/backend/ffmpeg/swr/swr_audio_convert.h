@@ -1,8 +1,8 @@
 // swr_audio_convert.h
 #pragma once
 
-#include "core/status.h"
-#include "core/types.h"
+#include "status.h"
+#include "types.h"
 
 namespace video {
 namespace codec {

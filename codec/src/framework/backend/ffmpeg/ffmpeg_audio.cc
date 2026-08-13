@@ -1,5 +1,5 @@
-// audio_encoder.cc
-#include "backend/ffmpeg/audio_encoder.h"
+// ffmpeg_audio.cc
+#include "ffmpeg_audio.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -10,7 +10,7 @@ extern "C" {
 
 #include <cmath>
 
-#include "queue/queue_iface.h"
+#include "queue_iface.h"
 
 namespace video {
 namespace codec {

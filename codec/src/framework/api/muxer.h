@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "core/packet_sink.h"
-#include "core/result.h"
-#include "core/types.h"
+#include "packet_sink.h"
+#include "result.h"
+#include "types.h"
 
 namespace video {
 namespace codec {

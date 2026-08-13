@@ -1,5 +1,5 @@
 // ffmpeg_muxer.cc
-#include "backend/ffmpeg/ffmpeg_muxer.h"
+#include "ffmpeg_muxer.h"
 
 #include <cstring>
 
@@ -11,7 +11,7 @@ extern "C" {
 #include <libavutil/mem.h>
 }
 
-#include "io/byte_sink.h"
+#include "byte_sink.h"
 
 namespace video {
 namespace codec {

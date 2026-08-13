@@ -4,8 +4,8 @@ cc_test(
     name = "encoder_lifecycle_test",
     srcs = ["encoder_lifecycle_test.cc"],
     deps = [
-        "//src/framework/core",
-        "//src/framework/api",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/api",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -14,8 +14,8 @@ cc_test(
     name = "encoder_push_contract_test",
     srcs = ["encoder_push_contract_test.cc"],
     deps = [
-        "//src/framework/core",
-        "//src/framework/api",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/api",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -24,9 +24,9 @@ cc_test(
     name = "muxer_contract_test",
     srcs = ["muxer_contract_test.cc"],
     deps = [
-        "//src/framework/core",
-        "//src/framework/api",
-        "//src/framework/io",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/api",
+        "@video_codec//src/framework/io",
         "@com_google_googletest//:gtest_main",
     ],
 )

@@ -6,10 +6,10 @@
 #include <cstdint>
 #include <vector>
 
-#include "api/audio_encoder.h"
-#include "api/codec_factory.h"
+#include "audio_encoder.h"
+#include "codec_factory.h"
 #include "gtest/gtest.h"
-#include "queue/packet_queue.h"
+#include "packet_queue.h"
 
 namespace video {
 namespace codec {

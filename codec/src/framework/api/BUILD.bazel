@@ -1,4 +1,4 @@
-package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__"])
+package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//tests:__subpackages__"])
 
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `api` target deps on all modules for backward compatibility.
@@ -6,20 +6,20 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 cc_library(
     name = "video_encoder",
     hdrs = ["video_encoder.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [
-        "//src/framework/core:result",
-        "//src/framework/core:types",
+        "@video_codec//src/framework/core:result",
+        "@video_codec//src/framework/core:types",
     ],
 )
 
 cc_library(
     name = "audio_encoder",
     hdrs = ["audio_encoder.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [
-        "//src/framework/core:result",
-        "//src/framework/core:types",
+        "@video_codec//src/framework/core:result",
+        "@video_codec//src/framework/core:types",
     ],
 )
 
@@ -27,19 +27,19 @@ cc_library(
     name = "encoder_lifecycle",
     srcs = ["encoder_lifecycle.cc"],
     hdrs = ["encoder_lifecycle.h"],
-    includes = [".."],
-    deps = ["//src/framework/core:status"],
+    includes = ["."],
+    deps = ["@video_codec//src/framework/core:status"],
 )
 
 cc_library(
     name = "muxer",
     hdrs = ["muxer.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [
-        "//src/framework/core:packet_sink",
-        "//src/framework/core:result",
-        "//src/framework/core:status",
-        "//src/framework/core:types",
+        "@video_codec//src/framework/core:packet_sink",
+        "@video_codec//src/framework/core:result",
+        "@video_codec//src/framework/core:status",
+        "@video_codec//src/framework/core:types",
     ],
 )
 
@@ -47,19 +47,19 @@ cc_library(
     name = "codec_factory",
     srcs = ["codec_factory.cc"],
     hdrs = ["codec_factory.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [
         ":audio_encoder",
         ":muxer",
         ":video_encoder",
-        "//src/framework/core:types",
+        "@video_codec//src/framework/core:types",
     ],
 )
 
 cc_library(
     name = "input_surface",
     hdrs = ["input_surface.h"],
-    includes = [".."],
+    includes = ["."],
 )
 
 cc_library(

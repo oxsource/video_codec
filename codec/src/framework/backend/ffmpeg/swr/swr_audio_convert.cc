@@ -1,5 +1,5 @@
 // swr_audio_convert.cc
-#include "backend/ffmpeg/swr/swr_audio_convert.h"
+#include "swr_audio_convert.h"
 
 // FFmpeg 6.1 public headers carry no C++ linkage guards; wrap them in
 // extern "C" so the calls bind to the archive's C symbols (mirrors

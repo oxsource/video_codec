@@ -2,5 +2,5 @@ package(default_visibility = ["//visibility:public"])
 
 alias(
     name = "video_codec",
-    actual = "//src/framework/public:video_codec",
+    actual = "@video_codec//src/framework/public:video_codec",
 )

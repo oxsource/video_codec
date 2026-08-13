@@ -1,6 +1,6 @@
 package(default_visibility = [
-    "//src/framework:__subpackages__",
-    "//src/examples:__subpackages__",
+    "@video_codec//src/framework:__subpackages__",
+    "@video_codec//src/examples:__subpackages__",
     "//tests:__subpackages__",
 ])
 
@@ -13,28 +13,28 @@ package(default_visibility = [
 cc_library(
     name = "byte_sink",
     hdrs = ["byte_sink.h"],
-    includes = [".."],
+    includes = ["."],
 )
 
 cc_library(
     name = "file_byte_sink",
     srcs = ["file_byte_sink.cc"],
     hdrs = ["file_byte_sink.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [":byte_sink"],
 )
 
 cc_library(
     name = "stream_byte_sink",
     hdrs = ["stream_byte_sink.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [":byte_sink"],
 )
 
 cc_library(
     name = "tee_byte_sink",
     hdrs = ["tee_byte_sink.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [":byte_sink"],
 )
 

@@ -1,5 +1,5 @@
 // pixel_convert_test.cc
-#include "convert/libyuv/pixel_convert.h"
+#include "pixel_convert.h"
 
 #include <cstdint>
 #include <vector>

@@ -13,7 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "core/types.h"
+#include "types.h"
 
 namespace video {
 namespace codec {

@@ -4,8 +4,8 @@ cc_test(
     name = "pixel_convert_test",
     srcs = ["pixel_convert_test.cc"],
     deps = [
-        "//src/framework/core",
-        "//src/framework/convert/libyuv:pixel_convert",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/convert/libyuv:pixel_convert",
         "@com_google_googletest//:gtest_main",
     ],
 )

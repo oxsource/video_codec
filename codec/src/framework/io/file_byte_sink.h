@@ -6,7 +6,7 @@
 #include <cstdio>
 #include <string>
 
-#include "io/byte_sink.h"
+#include "byte_sink.h"
 
 namespace video {
 namespace codec {

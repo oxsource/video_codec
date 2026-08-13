@@ -13,15 +13,15 @@ cc_library(
         "-DVIDEO_CODEC_SHARED_LIBRARY",
     ],
     deps = [
-        "//src/framework/core",
-        "//src/framework/api",
-        "//src/framework/utils",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/api",
+        "@video_codec//src/framework/utils",
     ] + select({
         "//platforms:android_arm64_platform_setting": [
-            "//src/framework/backend/android:android",
+            "@video_codec//src/framework/backend/android:android",
         ],
         "//conditions:default": [
-            "//src/framework/backend/ffmpeg:ffmpeg",
+            "@video_codec//src/framework/backend/ffmpeg:ffmpeg",
         ],
     }),
 )
@@ -34,8 +34,8 @@ cc_library(
     hdrs = glob(["include/video_codec/*.h"]),
     strip_include_prefix = "include",
     deps = [
-        "//src/framework/core",
-        "//src/framework/api",
-        "//src/framework/utils",
+        "@video_codec//src/framework/core",
+        "@video_codec//src/framework/api",
+        "@video_codec//src/framework/utils",
     ],
 )

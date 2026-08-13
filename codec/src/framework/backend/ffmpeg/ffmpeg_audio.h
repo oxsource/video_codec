@@ -1,12 +1,12 @@
-// audio_encoder.h
+// ffmpeg_audio.h
 #pragma once
 
 #include <memory>
 
-#include "api/audio_encoder.h"
-#include "api/encoder_lifecycle.h"
-#include "backend/ffmpeg/ffmpeg_raii.h"
-#include "core/types.h"
+#include "audio_encoder.h"
+#include "encoder_lifecycle.h"
+#include "ffmpeg_raii.h"
+#include "types.h"
 
 namespace video {
 namespace codec {

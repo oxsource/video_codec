@@ -6,18 +6,18 @@
 // Assertions: output starts with "ftyp", contains moov/mdat after Finish,
 // and the first keyframe produces the header + first fragment in one delivery.
 
-#include "api/muxer.h"
+#include "muxer.h"
 
 #include <cstdint>
 #include <string>
 #include <thread>
 #include <vector>
 
-#include "api/codec_factory.h"
-#include "api/video_encoder.h"
+#include "codec_factory.h"
+#include "video_encoder.h"
 #include "gtest/gtest.h"
-#include "io/byte_sink.h"
-#include "queue/packet_queue.h"
+#include "byte_sink.h"
+#include "packet_queue.h"
 
 namespace video {
 namespace codec {

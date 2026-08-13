@@ -2,10 +2,10 @@
 // Backend self-registration. When this library is linked (selected by `public`
 // via select()), its static initializer registers the FFmpeg creators so the
 // factory in `api` can instantiate them without `api` depending on `backend/*`.
-#include "api/codec_factory.h"
-#include "backend/ffmpeg/audio_encoder.h"
-#include "backend/ffmpeg/ffmpeg_muxer.h"
-#include "backend/ffmpeg/video_encoder.h"
+#include "codec_factory.h"
+#include "ffmpeg_audio.h"
+#include "ffmpeg_muxer.h"
+#include "ffmpeg_video.h"
 
 namespace video {
 namespace codec {

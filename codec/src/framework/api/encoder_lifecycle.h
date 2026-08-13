@@ -1,7 +1,7 @@
 // encoder_lifecycle.h
 #pragma once
 
-#include "core/status.h"
+#include "status.h"
 
 namespace video {
 namespace codec {

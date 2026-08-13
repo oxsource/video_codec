@@ -1,10 +1,10 @@
 // pixel_convert.cc
-#include "convert/libyuv/pixel_convert.h"
+#include "pixel_convert.h"
 
 #include <cstddef>
 
 #include "libyuv/convert.h"
-#include "utils/stride.h"
+#include "stride.h"
 
 namespace video {
 namespace codec {

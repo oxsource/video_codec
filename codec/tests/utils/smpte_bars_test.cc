@@ -1,5 +1,5 @@
 // smpte_bars_test.cc
-#include "utils/smpte_bars.h"
+#include "smpte_bars.h"
 
 #include <cstdint>
 

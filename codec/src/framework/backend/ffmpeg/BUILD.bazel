@@ -1,4 +1,4 @@
-package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__"])
+package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//tests:__subpackages__"])
 
 # Generic FFmpeg backend (libx264 / libx265 / AAC / Opus). Default backend on all
 # non-Android platforms.
@@ -20,20 +20,21 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 cc_library(
     name = "ffmpeg_raii",
     hdrs = ["ffmpeg_raii.h"],
+    includes = ["."],
 )
 
 cc_library(
     name = "video_encoder",
-    srcs = ["video_encoder.cc"],
-    hdrs = ["video_encoder.h"],
-    includes = [".."],
+    srcs = ["ffmpeg_video.cc"],
+    hdrs = ["ffmpeg_video.h"],
+    includes = ["."],
     deps = [
         ":ffmpeg_raii",
-        "//src/framework/api:encoder_lifecycle",
-        "//src/framework/api:video_encoder",
-        "//src/framework/core:log_slot",
-        "//src/framework/core:types",
-        "//src/framework/queue:queue_iface",
+        "@video_codec//src/framework/api:encoder_lifecycle",
+        "@video_codec//src/framework/api:video_encoder",
+        "@video_codec//src/framework/core:log_slot",
+        "@video_codec//src/framework/core:types",
+        "@video_codec//src/framework/queue:queue_iface",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],
@@ -41,15 +42,15 @@ cc_library(
 
 cc_library(
     name = "audio_encoder",
-    srcs = ["audio_encoder.cc"],
-    hdrs = ["audio_encoder.h"],
-    includes = [".."],
+    srcs = ["ffmpeg_audio.cc"],
+    hdrs = ["ffmpeg_audio.h"],
+    includes = ["."],
     deps = [
         ":ffmpeg_raii",
-        "//src/framework/api:audio_encoder",
-        "//src/framework/api:encoder_lifecycle",
-        "//src/framework/core:types",
-        "//src/framework/queue:queue_iface",
+        "@video_codec//src/framework/api:audio_encoder",
+        "@video_codec//src/framework/api:encoder_lifecycle",
+        "@video_codec//src/framework/core:types",
+        "@video_codec//src/framework/queue:queue_iface",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],
@@ -59,11 +60,11 @@ cc_library(
     name = "muxer",
     srcs = ["ffmpeg_muxer.cc"],
     hdrs = ["ffmpeg_muxer.h"],
-    includes = [".."],
+    includes = ["."],
     deps = [
-        "//src/framework/api:muxer",
-        "//src/framework/core:types",
-        "//src/framework/io:byte_sink",
+        "@video_codec//src/framework/api:muxer",
+        "@video_codec//src/framework/core:types",
+        "@video_codec//src/framework/io:byte_sink",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],
@@ -72,13 +73,13 @@ cc_library(
 cc_library(
     name = "register",
     srcs = ["register.cc"],
-    includes = [".."],
+    includes = ["."],
     alwayslink = True,
     deps = [
         ":audio_encoder",
         ":muxer",
         ":video_encoder",
-        "//src/framework/api:codec_factory",
+        "@video_codec//src/framework/api:codec_factory",
     ],
 )
 

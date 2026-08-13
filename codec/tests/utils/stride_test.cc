@@ -1,5 +1,5 @@
 // stride_test.cc
-#include "utils/stride.h"
+#include "stride.h"
 
 #include "gtest/gtest.h"
 

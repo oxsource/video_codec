@@ -6,7 +6,7 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "core/types.h"
+#include "types.h"
 
 namespace video {
 namespace codec {

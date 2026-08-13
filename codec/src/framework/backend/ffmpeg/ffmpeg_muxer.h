@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include "api/muxer.h"
-#include "core/types.h"
+#include "muxer.h"
+#include "types.h"
 
 struct AVFormatContext;
 

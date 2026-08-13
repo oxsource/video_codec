@@ -17,10 +17,10 @@ cc_binary(
     # this binary (Bazel otherwise builds the backend as a dylib).
     linkstatic = True,
     deps = [
-        "//src/framework/public:video_codec",  # encoder API + FFmpeg backend
-        "//src/framework/queue",              # PacketQueue
-        "//src/framework/consumer",           # FileConsumer (raw mode)
-        "//src/framework/io",                 # FileByteSink (mp4 output)
-        "//src/framework/utils",              # SMPTE color-bars generator
+        "@video_codec//src/framework/public:video_codec",  # encoder API + FFmpeg backend
+        "@video_codec//src/framework/queue",              # PacketQueue
+        "@video_codec//src/framework/consumer",           # FileConsumer (raw mode)
+        "@video_codec//src/framework/io",                 # FileByteSink (mp4 output)
+        "@video_codec//src/framework/utils",              # SMPTE color-bars generator
     ],
 )

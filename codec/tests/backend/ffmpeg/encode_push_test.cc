@@ -10,10 +10,10 @@
 #include <thread>
 #include <vector>
 
-#include "api/codec_factory.h"
-#include "api/video_encoder.h"
+#include "codec_factory.h"
+#include "video_encoder.h"
 #include "gtest/gtest.h"
-#include "queue/packet_queue.h"
+#include "packet_queue.h"
 
 namespace video {
 namespace codec {
