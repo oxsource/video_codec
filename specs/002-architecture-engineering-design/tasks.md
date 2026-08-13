@@ -163,7 +163,7 @@ capacity + blocking back-pressure in unit tests.
 
 ### Implementation for User Story 3
 
-- [x] T018 [P] [US3] Declare `Backpressure` enum, `PacketSource::PopResult`, `OutputSink`,
+- [x] T018 [P] [US3] Declare `Backpressure` enum, `Status`, `OutputSink`,
       `PacketSource` interfaces in `codec/src/framework/queue/queue_iface.h`
       per `contracts/output-queue-contract.md`.
 - [x] T019 [US3] Implement `PacketQueue` (fixed power-of-two `slots[]`, atomic
@@ -200,8 +200,8 @@ as deferred-but-designed.
 
 ### Implementation for User Story 4
 
-- [x] T022 [P] [US4] Declare `PacketConsumer` interface (`Consume(Packet&&)`,
-      `Consume(Packet&&)`, `Flush`, `Finish`) and `PacketSource::Await::Run` helper in
+- [x] T022 [P] [US4] Declare `PacketConsumer` interface (`Consume(VideoPacket&&)`,
+      `Consume(VideoPacket&&)`, `Flush`, `Finish`) and `PacketSource::Await::Run` helper in
       `codec/src/framework/consumer/packet_consumer.h` / `queue/queue_iface.h` per
       `contracts/output-queue-contract.md` + `output-queue.md` §3.
 - [x] T023 [US4] Implement `FileSinkConsumer` (Annex-B → `.h264` / `.aac`; preserve
@@ -314,7 +314,7 @@ buffer; CI is green on the target matrix.
 ```bash
 # After Foundational (Phase 2) completes:
 # US3 — ring buffer (independent of encoder surface):
-Task: "Declare Backpressure/PacketSource::PopResult/OutputSink/PacketSource in queue/queue_iface.h"
+Task: "Declare Backpressure/Status/OutputSink/PacketSource in queue/queue_iface.h"
 Task: "Implement PacketQueue SPSC in queue/packet_queue.{h,cc}"
 # US1 — encoder surface (independent of ring buffer):
 Task: "Declare VideoEncoder/AudioEncoder abstract in api/video_encoder.h"

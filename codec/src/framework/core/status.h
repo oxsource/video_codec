@@ -7,9 +7,13 @@ namespace video {
 namespace codec {
 
 // Unified status code returned by every fallible public API. No exceptions
-// cross the public boundary; callers inspect this instead.
+// cross the public boundary; callers inspect this instead. Also covers the
+// transport results from PacketSource::Pop: kOk (packet), kEmpty (timeout /
+// empty), kEos (end-of-stream and drained).
 enum class Status {
   kOk = 0,
+  kEmpty,  // no data available (e.g. Pop timed out / queue empty)
+  kEos,    // end-of-stream reached and drained (e.g. Pop after MarkEos)
   kInvalidArgument,       // bad config / null handle / invalid argument
   kNotInitialized,        // operation requires Init() first
   kEncodeFailed,          // external encoder rejected a frame / flush
@@ -26,6 +30,10 @@ inline const char* StatusToString(Status c) {
   switch (c) {
     case Status::kOk:
       return "kOk";
+    case Status::kEmpty:
+      return "kEmpty";
+    case Status::kEos:
+      return "kEos";
     case Status::kInvalidArgument:
       return "kInvalidArgument";
     case Status::kNotInitialized:

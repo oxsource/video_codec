@@ -245,7 +245,7 @@ flowchart LR
     ENC["Encoder instance<br/>(backend thread)"]
     Q["PacketQueue<br/>(bounded SPSC ring buffer)"]
     CON["Consumer<br/>(muxer / network / file)"]
-    ENC -->|Submit(Packet)| Q
+    ENC -->|Submit(VideoPacket)| Q
     Q -->|Pop()| CON
     CON -->|back-pressure / drain| ENC
 ```

@@ -149,29 +149,29 @@ Status FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
   return Status::kOk;
 }
 
-Result<Packet> FFmpegVideoEncoder::Encode(const VideoFrame& frame) {
+Result<VideoPacket> FFmpegVideoEncoder::Encode(const VideoFrame& frame) {
   if (lifecycle_.Encode() != Status::kOk)
-    return Err<Packet>(Status::kNotInitialized);
+    return Err<VideoPacket>(Status::kNotInitialized);
   if (CopyFrame(frame) != Status::kOk)
-    return Err<Packet>(Status::kInvalidArgument);
+    return Err<VideoPacket>(Status::kInvalidArgument);
 
   if (avcodec_send_frame(ctx_, frame_) < 0)
-    return Err<Packet>(Status::kEncodeFailed);
+    return Err<VideoPacket>(Status::kEncodeFailed);
   return Drain(/*drain_eof=*/false);
 }
 
-Result<Packet> FFmpegVideoEncoder::Encode(const NativeBuffer&) {
+Result<VideoPacket> FFmpegVideoEncoder::Encode(const NativeBuffer&) {
   // Software FFmpeg path has no hardware surface.
-  return Err<Packet>(Status::kUnsupportedOperation);
+  return Err<VideoPacket>(Status::kUnsupportedOperation);
 }
 
-Result<Packet> FFmpegVideoEncoder::Flush() {
+Result<VideoPacket> FFmpegVideoEncoder::Flush() {
   if (lifecycle_.Flush() != Status::kOk)
-    return Err<Packet>(Status::kNotInitialized);
+    return Err<VideoPacket>(Status::kNotInitialized);
   if (avcodec_send_frame(ctx_, nullptr) < 0) {
     // Already drained; still try to pull remaining bsf output.
   }
-  Result<Packet> r = Drain(/*drain_eof=*/true);
+  Result<VideoPacket> r = Drain(/*drain_eof=*/true);
   if (sink_) sink_->Flush();
   return r;
 }
@@ -181,22 +181,21 @@ Status FFmpegVideoEncoder::SetOutputSink(OutputSink* sink) {
   return Status::kOk;
 }
 
-Result<Packet> FFmpegVideoEncoder::Drain(bool drain_eof) {
-  Packet out;  // pull-mode result (push mode returns an empty packet)
+Result<VideoPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
+  VideoPacket out;  // pull-mode result (push mode returns an empty packet)
   for (;;) {
     int ret = avcodec_receive_packet(ctx_, pkt_);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
-    if (ret < 0) return Err<Packet>(Status::kEncodeFailed);
+    if (ret < 0) return Err<VideoPacket>(Status::kEncodeFailed);
 
     // Convert this codec packet to Annex-B via the bsf.
     AVPacket* bsf_out = av_packet_alloc();
     if (av_bsf_send_packet(bsf_, pkt_) < 0) {
       av_packet_free(&bsf_out);
-      return Err<Packet>(Status::kEncodeFailed);
+      return Err<VideoPacket>(Status::kEncodeFailed);
     }
     while (av_bsf_receive_packet(bsf_, bsf_out) == 0) {
-      Packet pkt;
-      pkt.type = PacketType::kVideo;
+      VideoPacket pkt;
       pkt.data.assign(bsf_out->data, bsf_out->data + bsf_out->size);
       pkt.pts_us = bsf_out->pts * av_q2d(ctx_->time_base) * 1'000'000;
       pkt.keyframe = (bsf_out->flags & AV_PKT_FLAG_KEY) != 0;
@@ -206,7 +205,7 @@ Result<Packet> FFmpegVideoEncoder::Drain(bool drain_eof) {
         if (sink_->Submit(std::move(pkt)) != Status::kOk) {
           av_packet_free(&bsf_out);
           av_packet_unref(pkt_);
-          return Err<Packet>(Status::kEncodeFailed);
+          return Err<VideoPacket>(Status::kEncodeFailed);
         }
       } else {
         out = std::move(pkt);

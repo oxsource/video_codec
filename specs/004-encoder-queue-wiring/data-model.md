@@ -15,7 +15,7 @@ and a **mode flag** (push vs pull) to the existing encoder entities.
 - Owns the pointer non-owningly; must clear it on `Release()`.
 
 ### OutputSink (existing, `queue/queue_iface.h`)
-- Producer endpoint of the queue. `Submit(Packet&&)`, `Submit(Packet&&)Submit(Packet&&)`,
+- Producer endpoint of the queue. `Submit(VideoPacket&&)`, `Submit(VideoPacket&&) / Submit(AudioPacket&&)`,
   `Flush()`.
 - Applies the queue's back-pressure policy; returns `Status`.
 
@@ -32,7 +32,7 @@ and a **mode flag** (push vs pull) to the existing encoder entities.
 ```text
 Encoder --SetOutputSink--> OutputSink (queue producer end)
    Encode() produces Packet
-      push: Submit(Packet&&)  -> queue (single destination)
+      push: Submit(VideoPacket&&)  -> queue (single destination)
       pull: return Packet     -> caller (default, unchanged)
    Flush(): drain final packet -> sink, then sink->Flush()
 Caller (owns queue): after all encoders done -> queue.MarkEos()

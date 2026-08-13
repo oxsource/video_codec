@@ -22,7 +22,8 @@ enum class Backend { kAuto, kAndroid, kDarwin, kFFmpeg };
 
 struct VideoFrame { /* format, width, height, timestamp_us, planes[3], stride[3] */ };
 struct AudioFrame { /* format, sample_rate, channels, timestamp_us, data */ };
-struct Packet { /* type: kVideo/kAudio, data, pts_us, keyframe */ };
+struct VideoPacket { /* data, pts_us, keyframe */ };
+struct AudioPacket { /* data, pts_us, keyframe (always false) */ };
 
 struct NativeBuffer {              // zero-copy pointer object
     Backend backend = Backend::kAuto;

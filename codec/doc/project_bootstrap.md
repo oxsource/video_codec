@@ -51,7 +51,7 @@ Apple `VideoToolbox`（macOS / iOS）**不在一期实现范围，后续（Phase
 - **实现 Android `MediaCodec` 后端**（NDK `AMediaCodec`，硬件编码，视频 + 音频）
 - **实现 FFmpeg 后端**（`libx264` / `libx265` / AAC / Opus），覆盖非 Android 平台
 - 支持**两种输入模型**：CPU 内存帧（`VideoFrame` / `AudioFrame`）与零拷贝 Surface / 原生句柄（`InputSurface` / `NativeBuffer`）
-- 提供原始帧类型 `VideoFrame` / `AudioFrame` 与统一编码包类型 `Packet`（以 `PacketType` 区分音视频）
+- 提供原始帧类型 `VideoFrame` / `AudioFrame` 与编码包类型 `VideoPacket` / `AudioPacket`
 - 提供像素格式与采样格式转换工具（`utils`）
 - 作为独立基础库，供其他 Bazel 项目依赖使用
 - 保持模块化设计，便于新增后端（如 Apple `VideoToolbox`、Windows `MediaFoundation`）
@@ -137,7 +137,7 @@ auto aenc = AudioEncoder::Create(AudioEncoderConfig{
 
 - `VideoFrame`：原始视频帧，含像素格式、宽高、平面数据/stride、时间戳（微秒）
 - `AudioFrame`：原始音频帧（PCM），含采样格式、采样率、声道数、数据、时间戳
-- `Packet`：统一编码包，含 `PacketType`（音视频）、码流字节、PTS、是否为关键帧（音频恒为 false）
+- `VideoPacket` / `AudioPacket`：编码包，含码流字节、PTS、是否为关键帧（音频恒为 false）
 
 ### FR-007 Pixel & Sample Format Conversion Utils
 
@@ -200,7 +200,7 @@ Packet (kVideo / kAudio) → caller (mux / transmit / store)
 ```
 codec/src/framework/
 │
-├── core/        # 基础类型：VideoFrame, AudioFrame, Packet, PacketType,
+├── core/        # 基础类型：VideoFrame, AudioFrame, VideoPacket, AudioPacket,
 │               #           VideoEncoderConfig, AudioEncoderConfig, NativeBuffer, enums
 ├── api/         # 抽象接口：VideoEncoder, AudioEncoder, InputSurface, 工厂
 ├── backend/     # 平台后端实现（每个后端独立子目录，自带 BUILD.bazel）
@@ -240,7 +240,8 @@ namespace codec {
 // Core types
 struct VideoFrame;
 struct AudioFrame;
-struct Packet;
+struct VideoPacket;
+struct AudioPacket;
 struct VideoEncoderConfig;
 struct AudioEncoderConfig;
 struct NativeBuffer;
@@ -389,18 +390,21 @@ struct AudioFrame {
 };
 ```
 
-### Packet (video & audio)
+### VideoPacket / AudioPacket
 
-统一 `Packet` 类型，用 `PacketType` 区分音视频，使单一队列/泵/消费者管线同时承载两种媒体：
+音视频为**独立类型**，编译期即可区分，避免 API 混用：
 
 ```cpp
-enum class PacketType { kVideo, kAudio };
-
-struct Packet {
-    PacketType type = PacketType::kVideo;
-    std::vector<uint8_t> data;       // raw bitstream (video: Annex-B preferred; audio: e.g. ADTS AAC)
+struct VideoPacket {
+    std::vector<uint8_t> data;       // raw video bitstream (Annex-B preferred)
     int64_t pts_us = 0;
-    bool keyframe = false;           // video: IDR; always false for audio
+    bool keyframe = false;           // IDR
+};
+
+struct AudioPacket {
+    std::vector<uint8_t> data;       // raw audio bitstream (e.g. ADTS AAC)
+    int64_t pts_us = 0;
+    bool keyframe = false;           // always false for audio
 };
 ```
 
@@ -1020,7 +1024,7 @@ cc_binary(
 ### Examples
 
 ```
-feat(core): add VideoFrame, AudioFrame, Packet (PacketType) types
+feat(core): add VideoFrame, AudioFrame, VideoPacket, AudioPacket types
 feat(api): implement VideoEncoder/AudioEncoder abstract and factory
 feat(android): add MediaCodecVideoEncoder and MediaCodecAudioEncoder
 feat(ffmpeg): add FFmpegVideoEncoder and FFmpegAudioEncoder

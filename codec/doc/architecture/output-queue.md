@@ -39,10 +39,10 @@ into pre-allocated slots — no per-packet heap allocation on the encode hot pat
 
 - Bounded, fixed `capacity` (power of two) chosen at construction.
 - Single producer (encoder), single consumer (drain loop) → **SPSC** over a slot array.
-- Packets are a **unified `Packet`** (video/audio distinguished by `PacketType`), but stored
-  on **two independent rings** — one per media — so back-pressure and drain are per-media:
-  a stall on video does not block audio and vice versa. `Submit` routes by `pkt.type`;
-  `Pop` alternates round-robin so neither media starves.
+- Video and audio are **distinct types** (`VideoPacket` / `AudioPacket`), each with its own
+  `Submit`/`Pop` overload, stored on **two independent rings** — one per media — so
+  back-pressure and drain are per-media: a stall on video does not block audio and vice
+  versa.
 - Back-pressure when full (configurable):
   - `kBlock` (default): `Submit` waits — natural flow control; a slow consumer slows the
     encoder instead of dropping frames.
@@ -62,8 +62,8 @@ sequenceDiagram
     participant C as PacketConsumer (File / Stream)
     loop while not EOS
         P->>Q: Pop(deadline)
-        Q-->>P: Packet (or timeout/empty)
-        P->>C: Consume(Packet&&)
+        Q-->>P: VideoPacket / AudioPacket (or timeout/empty)
+        P->>C: Consume(VideoPacket&&) / Consume(AudioPacket&&)
         C-->>P: Status
     end
     P->>C: Finish()
@@ -75,10 +75,10 @@ sequenceDiagram
 class PacketConsumer {
   public:
     virtual ~PacketConsumer() = default;
-    // One Consume for both media; the packet's PacketType tells the consumer
-    // which media it is. Media-specific consumers return kUnsupportedOperation
-    // for the other.
-    virtual Status Consume(Packet&& pkt) = 0;
+    // Video and audio are distinct types with their own Consume overloads.
+    // Media-specific consumers return kUnsupportedOperation for the other.
+    virtual Status Consume(VideoPacket&& pkt) = 0;
+    virtual Status Consume(AudioPacket&& pkt) = 0;
     virtual Status Flush() { return Status::kOk; }
     virtual Status Finish() { return Status::kOk; } // EOS / cleanup
 };
@@ -93,33 +93,53 @@ sink until EOS. Reference: `codec/src/framework/queue/packet_queue.cc`.
 
 ```cpp
 Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us = 100'000) {
-  Packet pkt;
-  for (;;) {
-    switch (Pop(pkt, deadline_us)) {
-      case PacketSource::PopResult::kOk:
-        if (sink.Consume(std::move(pkt)) != Status::kOk) {
-          sink.Finish();
-          return Status::kEncodeFailed;
-        }
-        break;
-      case PacketSource::PopResult::kEos:
-        return sink.Finish();  // queue drained -> flush + close the consumer
-      case PacketSource::PopResult::kEmpty:
-        break;  // retry (deadline expired, not yet EOS)
+  VideoPacket vp;
+  AudioPacket ap;
+  bool video_done = false, audio_done = false;
+  while (!video_done || !audio_done) {
+    if (!video_done) {
+      switch (Pop(vp, deadline_us)) {
+        case Status::kOk:
+          if (sink.Consume(std::move(vp)) != Status::kOk) {
+            sink.Finish();
+            return Status::kEncodeFailed;
+          }
+          break;
+        case Status::kEos:
+          video_done = true;
+          break;
+        case Status::kEmpty:
+          break;  // try audio below (or retry next iteration)
+      }
+    }
+    if (!audio_done) {
+      switch (Pop(ap, deadline_us)) {
+        case Status::kOk:
+          if (sink.Consume(std::move(ap)) != Status::kOk) {
+            sink.Finish();
+            return Status::kEncodeFailed;
+          }
+          break;
+        case Status::kEos:
+          audio_done = true;
+          break;
+        case Status::kEmpty:
+          break;
+      }
     }
   }
+  return sink.Finish();
 }
 ```
 
 Behavior:
 
 - **Blocking drain**: `Pop(deadline)` (default 100 ms) blocks instead of busy-spinning when
-  the queue is momentarily empty (`kEmpty` → retry next iteration).
-- **Video + audio**: both travel as `Packet`; `PacketQueue::Pop` drains them round-robin
-  from the two internal rings, so neither media starves and a video-only or audio-only
-  queue still ends in a clean `Finish()`.
-- **EOS handling**: `Pop` returns `kEos` once the queue is marked end-of-stream and both
-  rings are fully drained; `Await` then calls `PacketSink::Finish()` (e.g.
+  the queue is momentarily empty (`kEmpty` → try the other media / retry next iteration).
+- **Video + audio**: distinct types on two internal rings, drained alternately in `Await`;
+  a video-only or audio-only queue still ends in a clean `Finish()`.
+- **EOS handling**: each ring reaches `kEos` once the queue is marked end-of-stream and that
+  ring is drained; when both are done `Await` calls `PacketSink::Finish()` (e.g.
   `FileSinkConsumer` flushes and closes the file).
 - **Failure safety**: a failing `Consume` is logged, `Finish()` is called once, and `Await`
   stops — it must NOT swallow errors and spin.

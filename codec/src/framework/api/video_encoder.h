@@ -25,17 +25,17 @@ class VideoEncoder {
   virtual Status Init() = 0;  // -> Initialized
 
   // CPU path. Init() must have succeeded; returns kNotInitialized otherwise.
-  virtual Result<Packet> Encode(const VideoFrame& frame) = 0;
+  virtual Result<VideoPacket> Encode(const VideoFrame& frame) = 0;
 
   // Zero-copy path. Returns kUnsupportedOperation if the backend cannot consume
   // the handle type.
-  virtual Result<Packet> Encode(const NativeBuffer& buf) = 0;
+  virtual Result<VideoPacket> Encode(const NativeBuffer& buf) = 0;
 
   // Returns a drawable surface, or nullptr if the backend has no Surface
   // support (FFmpeg software path returns nullptr).
   virtual std::unique_ptr<InputSurface> CreateInputSurface() { return nullptr; }
 
-  virtual Result<Packet>
+  virtual Result<VideoPacket>
   Flush() = 0;                 // -> Flushed (drain + emit final pkt)
   virtual void Release() = 0;  // free external resources -> Released
 

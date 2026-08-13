@@ -19,10 +19,11 @@ class PacketConsumer : public PacketSink {
  public:
   ~PacketConsumer() override = default;
 
-  // Video and audio both arrive as Packet; the packet's PacketType tells the
-  // consumer which media it is. Consumers that only handle one media return
-  // kUnsupportedOperation for the other.
-  Status Consume(Packet&& pkt) override = 0;
+  // Video and audio arrive as distinct types with their own Consume overloads;
+  // a consumer that only handles one media returns kUnsupportedOperation for
+  // the other.
+  Status Consume(VideoPacket&& pkt) override = 0;
+  Status Consume(AudioPacket&& pkt) override = 0;
 
   Status Flush() { return Status::kOk; }
   Status Finish() override { return Status::kOk; }  // EOS / teardown

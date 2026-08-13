@@ -37,22 +37,22 @@ class Mp4Muxer {
   // Feed one encoded packet. The MP4 is opened lazily on the first keyframe
   // (it needs SPS/PPS for the avcC extradata); non-keyframes before that are
   // dropped.
-  Status Consume(const Packet& pkt);
+  Status Consume(const VideoPacket& pkt);
 
   // Write the MP4 trailer and flush the sink. Safe to call once.
   Status Finish();
 
  private:
   // Open the mp4 muxer lazily on the first keyframe (needs SPS/PPS).
-  Status OpenMuxer(const Packet& first_keyframe);
+  Status OpenMuxer(const VideoPacket& first_keyframe);
 
   // Parse Annex-B SPS/PPS into an avcC (length-prefixed) extradata block.
   Status BuildExtradata(const uint8_t* data, size_t size,
-                            std::vector<uint8_t>* out);
+                        std::vector<uint8_t>* out);
 
   // Convert one Annex-B packet to AVCC (4-byte lengths, SPS/PPS dropped).
   Status AnnexBToAvcc(const uint8_t* data, size_t size,
-                          std::vector<uint8_t>* out);
+                      std::vector<uint8_t>* out);
 
   ByteSink* sink_;
   int width_;

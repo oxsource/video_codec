@@ -51,7 +51,7 @@ pump.join();                      // consumer sees kEos and stops; file is compl
 ## 3. Audio
 
 Same pattern with `CreateAudioEncoder` / `AudioFrame`; audio packets are pushed via
-`OutputSink::Submit(Packet&&)Submit(Packet&&)`.
+`OutputSink::Submit(VideoPacket&&) / Submit(AudioPacket&&)`.
 
 ## 4. Rules to remember
 

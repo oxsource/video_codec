@@ -59,24 +59,23 @@ class Ring {
 
   // Returns kOk (packet in `out`), kEmpty (timed out / non-blocking empty), or
   // kEos (end-of-stream and fully drained).
-  PacketSource::PopResult Pop(Pkt& out, int64_t deadline_us) {
+  Status Pop(Pkt& out, int64_t deadline_us) {
     std::unique_lock<std::mutex> lk(mu_);
     if (deadline_us > 0) {
       bool signaled =
           not_empty_.wait_for(lk, std::chrono::microseconds(deadline_us),
                               [this] { return count_ > 0 || eos_; });
-      if (!signaled && count_ == 0) return PacketSource::PopResult::kEmpty;
+      if (!signaled && count_ == 0) return Status::kEmpty;
     } else if (count_ == 0) {
-      return eos_ ? PacketSource::PopResult::kEos
-                  : PacketSource::PopResult::kEmpty;
+      return eos_ ? Status::kEos : Status::kEmpty;
     }
-    if (count_ == 0) return PacketSource::PopResult::kEos;
+    if (count_ == 0) return Status::kEos;
     out = std::move(slots_[head_]);
     slots_[head_] = Pkt{};
     head_ = (head_ + 1) & mask_;
     --count_;
     not_full_.notify_one();
-    return PacketSource::PopResult::kOk;
+    return Status::kOk;
   }
 
   void MarkEos() {
@@ -111,26 +110,25 @@ class Ring {
   std::condition_variable not_full_;
 };
 
-// Bounded SPSC ring buffer implementing both transport endpoints. The packet
-// type is unified (Packet + PacketType), but video and audio are stored on
-// INDEPENDENT rings: back-pressure and drain are per-media, so a stall on one
-// does not block the other and the two never interleave in one buffer.
+// Bounded SPSC ring buffer implementing both transport endpoints. Video and
+// audio are distinct packet types stored on INDEPENDENT rings: back-pressure
+// and drain are per-media, so a stall on one does not block the other.
 class PacketQueue : public OutputSink, public PacketSource {
  public:
   // `capacity` MUST be > 0 and a power of two (index masking).
   PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
 
-  // OutputSink (producer). Routes to the video or audio ring by pkt.type.
-  Status Submit(Packet&& pkt) override;
+  // OutputSink (producer).
+  Status Submit(VideoPacket&& pkt) override;
+  Status Submit(AudioPacket&& pkt) override;
   Status Flush() override { return Status::kOk; }
 
-  // PacketSource (consumer). Pops whichever ring has data, alternating
-  // round-robin so neither media starves; blocks up to `deadline_us` when
-  // both are empty, and returns kEos only once BOTH rings are drained.
-  PacketSource::PopResult Pop(Packet& out, int64_t deadline_us) override;
+  // PacketSource (consumer). Each ring blocks/drains independently.
+  Status Pop(VideoPacket& out, int64_t deadline_us) override;
+  Status Pop(AudioPacket& out, int64_t deadline_us) override;
 
-  // Await mechanism: block on the calling thread, delivering each packet to
-  // `sink` until EOS (then sink.Finish()). A failing Consume stops the loop.
+  // Await mechanism: block on the calling thread, delivering every packet
+  // (video and audio, drained alternately) to `sink` until EOS.
   Status Await(PacketSink& sink, int64_t deadline_us = 100'000) override;
 
   void MarkEos() override;
@@ -139,15 +137,8 @@ class PacketQueue : public OutputSink, public PacketSource {
   size_t size() const { return video_.size() + audio_.size(); }
 
  private:
-  // Pop one packet from a non-empty ring (round-robin); kEos only when both
-  // rings are finished. Caller must hold qmu_.
-  PacketSource::PopResult TryPop(Packet& out);
-
-  Ring<Packet> video_;
-  Ring<Packet> audio_;
-  std::mutex qmu_;
-  std::condition_variable qnot_empty_;  // woken by Submit/MarkEos
-  bool prefer_video_ = true;
+  Ring<VideoPacket> video_;
+  Ring<AudioPacket> audio_;
 };
 
 }  // namespace codec

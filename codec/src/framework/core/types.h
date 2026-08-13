@@ -37,15 +37,15 @@ struct AudioFrame {
   std::vector<uint8_t> data;  // interleaved PCM
 };
 
-// Which media a packet carries.
-enum class PacketType { kVideo, kAudio };
+// Encoded video output. `data` is Annex-B preferred; `keyframe` marks IDR.
+struct VideoPacket {
+  std::vector<uint8_t> data;
+  int64_t pts_us = 0;
+  bool keyframe = false;
+};
 
-// Encoded media output (video or audio, distinguished by `type`). For video,
-// `data` is Annex-B preferred and `keyframe` marks IDR; for audio `keyframe`
-// is always false. Video and audio travel on the same packet type so a single
-// queue/pump/consumer pipeline handles both.
-struct Packet {
-  PacketType type = PacketType::kVideo;
+// Encoded audio output (e.g. ADTS AAC). `keyframe` is always false for audio.
+struct AudioPacket {
   std::vector<uint8_t> data;
   int64_t pts_us = 0;
   bool keyframe = false;

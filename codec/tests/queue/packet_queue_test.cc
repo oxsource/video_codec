@@ -12,10 +12,8 @@ namespace video {
 namespace codec {
 namespace {
 
-using PopResult = PacketSource::PopResult;
-
-Packet MakePkt(uint8_t tag) {
-  Packet p;
+VideoPacket MakePkt(uint8_t tag) {
+  VideoPacket p;
   p.data = {tag};
   p.keyframe = (tag % 7 == 0);
   return p;
@@ -38,12 +36,12 @@ TEST(PacketQueueTest, SpscInOrderNoLoss) {
   std::vector<uint8_t> seen;
   std::thread consumer([&] {
     while (got < kN) {
-      Packet p;
-      PopResult r = q.Pop(p, 2'000'000);
-      if (r == PopResult::kOk) {
+      VideoPacket p;
+      Status r = q.Pop(p, 2'000'000);
+      if (r == Status::kOk) {
         seen.push_back(p.data[0]);
         ++got;
-      } else if (r == PopResult::kEos) {
+      } else if (r == Status::kEos) {
         break;
       }
     }
@@ -84,11 +82,11 @@ TEST(PacketQueueTest, BlockWaitsForConsumer) {
   // Consumer drains; producer should then complete.
   int got = 0;
   while (got < 2 + 5) {
-    Packet p;
-    PopResult r = q.Pop(p, 2'000'000);
-    if (r == PopResult::kOk)
+    VideoPacket p;
+    Status r = q.Pop(p, 2'000'000);
+    if (r == Status::kOk)
       ++got;
-    else if (r == PopResult::kEos)
+    else if (r == Status::kEos)
       break;
   }
   producer.join();
@@ -106,8 +104,8 @@ TEST(PacketQueueTest, DropOldestKeepsNewest) {
   ASSERT_EQ(q.size(), 4u);
   // Remaining packets are the last 4 (6,7,8,9).
   for (int i = 6; i < 10; ++i) {
-    Packet p;
-    ASSERT_EQ(q.Pop(p, 0), PopResult::kOk);
+    VideoPacket p;
+    ASSERT_EQ(q.Pop(p, 0), Status::kOk);
     ASSERT_EQ(p.data[0], static_cast<uint8_t>(i));
   }
 }
@@ -127,10 +125,10 @@ TEST(PacketQueueTest, EosReportedAfterDrain) {
   ASSERT_EQ(q.Submit(MakePkt(1)), Status::kOk);
   q.MarkEos();
 
-  Packet p;
-  ASSERT_EQ(q.Pop(p, 0), PopResult::kOk);
+  VideoPacket p;
+  ASSERT_EQ(q.Pop(p, 0), Status::kOk);
   ASSERT_EQ(p.data[0], 1);
-  ASSERT_EQ(q.Pop(p, 0), PopResult::kEos);
+  ASSERT_EQ(q.Pop(p, 0), Status::kEos);
 }
 
 }  // namespace

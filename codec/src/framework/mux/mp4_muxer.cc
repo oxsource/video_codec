@@ -87,7 +87,7 @@ Mp4Muxer::~Mp4Muxer() {
 }
 
 Status Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
-                                    std::vector<uint8_t>* out) {
+                                std::vector<uint8_t>* out) {
   const uint8_t* p = data;
   const uint8_t* end = data + size;
   std::vector<uint8_t> sps, pps;
@@ -128,7 +128,7 @@ Status Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
 }
 
 Status Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
-                                  std::vector<uint8_t>* out) {
+                              std::vector<uint8_t>* out) {
   out->clear();
   const uint8_t* p = data;
   const uint8_t* end = data + size;
@@ -150,7 +150,7 @@ Status Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
   return out->empty() ? Status::kEncodeFailed : Status::kOk;
 }
 
-Status Mp4Muxer::OpenMuxer(const Packet& first_keyframe) {
+Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
   if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", nullptr) < 0 ||
       !fmt_) {
     fmt_ = nullptr;
@@ -210,10 +210,7 @@ Status Mp4Muxer::OpenMuxer(const Packet& first_keyframe) {
   return Status::kOk;
 }
 
-Status Mp4Muxer::Consume(const Packet& pkt) {
-  if (pkt.type == PacketType::kAudio) {
-    return Status::kUnsupportedOperation;  // video-only muxer
-  }
+Status Mp4Muxer::Consume(const VideoPacket& pkt) {
   if (pkt.data.empty()) return Status::kOk;
 
   if (!opened_) {
@@ -224,8 +221,7 @@ Status Mp4Muxer::Consume(const Packet& pkt) {
   }
 
   std::vector<uint8_t> sample;
-  if (AnnexBToAvcc(pkt.data.data(), pkt.data.size(), &sample) !=
-      Status::kOk) {
+  if (AnnexBToAvcc(pkt.data.data(), pkt.data.size(), &sample) != Status::kOk) {
     return Status::kEncodeFailed;
   }
 

@@ -19,8 +19,6 @@ namespace video {
 namespace codec {
 namespace {
 
-using PopResult = PacketSource::PopResult;
-
 VideoFrame MakeI420Frame(int w, int h, int seed) {
   VideoFrame f;
   f.format = PixelFormat::kI420;
@@ -63,7 +61,7 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
 
   constexpr int kFrames = 20;
   for (int i = 0; i < kFrames; ++i) {
-    Result<Packet> r = encoder->Encode(MakeI420Frame(320, 240, i));
+    Result<VideoPacket> r = encoder->Encode(MakeI420Frame(320, 240, i));
     ASSERT_TRUE(r.ok());
     // Push mode: single destination is the sink -> returned packet is empty.
     EXPECT_TRUE(r.value().data.empty());
@@ -71,12 +69,12 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
   ASSERT_TRUE(encoder->Flush().ok());
   q.MarkEos();  // caller marks EOS after all producers are done
 
-  std::vector<Packet> packets;
-  Packet pkt;
+  std::vector<VideoPacket> packets;
+  VideoPacket pkt;
   for (;;) {
-    const PopResult pr = q.Pop(pkt, 0);
-    if (pr == PopResult::kEos || pr == PopResult::kEmpty) break;
-    ASSERT_EQ(pr, PopResult::kOk);
+    const Status pr = q.Pop(pkt, 0);
+    if (pr == Status::kEos || pr == Status::kEmpty) break;
+    ASSERT_EQ(pr, Status::kOk);
     packets.push_back(std::move(pkt));
   }
   EXPECT_GT(packets.size(), 0u);
@@ -95,11 +93,11 @@ TEST(EncodePushTest, PullModeUnchangedWithoutSink) {
 
   int pull_packets = 0;
   for (int i = 0; i < 20; ++i) {
-    Result<Packet> r = encoder->Encode(MakeI420Frame(320, 240, i));
+    Result<VideoPacket> r = encoder->Encode(MakeI420Frame(320, 240, i));
     ASSERT_TRUE(r.ok());
     if (!r.value().data.empty()) ++pull_packets;
   }
-  Result<Packet> fr = encoder->Flush();
+  Result<VideoPacket> fr = encoder->Flush();
   ASSERT_TRUE(fr.ok());
   if (!fr.value().data.empty()) ++pull_packets;
   EXPECT_GT(pull_packets, 0) << "pull mode must still yield encoded packets";
@@ -132,9 +130,9 @@ TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
   std::this_thread::sleep_for(std::chrono::milliseconds(150));
   EXPECT_FALSE(producer_done.load()) << "producer must block under kBlock";
 
-  std::vector<Packet> drained;
-  Packet pkt;
-  while (q.Pop(pkt, 5000) == PopResult::kOk) drained.push_back(std::move(pkt));
+  std::vector<VideoPacket> drained;
+  VideoPacket pkt;
+  while (q.Pop(pkt, 5000) == Status::kOk) drained.push_back(std::move(pkt));
   producer.join();
   EXPECT_FALSE(producer_failed.load());
   EXPECT_TRUE(producer_done.load());

@@ -75,7 +75,7 @@ produces all N packets in order with zero loss; with no sink, pull still returns
       observes `kEos` (A3).
 - [x] T006 [P] [US1] Add audio push test in
       `codec/tests/backend/ffmpeg/audio_push_test.cc`: attach the queue to a real FFmpeg AAC
-      encoder, encode audio frames, assert audio packets (`PacketType::kAudio`) arrive at the
+      encoder, encode audio frames, assert audio packets  arrive at the
       sink in order (A5).
 
 ### Implementation for User Story 1
@@ -86,7 +86,7 @@ produces all N packets in order with zero loss; with no sink, pull still returns
       `sink_->Submit(...)` and return an empty packet with `kOk`; on `Release()` set
       `sink_ = nullptr`.
 - [x] T008 [US1] Implement push in `codec/src/framework/backend/ffmpeg/audio_encoder.h` /
-      `.cc`: same pattern for audio via `OutputSink::Submit(Packet&&)`.
+      `.cc`: same pattern for audio via `OutputSink::Submit(VideoPacket&&)`.
 
 **Checkpoint**: `bazel test //tests/backend/ffmpeg/...` passes — real encoder → queue → drain
 is order-preserving and lossless; pull mode is unchanged.

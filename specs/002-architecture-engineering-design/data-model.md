@@ -42,12 +42,14 @@ struct AudioFrame {
     std::vector<uint8_t> data;        // interleaved PCM
 };
 
-enum class PacketType { kVideo, kAudio };   // unified packet tag
+struct VideoPacket {
+    std::vector<uint8_t> data;        // Annex-B preferred
+    int64_t pts_us = 0; bool keyframe = false;  // IDR
+};
 
-struct Packet {
-    PacketType type = PacketType::kVideo;
-    std::vector<uint8_t> data;        // video: Annex-B preferred; audio: e.g. ADTS AAC
-    int64_t pts_us = 0; bool keyframe = false;  // audio: always false
+struct AudioPacket {
+    std::vector<uint8_t> data;        // e.g. ADTS AAC
+    int64_t pts_us = 0; bool keyframe = false;  // always false for audio
 };
 
 struct NativeBuffer {                 // zero-copy pointer object
@@ -62,7 +64,7 @@ struct NativeBuffer {                 // zero-copy pointer object
 ### Validation rules
 - `VideoFrame`: `width>0 && height>0`; `format==kRGBA ⇒ planes[2] empty`; `stride[i]>=width` for used planes.
 - `AudioFrame`: `sample_rate>0 && channels>0`; `data` size consistent with `SampleFormat` × frames.
-- `Packet`: `!data.empty()`; `keyframe` meaningful only for video.
+- `VideoPacket` / `AudioPacket`: `!data.empty()`; `keyframe` meaningful only for video.
 - `NativeBuffer`: `handle!=nullptr` when `backend!=kAuto`.
 
 ## 3. Config Types (api)
@@ -149,16 +151,18 @@ network sender / file writer).
 class OutputSink {                       // producer endpoint (encoder writes here)
   public:
     virtual ~OutputSink() = default;
-    // Unified packet; PacketType routes it to the video/audio ring.
-    virtual Status Submit(Packet&& pkt) = 0;
+    // Video and audio are distinct types, each with its own Submit.
+    virtual Status Submit(VideoPacket&& pkt) = 0;
+    virtual Status Submit(AudioPacket&& pkt) = 0;
     virtual Status Flush() { return Status::kOk; }
 };
 
 class PacketSource {              // consumer endpoint (pops here)
   public:
     virtual ~PacketSource() = default;
-    // Non-blocking: returns false if empty. Blocking variant takes a deadline.
-    virtual PacketSource::PopResult Pop(Packet& out, int64_t deadline_us) = 0;
+    // Blocking variant takes a deadline; returns Status::kOk / kEmpty / kEos.
+    virtual Status Pop(VideoPacket& out, int64_t deadline_us) = 0;
+    virtual Status Pop(AudioPacket& out, int64_t deadline_us) = 0;
 };
 ```
 
@@ -170,7 +174,7 @@ consumer side exposes `PacketSource`.
 | Field | Type | Meaning |
 |-------|------|---------|
 | `capacity` | `size_t` (power of two) | ring slots (fixed at construction) |
-| `slots[]` | `Packet[]` | pre-allocated, packets **moved** in/out |
+| `video_[]` / `audio_[]` | `VideoPacket[]` / `AudioPacket[]` | two independent rings, packets **moved** in/out |
 | `head_` / `tail_` | `std::atomic<size_t>` | consumer / producer indices (mod mask) |
 | `policy` | `Backpressure` | back-pressure when full; default `kBlock` |
 
@@ -178,7 +182,8 @@ consumer side exposes `PacketSource`.
 
 - The encoder, after a successful `Encode()`, forwards the packet to a configured
   `OutputSink` (see `output-queue-contract.md`). The pull API (`Encode()` returning
-  `Result<Packet>`) is unchanged; pushing is an **optional** sink mode.
+  `Result<VideoPacket>` / `Result<AudioPacket>`) is unchanged; pushing is an **optional**
+  sink mode.
 - Ownership transfers to the queue via move; the producer no longer references the packet
   after `Submit()` returns.
 
@@ -188,8 +193,8 @@ consumer side exposes `PacketSource`.
 - `Submit` on a full queue honors `policy`: `kBlock` waits, `kDropOldest` overwrites the
   oldest unconsumed slot, `kError` returns `kBackendUnavailable` (or a dedicated
   back-pressure code).
-- `TryPop` on an empty queue returns `false` (non-blocking); a blocking `Pop(deadline)`
-  variant is provided for consumers that must wait.
+- `Pop(deadline)` on an empty queue returns `Status::kEmpty` (non-blocking when
+  `deadline <= 0`); a blocking variant is provided for consumers that must wait.
 
 ### Consumer side (`PacketConsumer`)
 
@@ -201,8 +206,9 @@ The consumer is decoupled from the encoder by a `PacketConsumer` interface; a
 class PacketConsumer {
   public:
     virtual ~PacketConsumer() = default;
-    // One Consume for both media; PacketType tells the consumer which media.
-    virtual Status Consume(Packet&& pkt) = 0;
+    // Video and audio are distinct types with their own Consume overloads.
+    virtual Status Consume(VideoPacket&& pkt) = 0;
+    virtual Status Consume(AudioPacket&& pkt) = 0;
     virtual Status Flush() { return Status::kOk; }
     virtual Status Finish() { return Status::kOk; } // EOS / teardown
 };

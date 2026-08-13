@@ -49,7 +49,7 @@ virtual Status SetOutputSink(OutputSink* sink);
 ## 5. Audio
 
 - `AudioEncoder` supports the same attachment and pushes audio `Packet`s via
-  `OutputSink::Submit(Packet&&)`.
+  `OutputSink::Submit(VideoPacket&&)`.
 
 ## 6. Acceptance
 
@@ -61,5 +61,5 @@ virtual Status SetOutputSink(OutputSink* sink);
   `MarkEos()`, the consumer observes `kEos` exactly once.
 - **A4**: `SetOutputSink` on a push-incapable backend returns `kUnsupportedOperation` and
   leaves the encoder in pull mode.
-- **A5**: Audio push delivers audio packets (`PacketType::kAudio`) to the sink with the
+- **A5**: Audio push delivers audio packets  to the sink with the
   same guarantees.
