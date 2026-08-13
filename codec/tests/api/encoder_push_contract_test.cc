@@ -16,23 +16,27 @@ namespace {
 class StubVideoEncoder : public VideoEncoder {
  public:
   StatusCode Init() override { return StatusCode::kOk; }
-  Result<EncodedPacket> Encode(const VideoFrame&) override {
-    return Ok(EncodedPacket{});
+  Result<Packet> Encode(const VideoFrame&) override { return Ok(Packet{}); }
+  Result<Packet> Encode(const NativeBuffer&) override {
+    return Err<Packet>(StatusCode::kUnsupportedOperation);
   }
-  Result<EncodedPacket> Encode(const NativeBuffer&) override {
-    return Err<EncodedPacket>(StatusCode::kUnsupportedOperation);
-  }
-  Result<EncodedPacket> Flush() override { return Ok(EncodedPacket{}); }
+  Result<Packet> Flush() override { return Ok(Packet{}); }
   void Release() override {}
 };
 
 class StubAudioEncoder : public AudioEncoder {
  public:
   StatusCode Init() override { return StatusCode::kOk; }
-  Result<AudioPacket> Encode(const AudioFrame&) override {
-    return Ok(AudioPacket{});
+  Result<Packet> Encode(const AudioFrame&) override {
+    Packet p;
+    p.type = PacketType::kAudio;
+    return Ok(std::move(p));
   }
-  Result<AudioPacket> Flush() override { return Ok(AudioPacket{}); }
+  Result<Packet> Flush() override {
+    Packet p;
+    p.type = PacketType::kAudio;
+    return Ok(std::move(p));
+  }
   void Release() override {}
 };
 

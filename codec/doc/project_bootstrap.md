@@ -51,7 +51,7 @@ Apple `VideoToolbox`（macOS / iOS）**不在一期实现范围，后续（Phase
 - **实现 Android `MediaCodec` 后端**（NDK `AMediaCodec`，硬件编码，视频 + 音频）
 - **实现 FFmpeg 后端**（`libx264` / `libx265` / AAC / Opus），覆盖非 Android 平台
 - 支持**两种输入模型**：CPU 内存帧（`VideoFrame` / `AudioFrame`）与零拷贝 Surface / 原生句柄（`InputSurface` / `NativeBuffer`）
-- 提供原始帧类型 `VideoFrame` / `AudioFrame` 与编码包类型 `EncodedPacket` / `AudioPacket`
+- 提供原始帧类型 `VideoFrame` / `AudioFrame` 与统一编码包类型 `Packet`（以 `PacketType` 区分音视频）
 - 提供像素格式与采样格式转换工具（`utils`）
 - 作为独立基础库，供其他 Bazel 项目依赖使用
 - 保持模块化设计，便于新增后端（如 Apple `VideoToolbox`、Windows `MediaFoundation`）
@@ -87,7 +87,7 @@ auto enc = VideoEncoder::Create(VideoEncoderConfig{
 });
 enc->Init();
 while (has_frame) {
-    EncodedPacket pkt;
+    Packet pkt;
     if (enc->Encode(frame, &pkt)) { /* consume pkt.data */ }
 }
 enc->Flush();
@@ -137,7 +137,7 @@ auto aenc = AudioEncoder::Create(AudioEncoderConfig{
 
 - `VideoFrame`：原始视频帧，含像素格式、宽高、平面数据/stride、时间戳（微秒）
 - `AudioFrame`：原始音频帧（PCM），含采样格式、采样率、声道数、数据、时间戳
-- `EncodedPacket` / `AudioPacket`：编码包，含码流字节、PTS、是否为关键帧（音频恒为 false）
+- `Packet`：统一编码包，含 `PacketType`（音视频）、码流字节、PTS、是否为关键帧（音频恒为 false）
 
 ### FR-007 Pixel & Sample Format Conversion Utils
 
@@ -190,7 +190,7 @@ VideoEncoder / AudioEncoder API (abstract)
     └── Generic  : FFmpegVideoEncoder / FFmpegAudioEncoder (libx264/5, AAC, Opus)
     │
     ▼
-EncodedPacket / AudioPacket → caller (mux / transmit / store)
+Packet (kVideo / kAudio) → caller (mux / transmit / store)
 ```
 
 ## 3.2 Core Modules
@@ -200,14 +200,18 @@ EncodedPacket / AudioPacket → caller (mux / transmit / store)
 ```
 codec/src/framework/
 │
-├── core/        # 基础类型：VideoFrame, AudioFrame, EncodedPacket, AudioPacket,
+├── core/        # 基础类型：VideoFrame, AudioFrame, Packet, PacketType,
 │               #           VideoEncoderConfig, AudioEncoderConfig, NativeBuffer, enums
 ├── api/         # 抽象接口：VideoEncoder, AudioEncoder, InputSurface, 工厂
 ├── backend/     # 平台后端实现（每个后端独立子目录，自带 BUILD.bazel）
 │   ├── android/ # MediaCodecVideoEncoder / MediaCodecAudioEncoder (NDK AMediaCodec)
 │   ├── darwin/  # VideoToolboxVideoEncoder (Phase 2+, reserved)
 │   └── ffmpeg/  # FFmpegVideoEncoder / FFmpegAudioEncoder (libx264/5, AAC, Opus)
-├── utils/       # 像素/采样格式转换：YUV420P↔NV12, stride, PCM 互转
+├── queue/       # PacketQueue（双 ring：视频/音频），OutputSink / PacketSource
+├── consumer/    # PacketConsumer, PacketPump, FileSinkConsumer, 字节/文件输出
+├── mux/         # Mp4Muxer 纯格式封装（libavformat），输出到 ByteSink
+├── convert/     # libyuv 像素格式转换（PixelConverter）
+├── utils/       # 布局/测试图案工具：Stride, SmpteBars
 └── public/      # 公开 API 汇总入口
 ```
 
@@ -236,8 +240,7 @@ namespace codec {
 // Core types
 struct VideoFrame;
 struct AudioFrame;
-struct EncodedPacket;
-struct AudioPacket;
+struct Packet;
 struct VideoEncoderConfig;
 struct AudioEncoderConfig;
 struct NativeBuffer;
@@ -386,19 +389,18 @@ struct AudioFrame {
 };
 ```
 
-### EncodedPacket / AudioPacket
+### Packet (video & audio)
+
+统一 `Packet` 类型，用 `PacketType` 区分音视频，使单一队列/泵/消费者管线同时承载两种媒体：
 
 ```cpp
-struct EncodedPacket {
-    std::vector<uint8_t> data;       // raw video bitstream (Annex-B preferred)
-    int64_t pts_us = 0;
-    bool keyframe = false;
-};
+enum class PacketType { kVideo, kAudio };
 
-struct AudioPacket {
-    std::vector<uint8_t> data;       // raw audio bitstream (e.g. ADTS AAC)
+struct Packet {
+    PacketType type = PacketType::kVideo;
+    std::vector<uint8_t> data;       // raw bitstream (video: Annex-B preferred; audio: e.g. ADTS AAC)
     int64_t pts_us = 0;
-    bool keyframe = false;           // always false for audio
+    bool keyframe = false;           // video: IDR; always false for audio
 };
 ```
 
@@ -458,16 +460,16 @@ public:
     virtual bool Init() = 0;
 
     // CPU path: encode a memory-backed frame.
-    virtual bool Encode(const VideoFrame& frame, EncodedPacket* out) = 0;
+    virtual bool Encode(const VideoFrame& frame, Packet* out) = 0;
 
     // Zero-copy path: encode a native buffer handle (unified pointer object).
     // MediaCodec consumes AHardwareBuffer*; FFmpeg HW consumes device ptr.
-    virtual bool Encode(const NativeBuffer& buf, EncodedPacket* out) = 0;
+    virtual bool Encode(const NativeBuffer& buf, Packet* out) = 0;
 
     // Create a direct-draw input surface (Android real; FFmpeg returns nullptr).
     virtual std::unique_ptr<InputSurface> CreateInputSurface() { return nullptr; }
 
-    virtual bool Flush(EncodedPacket* out) = 0;
+    virtual bool Flush(Packet* out) = 0;
     virtual void Release() = 0;
 };
 ```
@@ -497,8 +499,8 @@ public:
     static std::unique_ptr<AudioEncoder> Create(const AudioEncoderConfig& config);
 
     virtual bool Init() = 0;
-    virtual bool Encode(const AudioFrame& frame, AudioPacket* out) = 0;
-    virtual bool Flush(AudioPacket* out) = 0;
+    virtual bool Encode(const AudioFrame& frame, Packet* out) = 0;
+    virtual bool Flush(Packet* out) = 0;
     virtual void Release() = 0;
 };
 ```
@@ -542,7 +544,7 @@ deps = select({
 - **视频 CPU 路径**：`AMediaCodec_getInputBuffer` 拷贝 NV12
 - **视频 Surface 零拷贝路径**：`AMediaCodec_createInputSurface` 取得 `ANativeWindow`，封装为 `InputSurface`；业务直接绘制，`QueueFrame(ts)` 通知编码器取帧。`NativeBuffer` 在此指向 `AHardwareBuffer*`
 - **音频路径**：`AudioFrame`（PCM）→ `AMediaCodec` 输入，`BUFFER_FLAG_CODEC_CONFIG` 处理 AudioSpecificConfig
-- 输出：`AMediaCodec_getOutputBuffer` → `EncodedPacket` / `AudioPacket`；关键帧以 `BUFFER_FLAG_KEY_FRAME` 标记
+- 输出：`AMediaCodec_getOutputBuffer` → `Packet`（kVideo / kAudio）；关键帧以 `BUFFER_FLAG_KEY_FRAME` 标记
 
 ### Generic — FFmpeg (Primary, Phase 1)
 
@@ -550,7 +552,7 @@ deps = select({
 - **视频 CPU 路径**：构造 `AVFrame`（NV12 / YUV420P），按 stride 设置 `linesize`
 - **视频硬件句柄路径**：通过 `Encode(const NativeBuffer&)` 接入 FFmpeg 硬件编码器（NVENC / VA-API / V4L2M2M）。与 MediaCodec 共用 `NativeBuffer` 指针对象——FFmpeg 软件路径不支持 Surface，故 `CreateInputSurface()` 返回 `nullptr`
 - **音频路径**：`AudioFrame` → `AVFrame`，经 AAC/Opus `AVCodec` 编码
-- 输出：`AVPacket` → `EncodedPacket` / `AudioPacket`；关键帧以 `AV_PKT_FLAG_KEY` 标记
+- 输出：`AVPacket` → `Packet`（kVideo / kAudio）；关键帧以 `AV_PKT_FLAG_KEY` 标记
 
 ### Apple — VideoToolbox (Reserved, Phase 2+)
 
@@ -1018,7 +1020,7 @@ cc_binary(
 ### Examples
 
 ```
-feat(core): add VideoFrame, AudioFrame, EncodedPacket, AudioPacket types
+feat(core): add VideoFrame, AudioFrame, Packet (PacketType) types
 feat(api): implement VideoEncoder/AudioEncoder abstract and factory
 feat(android): add MediaCodecVideoEncoder and MediaCodecAudioEncoder
 feat(ffmpeg): add FFmpegVideoEncoder and FFmpegAudioEncoder
@@ -1131,7 +1133,7 @@ FFmpeg 6.1 release 通过 `http_archive` 拉取（见 §4.6），但**实际从�
 
 ```
 spec/
-├── core_types.yaml           # VideoFrame/AudioFrame/EncodedPacket/AudioPacket/NativeBuffer
+├── core_types.yaml           # VideoFrame/AudioFrame/Packet/NativeBuffer
 ├── video_encoder_api.yaml    # VideoEncoder 抽象 + Factory + Surface
 ├── audio_encoder_api.yaml    # AudioEncoder 抽象 + Factory
 ├── android_mediacodec.yaml   # MediaCodec 视频+音频后端规格
@@ -1158,7 +1160,7 @@ Agent 在实现时遵循：
 
 一期完成后应具备：
 
-- Core 类型库（VideoFrame, AudioFrame, EncodedPacket, AudioPacket, NativeBuffer, enums）
+- Core 类型库（VideoFrame, AudioFrame, Packet, NativeBuffer, enums）
 - 统一 `VideoEncoder` / `AudioEncoder` 抽象接口与工厂平台选择
 - Android `MediaCodecVideoEncoder` / `MediaCodecAudioEncoder` 后端（视频 H.264/HEVC + 音频 AAC，含 Surface 零拷贝）
 - FFmpeg `FFmpegVideoEncoder` / `FFmpegAudioEncoder` 后端（libx264 / libx265 / AAC / Opus，含 `NativeBuffer` 硬件路径）

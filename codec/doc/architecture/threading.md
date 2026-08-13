@@ -32,7 +32,7 @@ flowchart LR
     CALLER["Caller Thread"] -->|Enqueue frame| Q["Encode queue + worker"]
     Q -->|dequeue| ENC["Encoder instance (worker thread)"]
     ENC --> EXT["External encoder"]
-    ENC -->|EncodedPacket| CB["Result callback"]
+    ENC -->|Packet| CB["Result callback"]
 ```
 
 The wrapper owns the instance and serializes all calls to it on the worker thread; this
@@ -54,14 +54,14 @@ thread** runs the `PacketPump` drain loop:
 ```mermaid
 flowchart LR
     ET["Encoder thread<br/>(Submit → ring)"]
-    Q["EncodedPacketQueue"]
+    Q["PacketQueue"]
     CT["Consumer thread<br/>(PacketPump: Pop → Consume)"]
     ET --> Q
     Q --> CT
 ```
 
 - The encoder thread is the **producer** (calls `OutputSink::Submit`).
-- The consumer thread is the **reader** (calls `EncodedPacketSource::Pop` in a loop, then
+- The consumer thread is the **reader** (calls `PacketSource::Pop` in a loop, then
   `PacketConsumer::Consume`). This is the SPSC pairing the ring buffer assumes — exactly
   one producer, exactly one reader.
 - The two threads communicate **only** through the ring buffer; no shared mutable state

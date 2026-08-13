@@ -9,18 +9,18 @@
 namespace video {
 namespace codec {
 
-// Writes encoded packets to files: Annex-B video to `video_path`, ADTS audio to
-// `audio_path` (if provided). Order and keyframe boundaries are preserved
-// because packets arrive in order from the ring buffer. A muxer (`.mp4`) is
-// just another PacketConsumer behind the same interface (deferred).
+// Writes encoded packets to files: Annex-B video to `video_path`, ADTS audio
+// to `audio_path` (if provided). Routing is by PacketType. Order and keyframe
+// boundaries are preserved because packets arrive in order from the ring
+// buffer. A muxer (`.mp4`) is just another PacketConsumer behind the same
+// interface.
 class FileSinkConsumer : public PacketConsumer {
  public:
   // `video_path` is required; `audio_path` is optional.
   explicit FileSinkConsumer(std::string video_path,
                             std::string audio_path = "");
 
-  StatusCode Consume(EncodedPacket&& pkt) override;
-  StatusCode Consume(AudioPacket&& pkt) override;
+  StatusCode Consume(Packet&& pkt) override;
   StatusCode Finish() override;  // flush + close
 
  private:

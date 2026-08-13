@@ -1,4 +1,4 @@
-// encoded_packet_queue.h
+// packet_queue.h
 #pragma once
 
 #include <condition_variable>
@@ -14,7 +14,7 @@ namespace codec {
 
 // A single-producer / single-consumer bounded ring buffer. One producer (the
 // encoder) pushes via OutputSink; one consumer (the PacketPump) pops via
-// EncodedPacketSource. Packets are MOVED in and out of pre-allocated slots, so
+// PacketSource. Packets are MOVED in and out of pre-allocated slots, so
 // there is no per-packet heap allocation on the hot path.
 //
 // Note on "lock-free": the move-in / move-out and the full/empty checks are
@@ -110,30 +110,38 @@ class Ring {
   std::condition_variable not_full_;
 };
 
-// Bounded SPSC ring buffer implementing both transport endpoints. Video and
-// audio travel on independent rings so a stall on one does not block the other.
-class EncodedPacketQueue : public OutputSink, public EncodedPacketSource {
+// Bounded SPSC ring buffer implementing both transport endpoints. The packet
+// type is unified (Packet + PacketType), but video and audio are stored on
+// INDEPENDENT rings: back-pressure and drain are per-media, so a stall on one
+// does not block the other and the two never interleave in one buffer.
+class PacketQueue : public OutputSink, public PacketSource {
  public:
   // `capacity` MUST be > 0 and a power of two (index masking).
-  EncodedPacketQueue(size_t capacity,
-                     Backpressure policy = Backpressure::kBlock);
+  PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
 
-  // OutputSink (producer).
-  StatusCode Submit(EncodedPacket&& pkt) override;
-  StatusCode Submit(AudioPacket&& pkt) override;
+  // OutputSink (producer). Routes to the video or audio ring by pkt.type.
+  StatusCode Submit(Packet&& pkt) override;
   StatusCode Flush() override { return StatusCode::kOk; }
 
-  // EncodedPacketSource (consumer).
-  PopResult Pop(EncodedPacket& out, int64_t deadline_us) override;
-  PopResult Pop(AudioPacket& out, int64_t deadline_us) override;
+  // PacketSource (consumer). Pops whichever ring has data, alternating
+  // round-robin so neither media starves; blocks up to `deadline_us` when
+  // both are empty, and returns kEos only once BOTH rings are drained.
+  PopResult Pop(Packet& out, int64_t deadline_us) override;
   void MarkEos() override;
 
   size_t capacity() const { return video_.capacity(); }
   size_t size() const { return video_.size() + audio_.size(); }
 
  private:
-  Ring<EncodedPacket> video_;
-  Ring<AudioPacket> audio_;
+  // Pop one packet from a non-empty ring (round-robin); kEos only when both
+  // rings are finished. Caller must hold qmu_.
+  PopResult TryPop(Packet& out);
+
+  Ring<Packet> video_;
+  Ring<Packet> audio_;
+  std::mutex qmu_;
+  std::condition_variable qnot_empty_;  // woken by Submit/MarkEos
+  bool prefer_video_ = true;
 };
 
 }  // namespace codec

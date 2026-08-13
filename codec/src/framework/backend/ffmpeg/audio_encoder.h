@@ -24,13 +24,13 @@ class FFmpegAudioEncoder : public AudioEncoder {
   ~FFmpegAudioEncoder() override;
 
   StatusCode Init() override;
-  Result<AudioPacket> Encode(const AudioFrame& frame) override;
-  Result<AudioPacket> Flush() override;
+  Result<Packet> Encode(const AudioFrame& frame) override;
+  Result<Packet> Flush() override;
   void Release() override;
   StatusCode SetOutputSink(OutputSink* sink) override;
 
  private:
-  Result<AudioPacket> Drain(bool drain_eof);
+  Result<Packet> Drain(bool drain_eof);
 
   AudioEncoderConfig config_;
   EncoderLifecycle lifecycle_;

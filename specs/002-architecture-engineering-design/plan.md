@@ -136,11 +136,11 @@ graph TD
         APP["Application Code<br/>(configure *EncoderConfig, feed frames)"]
 
         subgraph "Framework Modules"
-            CORE["core<br/>VideoFrame, AudioFrame, EncodedPacket,<br/>AudioPacket, NativeBuffer, enums"]
+            CORE["core<br/>VideoFrame, AudioFrame, Packet,<br/> NativeBuffer, enums"]
             API["api<br/>VideoEncoder / AudioEncoder abstract,<br/>InputSurface, factory"]
             UTILS["utils<br/>YUV420P↔NV12, stride, PCM convert"]
             BFF["backend/*<br/>android / ffmpeg / darwin(reserved)"]
-            QUEUE["queue<br/>EncodedPacketQueue (ring buffer)"]
+            QUEUE["queue<br/>PacketQueue (ring buffer)"]
             CONSUMER["consumer<br/>PacketConsumer, PacketPump,<br/>FileSinkConsumer / StreamConsumer"]
             PUBLIC["public<br/>Umbrella header, VIDEO_CODEC_API export"]
         end
@@ -166,7 +166,7 @@ graph TD
         BFF --> FFMPEG
         BFF --> NDK
         BFF --> VT
-        BFF -.->|EncodedPacket / AudioPacket| QUEUE
+        BFF -.->|Packet| QUEUE
         CONSUMER --> QUEUE
         CONSUMER --> API
         CONSUMER --> CORE
@@ -243,16 +243,16 @@ serialize or give one instance per thread. Full model in
 ```mermaid
 flowchart LR
     ENC["Encoder instance<br/>(backend thread)"]
-    Q["EncodedPacketQueue<br/>(bounded SPSC ring buffer)"]
+    Q["PacketQueue<br/>(bounded SPSC ring buffer)"]
     CON["Consumer<br/>(muxer / network / file)"]
-    ENC -->|Submit(EncodedPacket)| Q
+    ENC -->|Submit(Packet)| Q
     Q -->|Pop()| CON
     CON -->|back-pressure / drain| ENC
 ```
 
 Encoded output is handed off through a **bounded SPSC ring buffer**
-(`EncodedPacketQueue`): the encoder (producer) calls `OutputSink::Submit(...)`; a
-`PacketPump` drain loop on the consumer thread calls `EncodedPacketSource::Pop(...)` and
+(`PacketQueue`): the encoder (producer) calls `OutputSink::Submit(...)`; a
+`PacketPump` drain loop on the consumer thread calls `PacketSource::Pop(...)` and
 forwards each packet to a `PacketConsumer`. The consumer is **transport-agnostic** — both
 target consumers implement `PacketConsumer`: `FileSinkConsumer` (save `.h264`/`.aac` or
 mux to `.mp4`) and `StreamConsumer` (推流: RTMP / SRT / WebRTC). Swapping file output for

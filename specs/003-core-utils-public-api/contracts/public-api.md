@@ -21,7 +21,7 @@ and obtain, with no further includes, the full public surface:
 `VideoEncoder`, `AudioEncoder`, the factory entry points (`CreateVideoEncoder`,
 `CreateAudioEncoder`, `ResolveBackend`, `RegisterVideoEncoder`, `RegisterAudioEncoder`),
 `VideoFrame`, `AudioFrame`,
-`EncodedPacket`, `AudioPacket`, `NativeBuffer`, `PixelFormat`, `SampleFormat`,
+`Packet`, `NativeBuffer`, `PixelFormat`, `SampleFormat`,
 `VideoCodecType`, `AudioCodecType`, `Backend`, `StatusCode`, `Result<T>`, `LogSlot`,
 `InputSurface`, and the `*EncoderConfig` structs — the public API intended to be decorated
 with `VIDEO_CODEC_API` (see §3).

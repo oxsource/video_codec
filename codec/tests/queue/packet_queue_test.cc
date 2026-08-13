@@ -1,5 +1,5 @@
-// encoded_packet_queue_test.cc
-#include "queue/encoded_packet_queue.h"
+// packet_queue_test.cc
+#include "queue/packet_queue.h"
 
 #include <atomic>
 #include <string>
@@ -12,8 +12,8 @@ namespace video {
 namespace codec {
 namespace {
 
-EncodedPacket MakePkt(uint8_t tag) {
-  EncodedPacket p;
+Packet MakePkt(uint8_t tag) {
+  Packet p;
   p.data = {tag};
   p.keyframe = (tag % 7 == 0);
   return p;
@@ -21,9 +21,9 @@ EncodedPacket MakePkt(uint8_t tag) {
 
 // --- SPSC correctness: producer pushes N, consumer drains N in order
 // ----------
-TEST(EncodedPacketQueueTest, SpscInOrderNoLoss) {
+TEST(PacketQueueTest, SpscInOrderNoLoss) {
   constexpr int kN = 200;
-  EncodedPacketQueue q(16, Backpressure::kBlock);
+  PacketQueue q(16, Backpressure::kBlock);
 
   std::thread producer([&] {
     for (int i = 0; i < kN; ++i) {
@@ -36,7 +36,7 @@ TEST(EncodedPacketQueueTest, SpscInOrderNoLoss) {
   std::vector<uint8_t> seen;
   std::thread consumer([&] {
     while (got < kN) {
-      EncodedPacket p;
+      Packet p;
       PopResult r = q.Pop(p, 2'000'000);
       if (r == PopResult::kOk) {
         seen.push_back(p.data[0]);
@@ -58,8 +58,8 @@ TEST(EncodedPacketQueueTest, SpscInOrderNoLoss) {
 
 // --- kBlock back-pressure: producer blocks when the ring is full
 // --------------
-TEST(EncodedPacketQueueTest, BlockWaitsForConsumer) {
-  EncodedPacketQueue q(2, Backpressure::kBlock);
+TEST(PacketQueueTest, BlockWaitsForConsumer) {
+  PacketQueue q(2, Backpressure::kBlock);
   // Fill the ring (capacity 2).
   ASSERT_EQ(q.Submit(MakePkt(1)), StatusCode::kOk);
   ASSERT_EQ(q.Submit(MakePkt(2)), StatusCode::kOk);
@@ -83,7 +83,7 @@ TEST(EncodedPacketQueueTest, BlockWaitsForConsumer) {
   // Consumer drains; producer should then complete.
   int got = 0;
   while (got < 2 + 5) {
-    EncodedPacket p;
+    Packet p;
     PopResult r = q.Pop(p, 2'000'000);
     if (r == PopResult::kOk)
       ++got;
@@ -97,15 +97,15 @@ TEST(EncodedPacketQueueTest, BlockWaitsForConsumer) {
 
 // --- kDropOldest: full ring overwrites the oldest slot
 // ------------------------
-TEST(EncodedPacketQueueTest, DropOldestKeepsNewest) {
-  EncodedPacketQueue q(4, Backpressure::kDropOldest);
+TEST(PacketQueueTest, DropOldestKeepsNewest) {
+  PacketQueue q(4, Backpressure::kDropOldest);
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>(i))), StatusCode::kOk);
   }
   ASSERT_EQ(q.size(), 4u);
   // Remaining packets are the last 4 (6,7,8,9).
   for (int i = 6; i < 10; ++i) {
-    EncodedPacket p;
+    Packet p;
     ASSERT_EQ(q.Pop(p, 0), PopResult::kOk);
     ASSERT_EQ(p.data[0], static_cast<uint8_t>(i));
   }
@@ -113,20 +113,20 @@ TEST(EncodedPacketQueueTest, DropOldestKeepsNewest) {
 
 // --- kError: full ring rejects with kBackendUnavailable
 // -----------------------
-TEST(EncodedPacketQueueTest, ErrorReturnsBackpressureCode) {
-  EncodedPacketQueue q(2, Backpressure::kError);
+TEST(PacketQueueTest, ErrorReturnsBackpressureCode) {
+  PacketQueue q(2, Backpressure::kError);
   ASSERT_EQ(q.Submit(MakePkt(1)), StatusCode::kOk);
   ASSERT_EQ(q.Submit(MakePkt(2)), StatusCode::kOk);
   ASSERT_EQ(q.Submit(MakePkt(3)), StatusCode::kBackendUnavailable);
 }
 
 // --- EOS: Pop returns kEos once drained --------------------------------------
-TEST(EncodedPacketQueueTest, EosReportedAfterDrain) {
-  EncodedPacketQueue q(4, Backpressure::kBlock);
+TEST(PacketQueueTest, EosReportedAfterDrain) {
+  PacketQueue q(4, Backpressure::kBlock);
   ASSERT_EQ(q.Submit(MakePkt(1)), StatusCode::kOk);
   q.MarkEos();
 
-  EncodedPacket p;
+  Packet p;
   ASSERT_EQ(q.Pop(p, 0), PopResult::kOk);
   ASSERT_EQ(p.data[0], 1);
   ASSERT_EQ(q.Pop(p, 0), PopResult::kEos);

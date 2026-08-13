@@ -9,7 +9,7 @@
 #include "consumer/packet_consumer.h"
 #include "consumer/packet_pump.h"
 #include "gtest/gtest.h"
-#include "queue/encoded_packet_queue.h"
+#include "queue/packet_queue.h"
 
 namespace video {
 namespace codec {
@@ -23,11 +23,10 @@ std::string TempPath(const std::string& name) {
 // agnostic: swapping FileSinkConsumer for this requires no encoder change.
 class StubConsumer : public PacketConsumer {
  public:
-  StatusCode Consume(EncodedPacket&& pkt) override {
+  StatusCode Consume(Packet&& pkt) override {
     received_.insert(received_.end(), pkt.data.begin(), pkt.data.end());
     return StatusCode::kOk;
   }
-  StatusCode Consume(AudioPacket&&) override { return StatusCode::kOk; }
   StatusCode Finish() override {
     finished_ = true;
     return StatusCode::kOk;
@@ -38,12 +37,12 @@ class StubConsumer : public PacketConsumer {
 
 // Producer runs on its OWN thread (SPSC: one producer, one consumer). Pushes
 // `n` packets then marks EOS. Returns the packets it pushed (for comparison).
-std::vector<std::vector<uint8_t>> RunProducer(EncodedPacketQueue& q, int n,
+std::vector<std::vector<uint8_t>> RunProducer(PacketQueue& q, int n,
                                               std::thread& producer) {
   std::vector<std::vector<uint8_t>> expected;
   producer = std::thread([&q, n, &expected] {
     for (int i = 0; i < n; ++i) {
-      EncodedPacket p;
+      Packet p;
       p.data = {static_cast<uint8_t>('A' + (i % 26)), static_cast<uint8_t>(i)};
       p.keyframe = (i % 10 == 0);
       expected.push_back(p.data);
@@ -66,7 +65,7 @@ TEST(FileSinkConsumerTest, EncoderToRingToFile) {
   const std::string path = TempPath("vc_filesink_test.h264");
   std::remove(path.c_str());
 
-  EncodedPacketQueue q(16, Backpressure::kBlock);
+  PacketQueue q(16, Backpressure::kBlock);
   std::thread producer;
   auto expected = RunProducer(q, 50, producer);
 
@@ -87,7 +86,7 @@ TEST(FileSinkConsumerTest, EncoderToRingToFile) {
 // --- Transport-agnostic: swap FileSinkConsumer for a stub StreamConsumer
 // ------
 TEST(FileSinkConsumerTest, SwapConsumerNeedsNoEncoderChange) {
-  EncodedPacketQueue q(16, Backpressure::kBlock);
+  PacketQueue q(16, Backpressure::kBlock);
   std::thread producer;
   auto expected = RunProducer(q, 30, producer);
 

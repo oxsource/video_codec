@@ -150,7 +150,7 @@ StatusCode Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
   return out->empty() ? StatusCode::kEncodeFailed : StatusCode::kOk;
 }
 
-StatusCode Mp4Muxer::OpenMuxer(const EncodedPacket& first_keyframe) {
+StatusCode Mp4Muxer::OpenMuxer(const Packet& first_keyframe) {
   if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", nullptr) < 0 ||
       !fmt_) {
     fmt_ = nullptr;
@@ -210,7 +210,10 @@ StatusCode Mp4Muxer::OpenMuxer(const EncodedPacket& first_keyframe) {
   return StatusCode::kOk;
 }
 
-StatusCode Mp4Muxer::Consume(const EncodedPacket& pkt) {
+StatusCode Mp4Muxer::Consume(const Packet& pkt) {
+  if (pkt.type == PacketType::kAudio) {
+    return StatusCode::kUnsupportedOperation;  // video-only muxer
+  }
   if (pkt.data.empty()) return StatusCode::kOk;
 
   if (!opened_) {

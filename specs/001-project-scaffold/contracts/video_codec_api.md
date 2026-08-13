@@ -22,8 +22,7 @@ enum class Backend { kAuto, kAndroid, kDarwin, kFFmpeg };
 
 struct VideoFrame { /* format, width, height, timestamp_us, planes[3], stride[3] */ };
 struct AudioFrame { /* format, sample_rate, channels, timestamp_us, data */ };
-struct EncodedPacket { /* data, pts_us, keyframe */ };
-struct AudioPacket   { /* data, pts_us, keyframe (always false) */ };
+struct Packet { /* type: kVideo/kAudio, data, pts_us, keyframe */ };
 
 struct NativeBuffer {              // zero-copy pointer object
     Backend backend = Backend::kAuto;
@@ -49,10 +48,10 @@ public:
     virtual ~VideoEncoder() = default;
     static std::unique_ptr<VideoEncoder> Create(const VideoEncoderConfig&);
     virtual bool Init() = 0;
-    virtual bool Encode(const VideoFrame& frame, EncodedPacket* out) = 0;   // CPU path
-    virtual bool Encode(const NativeBuffer& buf, EncodedPacket* out) = 0;   // zero-copy
+    virtual bool Encode(const VideoFrame& frame, Packet* out) = 0;   // CPU path
+    virtual bool Encode(const NativeBuffer& buf, Packet* out) = 0;   // zero-copy
     virtual std::unique_ptr<InputSurface> CreateInputSurface() { return nullptr; }
-    virtual bool Flush(EncodedPacket* out) = 0;
+    virtual bool Flush(Packet* out) = 0;
     virtual void Release() = 0;
 };
 
@@ -72,8 +71,8 @@ public:
     virtual ~AudioEncoder() = default;
     static std::unique_ptr<AudioEncoder> Create(const AudioEncoderConfig&);
     virtual bool Init() = 0;
-    virtual bool Encode(const AudioFrame& frame, AudioPacket* out) = 0;
-    virtual bool Flush(AudioPacket* out) = 0;
+    virtual bool Encode(const AudioFrame& frame, Packet* out) = 0;
+    virtual bool Flush(Packet* out) = 0;
     virtual void Release() = 0;
 };
 ```

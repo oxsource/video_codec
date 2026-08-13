@@ -15,15 +15,15 @@ and a **mode flag** (push vs pull) to the existing encoder entities.
 - Owns the pointer non-owningly; must clear it on `Release()`.
 
 ### OutputSink (existing, `queue/queue_iface.h`)
-- Producer endpoint of the queue. `Submit(EncodedPacket&&)`, `Submit(AudioPacket&&)`,
+- Producer endpoint of the queue. `Submit(Packet&&)`, `Submit(Packet&&)Submit(Packet&&)`,
   `Flush()`.
 - Applies the queue's back-pressure policy; returns `StatusCode`.
 
-### EncodedPacketQueue (existing)
-- Implements `OutputSink` + `EncodedPacketSource`.
+### PacketQueue (existing)
+- Implements `OutputSink` + `PacketSource`.
 - `MarkEos()` is called by the **caller** (not the encoder) once all producers are done.
 
-### EncodedPacket / AudioPacket (existing)
+### Packet (existing)
 - Payload handed from encoder to sink in order. In push mode the packet is **moved** into
   the sink; the encoder's returned packet is empty (moved-from).
 
@@ -31,9 +31,9 @@ and a **mode flag** (push vs pull) to the existing encoder entities.
 
 ```text
 Encoder --SetOutputSink--> OutputSink (queue producer end)
-   Encode() produces EncodedPacket
-      push: Submit(EncodedPacket&&)  -> queue (single destination)
-      pull: return EncodedPacket     -> caller (default, unchanged)
+   Encode() produces Packet
+      push: Submit(Packet&&)  -> queue (single destination)
+      pull: return Packet     -> caller (default, unchanged)
    Flush(): drain final packet -> sink, then sink->Flush()
 Caller (owns queue): after all encoders done -> queue.MarkEos()
 ```

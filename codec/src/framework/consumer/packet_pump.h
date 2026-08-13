@@ -7,13 +7,13 @@
 namespace video {
 namespace codec {
 
-// Bridges an EncodedPacketSource (the ring buffer) to a PacketConsumer on the
+// Bridges a PacketSource (the ring buffer) to a PacketConsumer on the
 // consumer thread. The loop pops blocking (per `deadline_us`) and forwards each
 // packet to the consumer, calling Finish() at EOS. It must NOT swallow consumer
 // errors and spin — a failing Consume is logged and stops the pump.
 class PacketPump {
  public:
-  static void Run(EncodedPacketSource& src, PacketConsumer& consumer,
+  static void Run(PacketSource& src, PacketConsumer& consumer,
                   int64_t deadline_us = 100'000);
 };
 

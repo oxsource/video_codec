@@ -30,7 +30,7 @@ obligations below. Backends **must not** depend on each other.
 - Hardware path: `Encode(NativeBuffer)` may forward to FFmpeg HW encoders
   (NVENC/VA-API/V4L2M2M) when `NativeBuffer.backend==kFFmpeg`; otherwise
   `kUnsupportedOperation`.
-- Output `AVPacket` → `EncodedPacket` (Annex-B via `AVPacketToAnnexB` when needed);
+- Output `AVPacket` → `Packet` (Annex-B via `AVPacketToAnnexB` when needed);
   keyframe via `AV_PKT_FLAG_KEY`.
 
 ## Android backend (`backend/android`)
@@ -41,7 +41,7 @@ obligations below. Backends **must not** depend on each other.
 - Surface path: `AMediaCodec_createInputSurface()` → `ANativeWindow`, wrapped as
   `InputSurface`; `NativeBuffer.handle` points to `AHardwareBuffer*`. `CreateInputSurface()`
   returns a real surface (the only backend that does).
-- Output: `AMediaCodec_getOutputBuffer` → `EncodedPacket`/`AudioPacket`; SPS/PPS via
+- Output: `AMediaCodec_getOutputBuffer` → `Packet`; SPS/PPS via
   `BUFFER_FLAG_CODEC_CONFIG`; keyframe via `BUFFER_FLAG_KEY_FRAME`.
 - Compiled only under the Android toolchain (`target_compatible_with`); never linked on
   host.

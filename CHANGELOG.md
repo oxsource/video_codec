@@ -13,7 +13,7 @@ All notable changes to video_codec are documented here. The format is based on
   `libtool` merge, deferred VideoToolbox).
 - Encoder framework implementation (spec `002-...` task list): abstract `VideoEncoder` /
   `AudioEncoder` interfaces, lifecycle state machine, encoder factory with self-registration,
-  FFmpeg video/audio backends, bounded SPSC `EncodedPacketQueue`, `PacketPump` +
+  FFmpeg video/audio backends, bounded SPSC `PacketQueue`, `PacketPump` +
   `FileSinkConsumer` transport, and their unit tests.
 - Core utilities & public surface (spec `003-core-utils-public-api`): `utils` module
   (YUV420P↔NV12 conversion, stride helpers, PCM sample-format conversion) and the single

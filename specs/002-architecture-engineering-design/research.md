@@ -164,8 +164,8 @@ overflows `cmdsize`; lazy static linking drops unreferenced internal members →
 ## R9. Encoded-output transport (ring buffer)
 
 **Decision**: Hand off encoded packets to consumers through a **bounded SPSC ring
-buffer** (`EncodedPacketQueue`), exposed as two interfaces — `OutputSink` (producer /
-encoder writes via `Submit`) and `EncodedPacketSource` (consumer pops via `TryPop`/`Pop`).
+buffer** (`PacketQueue`), exposed as two interfaces — `OutputSink` (producer /
+encoder writes via `Submit`) and `PacketSource` (consumer pops via `TryPop`/`Pop`).
 Implementation is lock-free via atomic `head_`/`tail_` indices over a fixed power-of-two
 slot array; packets are **moved** in and out (no per-packet allocation on the hot path).
 Back-pressure when full is configurable: `kBlock` (default), `kDropOldest`, or `kError`.
@@ -199,7 +199,7 @@ dropping frames — and is the safe default for both recording and streaming; `k
 **Decision**: Define a `PacketConsumer` interface (`Consume` / `Flush` / `Finish`) that
 both `FileSinkConsumer` (save `.h264`/`.aac` or mux to `.mp4`) and `StreamConsumer`
 (RTMP / SRT / WebRTC 推流) implement. A `PacketPump` drain loop on the consumer thread
-pops from `EncodedPacketSource` and forwards to the `PacketConsumer`. The encoder is
+pops from `PacketSource` and forwards to the `PacketConsumer`. The encoder is
 never aware of which consumer is attached. Back-pressure propagates end-to-end: a slow
 socket makes `Consume` slow → pump slows → ring fills → encoder slows (under `kBlock`).
 

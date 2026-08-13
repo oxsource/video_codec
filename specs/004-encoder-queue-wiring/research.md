@@ -4,7 +4,7 @@
 **Feature**: [spec.md](spec.md)
 
 Resolves the open technical questions for wiring the encoder to the output queue. The queue
-(`EncodedPacketQueue`, producer `OutputSink` / consumer `EncodedPacketSource`) and the
+(`PacketQueue`, producer `OutputSink` / consumer `PacketSource`) and the
 consumer transport already exist; this feature only adds the encoder-side push path.
 
 ## R1 — Where `OutputSink` is referenced vs. module dependencies
@@ -19,7 +19,7 @@ consumer transport already exist; this feature only adds the encoder-side push p
   `api` dependent only on `core`; `queue` is a sibling. A forward-declared pointer parameter
   lets the contract surface live on the public API without a compile-time dependency.
   `backend/ffmpeg → queue` is acyclic (queue depends only on core) and matches the design's
-  hand-off role (`plan.md` mermaid: backend → `OutputSink/EncodedPacket` → queue).
+  hand-off role (`plan.md` mermaid: backend → `OutputSink/Packet` → queue).
 - **Alternatives considered**:
   - `api` depends on `queue`: simplest compile-wise, but broadens `api`'s dependency surface
     against the frozen module graph — rejected.
@@ -44,7 +44,7 @@ consumer transport already exist; this feature only adds the encoder-side push p
 ## R3 — Back-pressure ownership
 
 - **Decision**: The sink (`OutputSink::Submit`) applies the queue's configured back-pressure
-  policy; the encoder simply calls `Submit(EncodedPacket&&)` and propagates its `StatusCode`.
+  policy; the encoder simply calls `Submit(Packet&&)` and propagates its `StatusCode`.
   No new pacing logic in the encoder; blocking (`kBlock`) naturally paces the producer.
 - **Rationale**: Back-pressure already lives in the queue (frozen contract,
   `output-queue-contract.md`). The encoder must honor whatever the sink returns (including
@@ -55,20 +55,20 @@ consumer transport already exist; this feature only adds the encoder-side push p
 ## R4 — End-of-stream ownership
 
 - **Decision**: On `Flush()` in push mode the encoder drains the final packet to the sink and
-  calls `sink->Flush()`. Marking end-of-stream (`EncodedPacketSource::MarkEos()`) is the
+  calls `sink->Flush()`. Marking end-of-stream (`PacketSource::MarkEos()`) is the
   **caller's** job after all producers (e.g., video + audio) are done.
 - **Rationale**: Multiple encoders may share one queue; only the caller knows when the whole
   stream is complete. If an encoder auto-marked EOS on its own flush, a video encoder would
   EOS a queue still expecting audio. This refines FR-005 (encoder flushes the sink; caller
   marks EOS) while preserving the spec's acceptance outcome ("consumer drains cleanly").
 - **Alternatives considered**: Encoder calls `MarkEos()` itself after flush (requires the
-  backend to `dynamic_cast` the sink to `EncodedPacketSource*`) — breaks the multi-producer
+  backend to `dynamic_cast` the sink to `PacketSource*`) — breaks the multi-producer
   case — rejected.
 
 ## R5 — Testing approach
 
 - **Decision**: googletest in a new `codec/tests/backend/ffmpeg/` package:
-  (a) real FFmpeg video encoder → `EncodedPacketQueue(kBlock)` → drain N frames: order +
+  (a) real FFmpeg video encoder → `PacketQueue(kBlock)` → drain N frames: order +
   zero loss; (b) no sink attached: `Encode()` still returns full packets (pull unchanged);
   (c) flush pushes the final packet then `sink->Flush()`; caller `MarkEos()` → consumer sees
   `kEos`; (d) `SetOutputSink` returns `kUnsupportedOperation` on a stub/no-push encoder

@@ -3,7 +3,7 @@
 // A complete, runnable example of the video_codec pipeline:
 //
 //   SMPTE color-bars generator -> FFmpegVideoEncoder (push mode)
-//     -> EncodedPacketQueue -> PacketPump -> consumer -> file
+//     -> PacketQueue -> PacketPump -> consumer -> file
 //
 // Generates a synthetic SMPTE-style color-bars clip (with a moving white line
 // for motion), encodes it as H.264 at ~fps, paces itself to wall-clock time so
@@ -36,7 +36,7 @@
 #include "consumer/mp4_file_consumer.h"
 #include "consumer/packet_consumer.h"
 #include "consumer/packet_pump.h"
-#include "queue/encoded_packet_queue.h"
+#include "queue/packet_queue.h"
 #include "utils/smpte_bars.h"
 
 namespace vc = video::codec;
@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
   cfg.force_backend = vc::Backend::kFFmpeg;
 
   // Transport: encoder (push) -> bounded ring buffer -> consumer.
-  vc::EncodedPacketQueue queue(64, vc::Backpressure::kBlock);
+  vc::PacketQueue queue(64, vc::Backpressure::kBlock);
 
   // A consumer is transport-agnostic: ".mp4" -> MP4 muxer, otherwise raw
   // Annex-B file. Swapping is a one-line change.

@@ -39,7 +39,7 @@ no new types; it is a forwarding include surface.
 
 | Re-exported header (from `core` / `api`) | Exposes |
 |------------------------------------------|---------|
-| `core/types.h` | `VideoCodecType`, `AudioCodecType`, `PixelFormat`, `SampleFormat`, `Backend`, `VideoFrame`, `AudioFrame`, `EncodedPacket`, `AudioPacket`, `NativeBuffer`, `*EncoderConfig` |
+| `core/types.h` | `VideoCodecType`, `AudioCodecType`, `PixelFormat`, `SampleFormat`, `Backend`, `VideoFrame`, `AudioFrame`, `Packet`, `NativeBuffer`, `*EncoderConfig` |
 | `core/status.h`, `core/result.h` | `StatusCode`, `Result<T>` |
 | `core/log_slot.h` | `LogSlot` (pluggable logging interface) |
 | `api/video_encoder.h`, `api/audio_encoder.h` | `VideoEncoder`, `AudioEncoder` (abstract) |

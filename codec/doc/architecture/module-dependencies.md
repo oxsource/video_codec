@@ -6,15 +6,21 @@
 public ──▶ api ──▶ core
    ├──▶ utils ──▶ core
    ├──▶ queue ──▶ core
-   ├──▶ consumer ──▶ api, core, queue
+   ├──▶ mux ──▶ core, (external dep: @ffmpeg)
+   ├──▶ convert/libyuv ──▶ core, utils, (external dep: @libyuv)
+   ├──▶ consumer ──▶ api, core, queue, mux
    └──▶ backend/* ──▶ api, core, utils, (external dep)
 ```
 
 - `core` depends on **nothing** (leaf).
 - `api` → `core` only.
 - `utils` → `core` only.
-- `queue` → `core` only (ring buffer over `EncodedPacket`/`AudioPacket`).
-- `consumer` → `api`, `core`, `queue` (implements `PacketConsumer`: file sink / streamer).
+- `queue` → `core` only (ring buffer over the unified `Packet`; video and audio live on
+  two independent rings).
+- `mux` → `core` + `@ffmpeg` (pure MP4 format conversion; no consumer/io dependency).
+- `convert/libyuv` → `core`, `utils`, `@libyuv` (neutral pixel conversion).
+- `consumer` → `api`, `core`, `queue`, `mux` (implements `PacketConsumer`: file sink,
+  MP4 file consumer, byte sinks).
 - Each `backend/<x>` → `api`, `core`, `utils`, **and exactly one** external dependency
   (`@ffmpeg` / `@androidndk` / `VideoToolbox.framework`).
 - `backends` NEVER depend on each other.

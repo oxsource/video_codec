@@ -19,13 +19,13 @@ class AudioEncoder {
   static std::unique_ptr<AudioEncoder> Create(const AudioEncoderConfig& config);
 
   virtual StatusCode Init() = 0;
-  virtual Result<AudioPacket> Encode(const AudioFrame& frame) = 0;
-  virtual Result<AudioPacket> Flush() = 0;
+  virtual Result<Packet> Encode(const AudioFrame& frame) = 0;
+  virtual Result<Packet> Flush() = 0;
   virtual void Release() = 0;
 
   // Attach an output sink to enable push mode (see
-  // VideoEncoder::SetOutputSink). Audio packets are handed to the sink via
-  // OutputSink::Submit(AudioPacket&&).
+  // VideoEncoder::SetOutputSink). Audio packets (PacketType::kAudio) are
+  // handed to the sink via OutputSink::Submit(Packet&&).
   virtual StatusCode SetOutputSink(OutputSink* sink) {
     (void)sink;
     return StatusCode::kUnsupportedOperation;

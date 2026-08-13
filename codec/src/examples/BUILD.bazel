@@ -18,7 +18,7 @@ cc_binary(
     linkstatic = True,
     deps = [
         "//src/framework/public:video_codec",  # encoder API + FFmpeg backend
-        "//src/framework/queue",              # EncodedPacketQueue
+        "//src/framework/queue",              # PacketQueue
         "//src/framework/consumer",           # PacketPump + FileSinkConsumer + Mp4FileConsumer
         "//src/framework/utils",              # SMPTE color-bars generator
     ],

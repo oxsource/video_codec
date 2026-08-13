@@ -25,9 +25,9 @@ class FFmpegVideoEncoder : public VideoEncoder {
   ~FFmpegVideoEncoder() override;
 
   StatusCode Init() override;
-  Result<EncodedPacket> Encode(const VideoFrame& frame) override;
-  Result<EncodedPacket> Encode(const NativeBuffer& buf) override;
-  Result<EncodedPacket> Flush() override;
+  Result<Packet> Encode(const VideoFrame& frame) override;
+  Result<Packet> Encode(const NativeBuffer& buf) override;
+  Result<Packet> Flush() override;
   void Release() override;
   StatusCode SetOutputSink(OutputSink* sink) override;
 
@@ -37,9 +37,9 @@ class FFmpegVideoEncoder : public VideoEncoder {
   StatusCode CopyFrame(const VideoFrame& frame);
 
   // Pull available packets from the codec, run them through the Annex-B
-  // bitstream filter, and return the resulting EncodedPacket (empty if none
+  // bitstream filter, and return the resulting Packet (empty if none
   // yet).
-  Result<EncodedPacket> Drain(bool drain_eof);
+  Result<Packet> Drain(bool drain_eof);
 
   VideoEncoderConfig config_;
   EncoderLifecycle lifecycle_;

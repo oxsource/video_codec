@@ -27,7 +27,7 @@ shared-library build defines `VIDEO_CODEC_SHARED_LIBRARY`).
 
 - Enums: `VideoCodecType`, `AudioCodecType`, `PixelFormat`, `SampleFormat`,
   `BitrateMode`, `Backend`, `StatusCode`.
-- Values: `VideoFrame`, `AudioFrame`, `EncodedPacket`, `AudioPacket`, `NativeBuffer`,
+- Values: `VideoFrame`, `AudioFrame`, `Packet`, `NativeBuffer`,
   `VideoEncoderConfig`, `AudioEncoderConfig`.
 - Error: `StatusCode`, `Result<T>`.
 - Interfaces: `VideoEncoder`, `AudioEncoder`, `InputSurface`.

@@ -5,7 +5,7 @@
 
 This contract freezes the transport between encoder output and a consumer. It is
 **transport-first**: the encoder and the consumer never reference each other directly —
-only the `OutputSink` / `EncodedPacketSource` / `PacketConsumer` interfaces. A file sink
+only the `OutputSink` / `PacketSource` / `PacketConsumer` interfaces. A file sink
 and a network streamer both implement `PacketConsumer` and are therefore
 interchangeable.
 
@@ -14,7 +14,7 @@ interchangeable.
 ```cpp
 enum class Backpressure { kBlock, kDropOldest, kError };
 
-enum class PopResult { kOk, kEmpty, kEos };   // from EncodedPacketSource::Pop
+enum class PopResult { kOk, kEmpty, kEos };   // from PacketSource::Pop
 ```
 
 ## Producer endpoint — `OutputSink`
@@ -25,8 +25,9 @@ Implemented by the ring buffer's producer side. The encoder writes here.
 class OutputSink {
   public:
     virtual ~OutputSink() = default;
-    virtual StatusCode Submit(EncodedPacket&& pkt) = 0;     // video
-    virtual StatusCode Submit(AudioPacket&& pkt) = 0;       // audio
+    // Unified packet; the packet's PacketType (kVideo / kAudio) routes it to
+    // the matching internal ring.
+    virtual StatusCode Submit(Packet&& pkt) = 0;
     virtual StatusCode Flush() { return StatusCode::kOk; }  // segment boundary
 };
 ```
@@ -36,16 +37,15 @@ class OutputSink {
   (`kBlock` waits, `kDropOldest` overwrites, `kError` returns a back-pressure code).
 - `Flush()` signals "end of current segment" — distinct from stream end.
 
-## Consumer endpoint — `EncodedPacketSource`
+## Consumer endpoint — `PacketSource`
 
 Implemented by the ring buffer's consumer side. The drain loop reads here.
 
 ```cpp
-class EncodedPacketSource {
+class PacketSource {
   public:
-    virtual ~EncodedPacketSource() = default;
-    virtual PopResult Pop(EncodedPacket& out, int64_t deadline_us) = 0;  // blocking
-    virtual PopResult Pop(AudioPacket& out, int64_t deadline_us) = 0;
+    virtual ~PacketSource() = default;
+    virtual PopResult Pop(Packet& out, int64_t deadline_us) = 0;  // blocking
     virtual void MarkEos() = 0;   // encoder signals end of stream
 };
 ```
@@ -54,25 +54,24 @@ class EncodedPacketSource {
   semantics); returns `kEmpty` on timeout, `kEos` after `MarkEos()` and drained.
 - The consumer never allocates; packets are moved out of slots.
 
-## Ring buffer — `EncodedPacketQueue`
+## Ring buffer — `PacketQueue`
 
 ```cpp
-class EncodedPacketQueue : public OutputSink, public EncodedPacketSource {
+class PacketQueue : public OutputSink, public PacketSource {
   public:
     // capacity MUST be > 0 and a power of two (index masking).
-    EncodedPacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
+    PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
     // OutputSink
-    StatusCode Submit(EncodedPacket&&) override;
-    StatusCode Submit(AudioPacket&&) override;
-    // EncodedPacketSource
-    PopResult Pop(EncodedPacket&, int64_t) override;
-    PopResult Pop(AudioPacket&, int64_t) override;
+    StatusCode Submit(Packet&&) override;   // routed to video/audio ring by type
+    // PacketSource
+    PopResult Pop(Packet&, int64_t) override;  // round-robin across both rings
     void MarkEos() override;
 };
 ```
 
-- SPSC lock-free: one producer (encoder), one consumer (drain loop).
-- Holds a fixed `slots[]` of `EncodedPacket`/`AudioPacket`; packets moved in/out.
+- SPSC: one producer (encoder), one consumer (drain loop).
+- Holds fixed `slots[]` of the unified `Packet` on **two independent rings** (one per
+  media, `PacketType`-routed); packets moved in/out. Back-pressure is per-media.
 
 ## Consumer interface — `PacketConsumer`
 
@@ -82,8 +81,9 @@ Implemented by file sink and streamer. The drain loop (`PacketPump`) calls this.
 class PacketConsumer {
   public:
     virtual ~PacketConsumer() = default;
-    virtual StatusCode Consume(EncodedPacket&& pkt) = 0;   // video
-    virtual StatusCode Consume(AudioPacket&& pkt) = 0;     // audio
+    // One Consume for both media; PacketType tells the consumer which media.
+    // Media-specific consumers return kUnsupportedOperation for the other.
+    virtual StatusCode Consume(Packet&& pkt) = 0;
     virtual StatusCode Flush() { return StatusCode::kOk; }
     virtual StatusCode Finish() { return StatusCode::kOk; } // EOS / teardown
 };

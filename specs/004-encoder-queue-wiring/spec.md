@@ -11,8 +11,8 @@
 ## User Scenarios & Testing *(mandatory)*
 
 The library already has: a working encoder (pull API — the caller calls `Encode()` and
-receives `EncodedPacket`s back), and a bounded SPSC ring buffer (`EncodedPacketQueue`)
-with a producer endpoint (`OutputSink`) and a consumer endpoint (`EncodedPacketSource`).
+receives `Packet`s back), and a bounded SPSC ring buffer (`PacketQueue`)
+with a producer endpoint (`OutputSink`) and a consumer endpoint (`PacketSource`).
 What is missing is the **link between them**: a real encoder currently does not feed the
 ring buffer. This feature wires the encoder so that, when a caller opts in, every packet
 produced by a successful encode is **automatically pushed** into the output queue — while
@@ -79,7 +79,7 @@ delivered in order with zero loss.
 - How are flush-produced final packets handled? → They are pushed before the queue is marked
   end-of-stream, so the consumer receives them before `kEos`.
 - What about audio packets? → The same push wiring applies to the audio encoder and its
-  `AudioPacket` output.
+  audio output.
 - If push and pull are both active, do packets get duplicated? → No: push mode replaces the
   caller's manual collection; a single packet goes to exactly one destination.
 
@@ -100,7 +100,7 @@ delivered in order with zero loss.
   mark the end-of-stream so the consumer can terminate cleanly.
 - **FR-006**: A single encoded packet MUST be delivered to exactly one destination (push
   sink OR pull return), never both, when both modes are conceptually active.
-- **FR-007**: The audio encoder MUST support the same push wiring for `AudioPacket` output.
+- **FR-007**: The audio encoder MUST support the same push wiring for audio output.
 - **FR-008**: Enabling push mode with no sink attached MUST be reported as a configuration
   error rather than silently discarding output.
 - **FR-009**: The wiring MUST NOT change the encoder lifecycle contract — invalid-state
@@ -114,9 +114,9 @@ delivered in order with zero loss.
   attachment and a push mode.
 - **OutputSink**: the producer endpoint of the queue (or any sink); receives submitted
   encoded/audio packets.
-- **EncodedPacketQueue**: the bounded ring buffer the sink fronts; applies the configured
+- **PacketQueue**: the bounded ring buffer the sink fronts; applies the configured
   back-pressure policy.
-- **EncodedPacket / AudioPacket**: the payloads handed from encoder to sink in order.
+- **Packet**: the payloads handed from encoder to sink in order.
 
 ## Success Criteria *(mandatory)*
 

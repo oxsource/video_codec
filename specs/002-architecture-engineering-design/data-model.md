@@ -42,14 +42,12 @@ struct AudioFrame {
     std::vector<uint8_t> data;        // interleaved PCM
 };
 
-struct EncodedPacket {
-    std::vector<uint8_t> data;        // Annex-B preferred for video
-    int64_t pts_us = 0; bool keyframe = false;
-};
+enum class PacketType { kVideo, kAudio };   // unified packet tag
 
-struct AudioPacket {
-    std::vector<uint8_t> data;        // e.g. ADTS AAC
-    int64_t pts_us = 0; bool keyframe = false;  // always false for audio
+struct Packet {
+    PacketType type = PacketType::kVideo;
+    std::vector<uint8_t> data;        // video: Annex-B preferred; audio: e.g. ADTS AAC
+    int64_t pts_us = 0; bool keyframe = false;  // audio: always false
 };
 
 struct NativeBuffer {                 // zero-copy pointer object
@@ -64,7 +62,7 @@ struct NativeBuffer {                 // zero-copy pointer object
 ### Validation rules
 - `VideoFrame`: `width>0 && height>0`; `format==kRGBA ⇒ planes[2] empty`; `stride[i]>=width` for used planes.
 - `AudioFrame`: `sample_rate>0 && channels>0`; `data` size consistent with `SampleFormat` × frames.
-- `EncodedPacket`/`AudioPacket`: `!data.empty()`; `keyframe` meaningful only for video.
+- `Packet`: `!data.empty()`; `keyframe` meaningful only for video.
 - `NativeBuffer`: `handle!=nullptr` when `backend!=kAuto`.
 
 ## 3. Config Types (api)
@@ -142,7 +140,7 @@ Bazel `select()` links **only** the resolved backend + its external dep. Diagram
 ## 8. Output Transport Model (ring buffer)
 
 Encoded packets are handed off to consumers through a bounded **SPSC ring buffer**
-(`EncodedPacketQueue`). This decouples the encoder (producer) from the consumer (muxer /
+(`PacketQueue`). This decouples the encoder (producer) from the consumer (muxer /
 network sender / file writer).
 
 ### Interfaces
@@ -151,29 +149,28 @@ network sender / file writer).
 class OutputSink {                       // producer endpoint (encoder writes here)
   public:
     virtual ~OutputSink() = default;
-    virtual StatusCode Submit(EncodedPacket&& pkt) = 0;   // video
-    virtual StatusCode Submit(AudioPacket&& pkt) = 0;     // audio
+    // Unified packet; PacketType routes it to the video/audio ring.
+    virtual StatusCode Submit(Packet&& pkt) = 0;
     virtual StatusCode Flush() { return StatusCode::kOk; }
 };
 
-class EncodedPacketSource {              // consumer endpoint (pops here)
+class PacketSource {              // consumer endpoint (pops here)
   public:
-    virtual ~EncodedPacketSource() = default;
+    virtual ~PacketSource() = default;
     // Non-blocking: returns false if empty. Blocking variant takes a deadline.
-    virtual bool TryPop(EncodedPacket& out) = 0;
-    virtual bool TryPop(AudioPacket& out) = 0;
+    virtual PopResult Pop(Packet& out, int64_t deadline_us) = 0;
 };
 ```
 
-`EncodedPacketQueue` implements **both** interfaces: producer side exposes `OutputSink`,
-consumer side exposes `EncodedPacketSource`.
+`PacketQueue` implements **both** interfaces: producer side exposes `OutputSink`,
+consumer side exposes `PacketSource`.
 
-### Entity: EncodedPacketQueue
+### Entity: PacketQueue
 
 | Field | Type | Meaning |
 |-------|------|---------|
 | `capacity` | `size_t` (power of two) | ring slots (fixed at construction) |
-| `slots[]` | `EncodedPacket/AudioPacket[]` | pre-allocated, packets **moved** in/out |
+| `slots[]` | `Packet[]` | pre-allocated, packets **moved** in/out |
 | `head_` / `tail_` | `std::atomic<size_t>` | consumer / producer indices (mod mask) |
 | `policy` | `Backpressure` | back-pressure when full; default `kBlock` |
 
@@ -181,7 +178,7 @@ consumer side exposes `EncodedPacketSource`.
 
 - The encoder, after a successful `Encode()`, forwards the packet to a configured
   `OutputSink` (see `output-queue-contract.md`). The pull API (`Encode()` returning
-  `Result<EncodedPacket>`) is unchanged; pushing is an **optional** sink mode.
+  `Result<Packet>`) is unchanged; pushing is an **optional** sink mode.
 - Ownership transfers to the queue via move; the producer no longer references the packet
   after `Submit()` returns.
 
@@ -197,15 +194,15 @@ consumer side exposes `EncodedPacketSource`.
 ### Consumer side (`PacketConsumer`)
 
 The consumer is decoupled from the encoder by a `PacketConsumer` interface; a
-`PacketPump` drain loop on the consumer thread bridges `EncodedPacketSource` →
+`PacketPump` drain loop on the consumer thread bridges `PacketSource` →
 `PacketConsumer`.
 
 ```cpp
 class PacketConsumer {
   public:
     virtual ~PacketConsumer() = default;
-    virtual StatusCode Consume(EncodedPacket&& pkt) = 0;   // video
-    virtual StatusCode Consume(AudioPacket&& pkt) = 0;     // audio
+    // One Consume for both media; PacketType tells the consumer which media.
+    virtual StatusCode Consume(Packet&& pkt) = 0;
     virtual StatusCode Flush() { return StatusCode::kOk; }
     virtual StatusCode Finish() { return StatusCode::kOk; } // EOS / teardown
 };
@@ -224,6 +221,6 @@ blocking `Pop(deadline)` avoids busy-spin.
 ### Multiple consumers (record + stream)
 
 One ring buffer = one reader (SPSC). For simultaneous file + stream, instantiate **two**
-`EncodedPacketQueue`s off the encoder, or insert a **tee** fanning one source to N sinks.
+`PacketQueue`s off the encoder, or insert a **tee** fanning one source to N sinks.
 The queue + `PacketConsumer` contract stay SPSC-clean either way.
 

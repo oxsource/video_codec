@@ -13,8 +13,10 @@ namespace codec {
 class PacketConsumer {
  public:
   virtual ~PacketConsumer() = default;
-  virtual StatusCode Consume(EncodedPacket&& pkt) = 0;  // video
-  virtual StatusCode Consume(AudioPacket&& pkt) = 0;    // audio
+  // Video and audio both arrive as Packet; the packet's PacketType tells the
+  // consumer which media it is. Consumers that only handle one media return
+  // kUnsupportedOperation for the other.
+  virtual StatusCode Consume(Packet&& pkt) = 0;
   virtual StatusCode Flush() { return StatusCode::kOk; }
   virtual StatusCode Finish() { return StatusCode::kOk; }  // EOS / teardown
 };

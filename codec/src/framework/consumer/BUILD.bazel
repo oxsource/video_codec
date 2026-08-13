@@ -3,7 +3,7 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 # PacketConsumer interface, PacketPump drain loop, file sinks (FileSinkConsumer,
 # FileByteSink), and the PacketConsumer adapters over format converters
 # (Mp4FileConsumer: FileByteSink + mux::Mp4Muxer).
-# Depends on core (types), queue (EncodedPacketSource), api, and mux (format).
+# Depends on core (types), queue (PacketSource), api, and mux (format).
 cc_library(
     name = "consumer",
     srcs = glob(["*.cc"]),

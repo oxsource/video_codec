@@ -9,7 +9,7 @@ namespace video {
 namespace codec {
 
 // A value-or-error transport used by fallible operations that produce a value
-// (e.g. Encode() -> Result<EncodedPacket>). Never throws across the boundary.
+// (e.g. Encode() -> Result<Packet>). Never throws across the boundary.
 template <typename T>
 class Result {
  public:

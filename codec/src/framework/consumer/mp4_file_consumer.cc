@@ -10,7 +10,10 @@ Mp4FileConsumer::Mp4FileConsumer(std::string path, int width, int height,
                                  int fps)
     : sink_(std::move(path)), muxer_(&sink_, width, height, fps) {}
 
-StatusCode Mp4FileConsumer::Consume(EncodedPacket&& pkt) {
+StatusCode Mp4FileConsumer::Consume(Packet&& pkt) {
+  if (pkt.type == PacketType::kAudio) {
+    return StatusCode::kUnsupportedOperation;  // video-only muxer
+  }
   return muxer_.Consume(pkt);
 }
 

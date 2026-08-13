@@ -1,6 +1,6 @@
 package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__", "//src/examples:__subpackages__"])
 
-# Bounded SPSC ring buffer (EncodedPacketQueue). Depends only on core.
+# Bounded SPSC ring buffer (PacketQueue). Depends only on core.
 cc_library(
     name = "queue",
     srcs = glob(["*.cc"]),

@@ -1,7 +1,7 @@
 // audio_push_test.cc
 //
-// Spec 004, US1/A5: the audio encoder's push mode delivers AudioPackets to the
-// output sink in order (single destination).
+// Spec 004, US1/A5: the audio encoder's push mode delivers audio packets
+// (PacketType::kAudio) to the output sink in order (single destination).
 
 #include <cstdint>
 #include <vector>
@@ -9,7 +9,7 @@
 #include "api/audio_encoder.h"
 #include "api/encoder_factory.h"
 #include "gtest/gtest.h"
-#include "queue/encoded_packet_queue.h"
+#include "queue/packet_queue.h"
 
 namespace video {
 namespace codec {
@@ -28,7 +28,7 @@ AudioFrame MakePcmFrame(int samples) {
 }
 
 TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
-  EncodedPacketQueue q(64, Backpressure::kBlock);
+  PacketQueue q(64, Backpressure::kBlock);
   AudioEncoderConfig cfg;
   cfg.codec = AudioCodecType::kAAC;
   cfg.sample_rate = 48000;
@@ -42,7 +42,7 @@ TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
   ASSERT_EQ(encoder->SetOutputSink(&q), StatusCode::kOk);
 
   for (int i = 0; i < 10; ++i) {
-    Result<AudioPacket> r = encoder->Encode(MakePcmFrame(1024));
+    Result<Packet> r = encoder->Encode(MakePcmFrame(1024));
     ASSERT_TRUE(r.ok());
     EXPECT_TRUE(
         r.value().data.empty());  // push mode: single destination = sink
@@ -50,12 +50,13 @@ TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
   ASSERT_TRUE(encoder->Flush().ok());
   q.MarkEos();  // caller marks EOS after all producers are done
 
-  std::vector<AudioPacket> packets;
-  AudioPacket pkt;
+  std::vector<Packet> packets;
+  Packet pkt;
   for (;;) {
     const PopResult pr = q.Pop(pkt, 0);
     if (pr == PopResult::kEos || pr == PopResult::kEmpty) break;
     ASSERT_EQ(pr, PopResult::kOk);
+    EXPECT_EQ(pkt.type, PacketType::kAudio);
     packets.push_back(std::move(pkt));
   }
   EXPECT_GT(packets.size(), 0u);

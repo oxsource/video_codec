@@ -22,10 +22,7 @@ class Mp4FileConsumer : public PacketConsumer {
                            int fps = 30);
   ~Mp4FileConsumer() override = default;
 
-  StatusCode Consume(EncodedPacket&& pkt) override;
-  StatusCode Consume(AudioPacket&& pkt) override {
-    return StatusCode::kUnsupportedOperation;  // video-only muxer
-  }
+  StatusCode Consume(Packet&& pkt) override;
   StatusCode Finish() override;
 
  private:

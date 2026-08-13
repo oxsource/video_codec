@@ -4,7 +4,7 @@
 **Feature**: [spec.md](../spec.md) | **Data model**: [data-model.md](../data-model.md) | **Research**: [research.md](../research.md)
 
 Defines the encoder-side push wiring added by this feature. It does not change the frozen
-`OutputSink`/`EncodedPacketSource` contracts in `contracts/output-queue-contract.md`
+`OutputSink`/`PacketSource` contracts in `contracts/output-queue-contract.md`
 (spec 002) or the encoder lifecycle contract.
 
 ## 1. Attachment contract
@@ -25,7 +25,7 @@ virtual StatusCode SetOutputSink(OutputSink* sink);
 
 | Mode | Trigger | `Encode()`/`Flush()` result |
 |------|---------|------------------------------|
-| Pull (default) | no sink attached | full `EncodedPacket`/`AudioPacket` returned (unchanged) |
+| Pull (default) | no sink attached | full `Packet` returned (unchanged) |
 | Push | non-null sink attached | packet **moved into the sink**; returns `kOk` with an empty (moved-from) packet |
 
 - A produced packet reaches **exactly one destination** (FR-006). No duplication.
@@ -36,7 +36,7 @@ virtual StatusCode SetOutputSink(OutputSink* sink);
 - On `Flush()` in push mode: the encoder drains any final packet to the sink, then calls
   `sink->Flush()`.
 - **End-of-stream is caller-owned**: after all encoders are flushed/done, the caller calls
-  `EncodedPacketSource::MarkEos()` on the queue so the consumer terminates with `kEos`
+  `PacketSource::MarkEos()` on the queue so the consumer terminates with `kEos`
   (multi-producer safety — see research R4). This refines spec FR-005 (encoder flushes the
   sink; caller marks EOS) and satisfies its acceptance outcome.
 
@@ -48,8 +48,8 @@ virtual StatusCode SetOutputSink(OutputSink* sink);
 
 ## 5. Audio
 
-- `AudioEncoder` supports the same attachment and pushes `AudioPacket` via
-  `OutputSink::Submit(AudioPacket&&)`.
+- `AudioEncoder` supports the same attachment and pushes audio `Packet`s via
+  `OutputSink::Submit(Packet&&)`.
 
 ## 6. Acceptance
 
@@ -61,4 +61,5 @@ virtual StatusCode SetOutputSink(OutputSink* sink);
   `MarkEos()`, the consumer observes `kEos` exactly once.
 - **A4**: `SetOutputSink` on a push-incapable backend returns `kUnsupportedOperation` and
   leaves the encoder in pull mode.
-- **A5**: Audio push delivers `AudioPacket`s to the sink with the same guarantees.
+- **A5**: Audio push delivers audio packets (`PacketType::kAudio`) to the sink with the
+  same guarantees.

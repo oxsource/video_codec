@@ -13,7 +13,7 @@
 #include "api/encoder_factory.h"
 #include "api/video_encoder.h"
 #include "gtest/gtest.h"
-#include "queue/encoded_packet_queue.h"
+#include "queue/packet_queue.h"
 
 namespace video {
 namespace codec {
@@ -53,7 +53,7 @@ VideoEncoderConfig MakeConfig() {
 
 // US1/A1: push mode delivers all packets to the queue, in order, zero loss.
 TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
-  EncodedPacketQueue q(64, Backpressure::kBlock);
+  PacketQueue q(64, Backpressure::kBlock);
   std::unique_ptr<VideoEncoder> encoder = CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), StatusCode::kOk);
@@ -61,7 +61,7 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
 
   constexpr int kFrames = 20;
   for (int i = 0; i < kFrames; ++i) {
-    Result<EncodedPacket> r = encoder->Encode(MakeI420Frame(320, 240, i));
+    Result<Packet> r = encoder->Encode(MakeI420Frame(320, 240, i));
     ASSERT_TRUE(r.ok());
     // Push mode: single destination is the sink -> returned packet is empty.
     EXPECT_TRUE(r.value().data.empty());
@@ -69,8 +69,8 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
   ASSERT_TRUE(encoder->Flush().ok());
   q.MarkEos();  // caller marks EOS after all producers are done
 
-  std::vector<EncodedPacket> packets;
-  EncodedPacket pkt;
+  std::vector<Packet> packets;
+  Packet pkt;
   for (;;) {
     const PopResult pr = q.Pop(pkt, 0);
     if (pr == PopResult::kEos || pr == PopResult::kEmpty) break;
@@ -93,11 +93,11 @@ TEST(EncodePushTest, PullModeUnchangedWithoutSink) {
 
   int pull_packets = 0;
   for (int i = 0; i < 20; ++i) {
-    Result<EncodedPacket> r = encoder->Encode(MakeI420Frame(320, 240, i));
+    Result<Packet> r = encoder->Encode(MakeI420Frame(320, 240, i));
     ASSERT_TRUE(r.ok());
     if (!r.value().data.empty()) ++pull_packets;
   }
-  Result<EncodedPacket> fr = encoder->Flush();
+  Result<Packet> fr = encoder->Flush();
   ASSERT_TRUE(fr.ok());
   if (!fr.value().data.empty()) ++pull_packets;
   EXPECT_GT(pull_packets, 0) << "pull mode must still yield encoded packets";
@@ -106,7 +106,7 @@ TEST(EncodePushTest, PullModeUnchangedWithoutSink) {
 // US2/SC-003: a slow consumer fills the bounded queue; the producer blocks
 // (kBlock) instead of dropping, and every packet arrives in order afterwards.
 TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
-  EncodedPacketQueue q(4, Backpressure::kBlock);
+  PacketQueue q(4, Backpressure::kBlock);
   std::unique_ptr<VideoEncoder> encoder = CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), StatusCode::kOk);
@@ -130,8 +130,8 @@ TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
   std::this_thread::sleep_for(std::chrono::milliseconds(150));
   EXPECT_FALSE(producer_done.load()) << "producer must block under kBlock";
 
-  std::vector<EncodedPacket> drained;
-  EncodedPacket pkt;
+  std::vector<Packet> drained;
+  Packet pkt;
   while (q.Pop(pkt, 5000) == PopResult::kOk) drained.push_back(std::move(pkt));
   producer.join();
   EXPECT_FALSE(producer_failed.load());

@@ -69,7 +69,7 @@ No story work starts until this is complete.
       `codec/src/framework/core/log_slot.h` / `.cc` per `logging-slot.md` (default
       no-op; consumer plugs a concrete impl).
 - [x] T006 [P] Define media types in `core`: `VideoFrame`, `AudioFrame`,
-      `EncodedPacket`, `AudioPacket`, `NativeBuffer` (pointer-object zero-copy
+      `Packet`, `NativeBuffer` (pointer-object zero-copy
       convention) and shared enums (pixel fmt, codec, keyframe flag, `pts_us`) in
       `codec/src/framework/core/types.h` per `data-model.md` §3–§6.
 - [x] T007 [P] Add a `VIDEO_CODEC_API`-tagged umbrella of core public typedefs if
@@ -123,7 +123,7 @@ lifecycle enforces order. No real encoding yet (backends are stubbed). ✅ done.
 
 ## Phase 4: User Story 2 — FFmpeg backend (Priority: P1) 🎯 MVP
 
-**Goal**: A real encoder end-to-end: feed CPU frames, get `Result<EncodedPacket>`
+**Goal**: A real encoder end-to-end: feed CPU frames, get `Result<Packet>`
 back (pull API) via `libavcodec`/`libx264`. This is the minimum that actually encodes.
 
 **Independent Test**: Encode a synthetic 320×240 frame to H.264 and assert the output
@@ -132,7 +132,7 @@ is a valid Annex-B stream (reuse `ffmpeg_spike` pattern) using only the public A
 ### Implementation for User Story 2
 
 - [x] T014 [P] [US2] Implement `FFmpegVideoEncoder` (libavcodec/libx264, `Init`/`Encode`/
-      `Flush`/`Release`, SPS/PPS tagging, `keyframe` + `pts_us` on `EncodedPacket`) in
+      `Flush`/`Release`, SPS/PPS tagging, `keyframe` + `pts_us` on `Packet`) in
       `codec/src/framework/backend/ffmpeg/video_encoder.cc` / `.h` per
       `contracts/backend-contract.md`.
 - [x] T015 [P] [US2] Implement `FFmpegAudioEncoder` (AAC via `libavcodec`) in
@@ -154,8 +154,8 @@ H.264 stream is produced through the public API. MVP achieved. ⚠️ pending T0
 ## Phase 5: User Story 3 — Output ring buffer (Priority: P2)
 
 **Goal**: The encoder→consumer transport you designed: a bounded SPSC lock-free ring
-buffer (`EncodedPacketQueue`) implementing `OutputSink` (producer) and
-`EncodedPacketSource` (consumer), with configurable back-pressure (default `kBlock`).
+buffer (`PacketQueue`) implementing `OutputSink` (producer) and
+`PacketSource` (consumer), with configurable back-pressure (default `kBlock`).
 
 **Independent Test**: Producer pushes N packets, consumer drains with `Pop(deadline)`
 and receives all N in order with zero loss under `kBlock`; verify power-of-two
@@ -164,21 +164,21 @@ capacity + blocking back-pressure in unit tests.
 ### Implementation for User Story 3
 
 - [x] T018 [P] [US3] Declare `Backpressure` enum, `PopResult`, `OutputSink`,
-      `EncodedPacketSource` interfaces in `codec/src/framework/queue/queue_iface.h`
+      `PacketSource` interfaces in `codec/src/framework/queue/queue_iface.h`
       per `contracts/output-queue-contract.md`.
-- [x] T019 [US3] Implement `EncodedPacketQueue` (fixed power-of-two `slots[]`, atomic
+- [x] T019 [US3] Implement `PacketQueue` (fixed power-of-two `slots[]`, atomic
       `head_`/`tail_`, move-in/move-out, `Submit` honoring `Backpressure`) in
-      `codec/src/framework/queue/encoded_packet_queue.h` / `.cc`; constructor
-      `EncodedPacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock)`
+      `codec/src/framework/queue/packet_queue.h` / `.cc`; constructor
+      `PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock)`
       per ADR-005 / `output-queue.md`.
 - [x] T020 [US3] Wire the encoder's optional `OutputSink` push mode: add an
       `OutputSink*` member to the encoder base and,
-      after a successful `Encode()`, forward `EncodedPacket&&` to it (pull API still
+      after a successful `Encode()`, forward `Packet&&` to it (pull API still
       the default; push is opt-in) per `data-model.md` §8. **Done in spec 004
       (`004-encoder-queue-wiring`)**: `SetOutputSink` on the abstract encoders (default
       `kUnsupportedOperation`), FFmpeg video/audio backends push produced packets to the
       sink, caller owns `MarkEos`. Validated end-to-end with a real encoder.
-- [x] T021 [US3] Add ring-buffer unit tests in `codec/tests/queue/encoded_packet_queue_test.cc`:
+- [x] T021 [US3] Add ring-buffer unit tests in `codec/tests/queue/packet_queue_test.cc`:
       SPSC correctness, power-of-two masking, `kBlock` blocks, `kDropOldest` overwrites,
       `kError` returns back-pressure code (contract *Acceptance*).
 
@@ -190,18 +190,18 @@ with no loss under `kBlock`. ⚠️ push path pending T020.
 ## Phase 6: User Story 4 — Consumer (PacketConsumer / PacketPump / FileSink) (Priority: P2)
 
 **Goal**: The consumer side of the ring buffer: a `PacketPump` drain loop pops from
-`EncodedPacketSource` and forwards to a `PacketConsumer`. Ship `FileSinkConsumer`
+`PacketSource` and forwards to a `PacketConsumer`. Ship `FileSinkConsumer`
 (write `.h264`/`.aac` or mux `.mp4`); define `StreamConsumer` contract (RTMP/SRT/WebRTC)
 as deferred-but-designed.
 
-**Independent Test**: End-to-end — encoder → `EncodedPacketQueue` → `PacketPump` →
+**Independent Test**: End-to-end — encoder → `PacketQueue` → `PacketPump` →
 `FileSinkConsumer` writes a valid `.h264` with correct order and no packet loss under
 `kBlock`; swapping in a stub `StreamConsumer` requires no encoder change.
 
 ### Implementation for User Story 4
 
-- [x] T022 [P] [US4] Declare `PacketConsumer` interface (`Consume(EncodedPacket&&)`,
-      `Consume(AudioPacket&&)`, `Flush`, `Finish`) and `PacketPump::Run` helper in
+- [x] T022 [P] [US4] Declare `PacketConsumer` interface (`Consume(Packet&&)`,
+      `Consume(Packet&&)Consume(Packet&&)`, `Flush`, `Finish`) and `PacketPump::Run` helper in
       `codec/src/framework/consumer/packet_consumer.h` / `packet_pump.h` per
       `contracts/output-queue-contract.md` + `output-queue.md` §3.
 - [x] T023 [US4] Implement `FileSinkConsumer` (Annex-B → `.h264` / `.aac`; preserve
@@ -211,7 +211,7 @@ as deferred-but-designed.
       `codec/tests/consumer/file_sink_consumer_test.cc`: `PacketPump` → `FileSinkConsumer`
       produces a valid file, in order, zero loss (contract *Acceptance*). Asserts swapping
       `FileSinkConsumer` for a stub `StreamConsumer` needs no encoder change. **Note**:
-      the producer is synthetic (fake `EncodedPacket`s), not a real encoder — it proves
+      the producer is synthetic (fake `Packet`s), not a real encoder — it proves
       the transport/consumer, not the encoder→queue wiring (that needs T020).
 - [ ] T025 [US4] Add `StreamConsumer` abstract contract header (RTMP/SRT/WebRTC
       deferred per `project_bootstrap.md`) in `codec/src/framework/consumer/stream_consumer.h`
@@ -238,7 +238,7 @@ encodes a clip to `.h264` via `queue` + `FileSinkConsumer` and asserts the file 
       `contracts/public-api.md`; only `video_codec_export.h` exists today. Keep `public`
       as the only `//visibility:public` module.
 - [ ] T027 [US5] Add example `codec/src/examples/ffmpeg_encode_file.cc` that wires
-      `FFmpegVideoEncoder` → `EncodedPacketQueue` → `PacketPump` → `FileSinkConsumer`.
+      `FFmpegVideoEncoder` → `PacketQueue` → `PacketPump` → `FileSinkConsumer`.
 - [ ] T028 [US5] Register the example + a smoke target in `codec/src/examples/BUILD.bazel`
       and add it to `codec/mk/` + `scripts/verify/` categorized validation (per spec 001
       mechanism).
@@ -278,7 +278,7 @@ buffer; CI is green on the target matrix.
 - **US2 (Phase 4, MVP)**: Depends on Foundational + US1 (factory returns the backend). ⚠️ impl done, T017 test pending.
 - **US3 (Phase 5)**: Depends on Foundational (core types) — independent of US1/US2. ✅ impl done, T020 wiring pending.
 - **US4 (Phase 6)**: Depends on US3 (queue) + US1 (`PacketConsumer` consumes
-  `EncodedPacket` from `api`/`core`); can start once US3 lands. ✅ done (T025 pending).
+  `Packet` from `api`/`core`); can start once US3 lands. ✅ done (T025 pending).
 - **US5 (Phase 7)**: Depends on US2 + US4 (needs a real backend + consumer to wire the
   example). ⚠️ all pending.
 - **Polish (Phase N)**: Depends on all desired stories.
@@ -314,8 +314,8 @@ buffer; CI is green on the target matrix.
 ```bash
 # After Foundational (Phase 2) completes:
 # US3 — ring buffer (independent of encoder surface):
-Task: "Declare Backpressure/PopResult/OutputSink/EncodedPacketSource in queue/queue_iface.h"
-Task: "Implement EncodedPacketQueue SPSC in queue/encoded_packet_queue.{h,cc}"
+Task: "Declare Backpressure/PopResult/OutputSink/PacketSource in queue/queue_iface.h"
+Task: "Implement PacketQueue SPSC in queue/packet_queue.{h,cc}"
 # US1 — encoder surface (independent of ring buffer):
 Task: "Declare VideoEncoder/AudioEncoder abstract in api/video_encoder.h"
 Task: "Implement lifecycle state machine in api/encoder_lifecycle.{h,cc}"

@@ -45,7 +45,7 @@ producer (no busy-wait, no packet loss).
 - Encoders are not internally thread-safe (one encoder per thread); no new threads.
 - When a sink is attached, a produced packet goes to exactly ONE destination (the sink);
   `Encode()` returns a moved-from/empty packet (FR-006).
-- End-of-stream is caller-owned (`EncodedPacketSource::MarkEos`), since video+audio producers
+- End-of-stream is caller-owned (`PacketSource::MarkEos`), since video+audio producers
   may share one queue — refinement of FR-005 (encoder flushes the sink; caller marks EOS).
 
 **Scale/Scope**: Two api headers gain one method each; two FFmpeg backend encoders gain push
@@ -113,5 +113,5 @@ cached in this workspace, so the test links quickly).
 
 N/A — No constitution violations. The `backend/ffmpeg → queue` dependency is acyclic and
 consistent with the design's hand-off role (`plan.md` mermaid in spec 002 shows backends
-handing `EncodedPacket` to the queue). Caller-owned EOS is a documented refinement, not a
+handing `Packet` to the queue). Caller-owned EOS is a documented refinement, not a
 violation.

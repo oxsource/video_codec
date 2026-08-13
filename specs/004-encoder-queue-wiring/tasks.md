@@ -3,9 +3,9 @@
 **Input**: Design documents from `specs/004-encoder-queue-wiring/`
 (`plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/push-mode-contract.md`, `quickstart.md`)
 
-**Prerequisites**: spec 002 implementation (encoder framework, `EncodedPacketQueue`,
+**Prerequisites**: spec 002 implementation (encoder framework, `PacketQueue`,
 `PacketPump`, `FileSinkConsumer` shipped) and spec 003 (`utils`, public umbrella). The queue
-producer endpoint is `OutputSink`; consumer endpoint is `EncodedPacketSource` — both exist.
+producer endpoint is `OutputSink`; consumer endpoint is `PacketSource` — both exist.
 
 **Tests**: Included — the spec's acceptance criteria (zero-loss push, pull unchanged, flush +
 EOS, back-pressure) and the project testing strategy require them. Tests are written first
@@ -58,7 +58,7 @@ the build dependency the push implementation needs.
 **Goal**: When a sink is attached, every packet from a successful `Encode()`/`Flush()` is
 moved into the sink; pull API stays the default and unchanged.
 
-**Independent Test**: A real FFmpeg video encoder → `EncodedPacketQueue(kBlock)` → drain
+**Independent Test**: A real FFmpeg video encoder → `PacketQueue(kBlock)` → drain
 produces all N packets in order with zero loss; with no sink, pull still returns full packets.
 
 ### Tests for User Story 1 (write FIRST, ensure they FAIL)
@@ -68,24 +68,25 @@ produces all N packets in order with zero loss; with no sink, pull still returns
       does NOT override `SetOutputSink` returns `StatusCode::kUnsupportedOperation` (default
       contract, per push-mode-contract A4).
 - [x] T005 [P] [US1] Add real-encoder push test in
-      `codec/tests/backend/ffmpeg/encode_push_test.cc`: attach `EncodedPacketQueue(kBlock)`
+      `codec/tests/backend/ffmpeg/encode_push_test.cc`: attach `PacketQueue(kBlock)`
       to a real FFmpeg video encoder, encode N frames, drain and assert order + zero loss;
       assert `Encode()` returns `kOk` with an empty packet in push mode (A1); with no sink,
       assert `Encode()` returns the full packet (A2); flush then caller `MarkEos()` → drain
       observes `kEos` (A3).
 - [x] T006 [P] [US1] Add audio push test in
       `codec/tests/backend/ffmpeg/audio_push_test.cc`: attach the queue to a real FFmpeg AAC
-      encoder, encode audio frames, assert `AudioPacket`s arrive at the sink in order (A5).
+      encoder, encode audio frames, assert audio packets (`PacketType::kAudio`) arrive at the
+      sink in order (A5).
 
 ### Implementation for User Story 1
 
 - [x] T007 [US1] Implement push in `codec/src/framework/backend/ffmpeg/video_encoder.h` /
       `.cc`: override `SetOutputSink` to store a non-owning `OutputSink* sink_`; in `Drain()`
-      and `Flush()`, when `sink_` is set, move the produced `EncodedPacket&&` into
+      and `Flush()`, when `sink_` is set, move the produced `Packet&&` into
       `sink_->Submit(...)` and return an empty packet with `kOk`; on `Release()` set
       `sink_ = nullptr`.
 - [x] T008 [US1] Implement push in `codec/src/framework/backend/ffmpeg/audio_encoder.h` /
-      `.cc`: same pattern for `AudioPacket` via `OutputSink::Submit(AudioPacket&&)`.
+      `.cc`: same pattern for audio via `OutputSink::Submit(Packet&&)`.
 
 **Checkpoint**: `bazel test //tests/backend/ffmpeg/...` passes — real encoder → queue → drain
 is order-preserving and lossless; pull mode is unchanged.
@@ -104,7 +105,7 @@ full queue, then after drain all packets arrive in order with zero loss.
 
 - [x] T009 [US2] Add the back-pressure pacing test in
       `codec/tests/backend/ffmpeg/encode_push_test.cc`: slow consumer (drain with delay) over
-      a small bounded `EncodedPacketQueue(kBlock)` fed by a real encoder; assert the producer
+      a small bounded `PacketQueue(kBlock)` fed by a real encoder; assert the producer
       blocks (test completes with zero loss) and all packets arrive in order after the
       consumer catches up (SC-003).
 

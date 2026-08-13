@@ -57,10 +57,10 @@ StatusCode FFmpegAudioEncoder::Init() {
   return StatusCode::kOk;
 }
 
-Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
+Result<Packet> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
   if (lifecycle_.Encode() != StatusCode::kOk)
-    return Err<AudioPacket>(StatusCode::kNotInitialized);
-  if (frame.data.empty()) return Err<AudioPacket>(StatusCode::kInvalidArgument);
+    return Err<Packet>(StatusCode::kNotInitialized);
+  if (frame.data.empty()) return Err<Packet>(StatusCode::kInvalidArgument);
 
   const int channels = config_.channels;
   const int samples = frame_->nb_samples;
@@ -69,7 +69,7 @@ Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
   const int16_t* src = reinterpret_cast<const int16_t*>(frame.data.data());
 
   if (av_frame_make_writable(frame_) < 0)
-    return Err<AudioPacket>(StatusCode::kEncodeFailed);
+    return Err<Packet>(StatusCode::kEncodeFailed);
   for (int c = 0; c < channels; ++c) {
     float* dst = reinterpret_cast<float*>(frame_->data[c]);
     for (int i = 0; i < samples; ++i) {
@@ -83,15 +83,15 @@ Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
   (void)in_samples;
 
   if (avcodec_send_frame(ctx_, frame_) < 0)
-    return Err<AudioPacket>(StatusCode::kEncodeFailed);
+    return Err<Packet>(StatusCode::kEncodeFailed);
   return Drain(/*drain_eof=*/false);
 }
 
-Result<AudioPacket> FFmpegAudioEncoder::Flush() {
+Result<Packet> FFmpegAudioEncoder::Flush() {
   if (lifecycle_.Flush() != StatusCode::kOk)
-    return Err<AudioPacket>(StatusCode::kNotInitialized);
+    return Err<Packet>(StatusCode::kNotInitialized);
   avcodec_send_frame(ctx_, nullptr);
-  Result<AudioPacket> r = Drain(/*drain_eof=*/true);
+  Result<Packet> r = Drain(/*drain_eof=*/true);
   if (sink_) sink_->Flush();
   return r;
 }
@@ -101,13 +101,14 @@ StatusCode FFmpegAudioEncoder::SetOutputSink(OutputSink* sink) {
   return StatusCode::kOk;
 }
 
-Result<AudioPacket> FFmpegAudioEncoder::Drain(bool drain_eof) {
-  AudioPacket out;  // pull-mode result (push mode returns an empty packet)
+Result<Packet> FFmpegAudioEncoder::Drain(bool drain_eof) {
+  Packet out;  // pull-mode result (push mode returns an empty packet)
   for (;;) {
     int ret = avcodec_receive_packet(ctx_, pkt_);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
-    if (ret < 0) return Err<AudioPacket>(StatusCode::kEncodeFailed);
-    AudioPacket pkt;
+    if (ret < 0) return Err<Packet>(StatusCode::kEncodeFailed);
+    Packet pkt;
+    pkt.type = PacketType::kAudio;
     pkt.data.assign(pkt_->data, pkt_->data + pkt_->size);
     pkt.pts_us = pkt_->pts * av_q2d(ctx_->time_base) * 1'000'000;
     pkt.keyframe = false;
@@ -115,7 +116,7 @@ Result<AudioPacket> FFmpegAudioEncoder::Drain(bool drain_eof) {
     if (sink_) {
       // Push mode: single destination is the sink.
       if (sink_->Submit(std::move(pkt)) != StatusCode::kOk) {
-        return Err<AudioPacket>(StatusCode::kEncodeFailed);
+        return Err<Packet>(StatusCode::kEncodeFailed);
       }
     } else {
       out = std::move(pkt);

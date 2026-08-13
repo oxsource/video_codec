@@ -44,7 +44,7 @@ and is visible inside the framework; `public` remains the only public-visibility
 ## Phase 2: Foundational (Blocking Prerequisites)
 
 **Purpose**: The only prerequisite — the `core` types/error model (`VideoFrame`, `AudioFrame`,
-`EncodedPacket`, `PixelFormat`, `SampleFormat`, `StatusCode`, `Result<T>`) — is already
+`Packet`, `PixelFormat`, `SampleFormat`, `StatusCode`, `Result<T>`) — is already
 implemented (commit `628e5be`). Enforce the architecture rule that `utils` must stay
 `core`-only.
 
