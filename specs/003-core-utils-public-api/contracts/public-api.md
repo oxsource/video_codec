@@ -56,10 +56,18 @@ include/export plumbing.
 The `utils` module is `core`-only and exposes (to other framework modules, not necessarily
 to end consumers):
 
-- `ConvertPixelFormat(src, dst_format, ...)` → `StatusCode` (v1: `kI420 ↔ kNV12`)
-- `RowStride(width, format)` → `size_t` (video) / `SampleStride(...)` (audio)
-- `ConvertSampleFormat(src, dst_format, ...)` → `StatusCode` (v1: `kS16`/`kF32` ×
-  interleaved/planar)
+- `Stride::Row(width, format)` → `size_t` (video) / `Stride::Sample(...)`
+  (audio)
+
+Pixel-format conversion moved OUT of `utils` into the libyuv-backed
+`convert/libyuv` module — `PixelConverter::Convert(...)` → `StatusCode`
+(v1: `kI420 ↔ kNV12`). libyuv is a neutral cross-platform dependency, so it is
+available everywhere libyuv links (unlike the FFmpeg-bound audio converter).
+
+PCM sample-format conversion moved OUT of `utils` into the FFmpeg-backed
+`backend/ffmpeg/swr` module (libswresample) — `SwrAudioConverter::Convert(...)`
+→ `StatusCode` (v1: `kS16`/`kF32` × interleaved/planar). It is only available
+where FFmpeg is linked (non-Android).
 
 All return the error model on unsupported input; none produce corrupt output.
 

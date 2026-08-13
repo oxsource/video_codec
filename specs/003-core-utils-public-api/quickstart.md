@@ -39,24 +39,35 @@ int main() {
 `utils` depends only on `core`. Example: prepare a frame for the FFmpeg/AAC backend.
 
 ```cpp
-#include "utils/yuv_convert.h"
 #include "utils/stride.h"
-#include "utils/pcm_convert.h"
+
+// stride for a given width/format
+size_t stride = video_codec::utils::Stride::Row(width, video_codec::PixelFormat::kNV12);
+```
+
+Pixel-format conversion is NOT in `utils` — it lives in the libyuv-backed
+`convert/libyuv` module (cross-platform, available everywhere libyuv links):
+
+```cpp
+#include "convert/libyuv/pixel_convert.h"
 
 // YUV420P (kI420) -> NV12
 video_codec::VideoFrame nv12;
-if (auto st = video_codec::utils::ConvertPixelFormat(i420_frame,
-                                                     video_codec::PixelFormat::kNV12,
-                                                     nv12); !st.ok()) {
+if (auto st = video_codec::PixelConverter::Convert(
+        i420_frame, video_codec::PixelFormat::kNV12, nv12); !st.ok()) {
     // handle error status
 }
+```
 
-// stride for a given width/format
-size_t stride = video_codec::utils::RowStride(width, video_codec::PixelFormat::kNV12);
+PCM sample-format conversion is NOT in `utils` — it lives in the FFmpeg-backed
+`backend/ffmpeg/swr` module (libswresample), available on non-Android builds:
+
+```cpp
+#include "backend/ffmpeg/swr/swr_audio_convert.h"
 
 // PCM: interleaved s16 -> planar f32 (what FFmpeg AAC expects)
-if (auto st = video_codec::utils::ConvertSampleFormat(s16_buf,
-                       video_codec::SampleFormat::kF32Planar, out); !st.ok()) {
+if (auto st = video_codec::SwrAudioConverter::Convert(
+        s16_buf, video_codec::SampleFormat::kF32Planar, out); !st.ok()) {
     // handle error status
 }
 ```
