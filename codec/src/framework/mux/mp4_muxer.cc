@@ -12,7 +12,7 @@ extern "C" {
 #include <libavutil/mem.h>
 }
 
-#include "io/byte_writer.h"
+#include "io/byte_sink.h"
 
 namespace video {
 namespace codec {
@@ -44,15 +44,15 @@ void AppendLenPrefixed(std::vector<uint8_t>* out, const uint8_t* nal,
   out->insert(out->end(), nal, nal + nalen);
 }
 
-// --- avio callbacks bridging the muxer's output to a ByteWriter -------------
+// --- avio callbacks bridging the muxer's output to a ByteSink -------------
 
 int SinkWrite(void* opaque, uint8_t* buf, int size) {
-  auto* sink = static_cast<ByteWriter*>(opaque);
+  auto* sink = static_cast<ByteSink*>(opaque);
   return sink->Write(buf, static_cast<size_t>(size)) ? size : AVERROR(EIO);
 }
 
 int64_t SinkSeek(void* opaque, int64_t offset, int whence) {
-  auto* sink = static_cast<ByteWriter*>(opaque);
+  auto* sink = static_cast<ByteSink*>(opaque);
   switch (whence) {
     case SEEK_SET:
       return sink->Seek(offset) ? offset : -1;
@@ -70,7 +70,7 @@ constexpr int kIoBufferSize = 64 * 1024;
 
 }  // namespace
 
-Mp4Muxer::Mp4Muxer(ByteWriter* sink, int width, int height, int fps,
+Mp4Muxer::Mp4Muxer(ByteSink* sink, int width, int height, int fps,
                    const MuxOptions& options)
     : sink_(sink),
       width_(width),
@@ -194,7 +194,7 @@ Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
     par->extradata_size = static_cast<int>(extradata.size());
   }
 
-  // Route all output through the caller's ByteWriter via a custom AVIOContext.
+  // Route all output through the caller's ByteSink via a custom AVIOContext.
   uint8_t* iobuf = static_cast<uint8_t*>(av_malloc(kIoBufferSize));
   if (!iobuf) {
     avformat_free_context(fmt_);

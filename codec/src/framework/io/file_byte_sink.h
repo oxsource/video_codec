@@ -1,4 +1,4 @@
-// file_writer.h
+// file_byte_sink.h
 #pragma once
 
 #include <cstddef>
@@ -6,20 +6,20 @@
 #include <cstdio>
 #include <string>
 
-#include "io/byte_writer.h"
+#include "io/byte_sink.h"
 
 namespace video {
 namespace codec {
 
-// ByteWriter backed by a FILE* opened for binary writing. Seekable, so it can
+// ByteSink backed by a FILE* opened for binary writing. Seekable, so it can
 // back formats that need random access (e.g. MP4's moov-at-end layout).
-class FileWriter : public ByteWriter {
+class FileByteSink : public ByteSink {
  public:
-  explicit FileWriter(std::string path);
-  ~FileWriter() override;
+  explicit FileByteSink(std::string path);
+  ~FileByteSink() override;
 
-  FileWriter(const FileWriter&) = delete;
-  FileWriter& operator=(const FileWriter&) = delete;
+  FileByteSink(const FileByteSink&) = delete;
+  FileByteSink& operator=(const FileByteSink&) = delete;
 
   // True if the underlying file was opened successfully.
   bool IsOpen() const { return file_ != nullptr; }

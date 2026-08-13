@@ -1,20 +1,20 @@
-// byte_writer_test.cc
+// byte_sink_test.cc
 #include <cstdint>
 #include <fstream>
 #include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "io/file_writer.h"
-#include "io/stream_writer.h"
-#include "io/tee_writer.h"
+#include "io/file_byte_sink.h"
+#include "io/stream_byte_sink.h"
+#include "io/tee_byte_sink.h"
 
 namespace video {
 namespace codec {
 namespace {
 
-// In-memory ByteWriter stub: records bytes and flush count.
-class MemoryWriter : public ByteWriter {
+// In-memory ByteSink stub: records bytes and flush count.
+class MemorySink : public ByteSink {
  public:
   bool Write(const uint8_t* data, size_t size) override {
     buf_.insert(buf_.end(), data, data + size);
@@ -30,9 +30,9 @@ class MemoryWriter : public ByteWriter {
   int flushed_ = 0;
 };
 
-TEST(TeeWriterTest, FansWritesAndFlushesToAllWriters) {
-  MemoryWriter a, b;
-  TeeWriter tee({&a, &b});
+TEST(TeeByteSinkTest, FansWritesAndFlushesToAllWriters) {
+  MemorySink a, b;
+  TeeByteSink tee({&a, &b});
 
   const uint8_t data[] = {1, 2, 3};
   EXPECT_TRUE(tee.Write(data, 3));
@@ -44,21 +44,21 @@ TEST(TeeWriterTest, FansWritesAndFlushesToAllWriters) {
   EXPECT_EQ(b.flushed_, 1);
 }
 
-TEST(TeeWriterTest, PropagatesWriterFailure) {
-  MemoryWriter ok;
-  struct FailWriter : ByteWriter {
+TEST(TeeByteSinkTest, PropagatesWriterFailure) {
+  MemorySink ok;
+  struct FailWriter : ByteSink {
     bool Write(const uint8_t*, size_t) override { return false; }
     bool Flush() override { return false; }
   } fail;
-  TeeWriter tee({&ok, &fail});
+  TeeByteSink tee({&ok, &fail});
   EXPECT_FALSE(tee.Write(nullptr, 0));
   EXPECT_FALSE(tee.Flush());
 }
 
-TEST(StreamWriterTest, PushesViaCallbacksAndIsNonSeekable) {
+TEST(StreamByteSinkTest, PushesViaCallbacksAndIsNonSeekable) {
   std::vector<uint8_t> buf;
   int flushed = 0;
-  StreamWriter writer(
+  StreamByteSink writer(
       [&buf](const uint8_t* data, size_t size) {
         buf.insert(buf.end(), data, data + size);
         return true;
@@ -78,11 +78,11 @@ TEST(StreamWriterTest, PushesViaCallbacksAndIsNonSeekable) {
   EXPECT_EQ(flushed, 1);
 }
 
-TEST(FileWriterTest, WritesFlushesAndTells) {
-  const std::string path = "/tmp/vc_byte_writer_test.bin";
+TEST(FileByteSinkTest, WritesFlushesAndTells) {
+  const std::string path = "/tmp/vc_byte_sink_test.bin";
   std::remove(path.c_str());
   {
-    FileWriter writer(path);
+    FileByteSink writer(path);
     ASSERT_TRUE(writer.IsOpen());
     const uint8_t data[] = {5, 6, 7};
     EXPECT_TRUE(writer.Write(data, 3));

@@ -12,7 +12,7 @@ struct AVFormatContext;
 namespace video {
 namespace codec {
 
-class ByteWriter;
+class ByteSink;
 
 // Muxing options.
 struct MuxOptions {
@@ -25,7 +25,7 @@ struct MuxOptions {
 
 // Muxes encoded H.264 Annex-B packets into the MP4 container (FFmpeg's mov
 // muxer). Purely a format converter: every output byte is written through a
-// caller-supplied ByteWriter (file, memory buffer, network stream, ...) — this
+// caller-supplied ByteSink (file, memory buffer, network stream, ...) — this
 // class never touches the filesystem.
 //
 // The encoder emits Annex-B samples (start codes, SPS/PPS inline). This muxer
@@ -37,7 +37,7 @@ class Mp4Muxer {
  public:
   // `sink` must outlive this muxer. `fps` drives the stream time_base;
   // `width`/`height` are fallbacks for the stream header.
-  Mp4Muxer(ByteWriter* sink, int width = 0, int height = 0, int fps = 30,
+  Mp4Muxer(ByteSink* sink, int width = 0, int height = 0, int fps = 30,
            const MuxOptions& options = MuxOptions());
   ~Mp4Muxer();
 
@@ -65,7 +65,7 @@ class Mp4Muxer {
   Status AnnexBToAvcc(const uint8_t* data, size_t size,
                       std::vector<uint8_t>* out);
 
-  ByteWriter* sink_;
+  ByteSink* sink_;
   int width_;
   int height_;
   int fps_;

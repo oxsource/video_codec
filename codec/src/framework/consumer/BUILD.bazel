@@ -3,8 +3,8 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `consumer` target deps on all modules for backward compatibility.
 #   PacketConsumer (implements queue::PacketSink), FileSinkConsumer (raw
-#   Annex-B / ADTS), Mp4Consumer (any io::ByteWriter + mux::Mp4Muxer).
-# Byte-level writers (file / stream / tee) live in the `io` module; the drain
+#   Annex-B / ADTS), Mp4Consumer (any io::ByteSink + mux::Mp4Muxer).
+# Byte-level sinks (file / stream / tee) live in the `io` module; the drain
 # loop lives in PacketSource::Await (queue module).
 
 cc_library(
@@ -34,7 +34,7 @@ cc_library(
     deps = [
         ":packet_consumer",
         "//src/framework/core:types",
-        "//src/framework/io:byte_writer",
+        "//src/framework/io:byte_sink",
         "//src/framework/mux:mp4_muxer",
     ],
 )

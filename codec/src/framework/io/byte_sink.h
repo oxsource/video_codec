@@ -1,4 +1,4 @@
-// byte_writer.h
+// byte_sink.h
 #pragma once
 
 #include <cstddef>
@@ -10,11 +10,11 @@ namespace codec {
 // Destination for raw bytes produced by a muxer or other binary writer.
 // Implementations own their backing store (file, memory buffer, socket, ...).
 // Writing is always sequential (append). Seek/Tell are OPTIONAL capabilities:
-// seekable writers (e.g. FileWriter) override them for random access, while
-// sequential writers (e.g. StreamWriter) leave them unsupported.
-class ByteWriter {
+// seekable writers (e.g. FileByteSink) override them for random access, while
+// sequential writers (e.g. StreamByteSink) leave them unsupported.
+class ByteSink {
  public:
-  virtual ~ByteWriter() = default;
+  virtual ~ByteSink() = default;
 
   // Append `size` bytes. Returns false on failure.
   virtual bool Write(const uint8_t* data, size_t size) = 0;

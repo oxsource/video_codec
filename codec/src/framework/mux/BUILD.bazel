@@ -8,7 +8,7 @@ package(default_visibility = [
 # aggregate `mux` target deps on all modules for backward compatibility.
 # MP4 container format conversion (FFmpeg-based): Mp4Muxer is a pure format
 # converter (Annex-B -> AVCC + avcC extradata) writing every output byte
-# through a ByteWriter from the `io` module (the muxer's output contract).
+# through a ByteSink from the `io` module (the muxer's output contract).
 # Depends on FFmpeg's libavformat (see third_party/ffmpeg).
 
 cc_library(
@@ -19,7 +19,7 @@ cc_library(
     deps = [
         "//src/framework/core:status",
         "//src/framework/core:types",
-        "//src/framework/io:byte_writer",
+        "//src/framework/io:byte_sink",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],
