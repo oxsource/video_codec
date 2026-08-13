@@ -20,7 +20,7 @@ enc_cfg.width = 640;
 enc_cfg.height = 480;
 enc_cfg.fps = 30;
 enc_cfg.input_format = vc::PixelFormat::kI420;
-enc_cfg.force_backend = vc::Backend::kFFmpeg;
+enc_cfg.backend = vc::Backend::kFFmpeg;
 
 auto encoder = vc::CreateVideoEncoder(enc_cfg);
 encoder->Init();

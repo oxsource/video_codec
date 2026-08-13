@@ -29,7 +29,7 @@ int main() {
 ```
 
 - No other header is needed or should be included by consumer code.
-- To force a backend (debug/tests), set `cfg.force_backend` or call
+- To force a backend (debug/tests), set `cfg.backend` or call
   `video_codec::ResolveBackend(...)` directly.
 - Public symbols are exported automatically for shared-library builds; static builds need
   no extra setup.

@@ -76,13 +76,13 @@ struct VideoEncoderConfig {
     BitrateMode bitrate_mode = BitrateMode::kConstant;
     int gop_size = 0;                       // 0 = auto
     PixelFormat input_format = PixelFormat::kNV12;
-    Backend force_backend = Backend::kAuto; // kAuto → platform select
+    Backend backend = Backend::kAuto; // kAuto → platform select
 };
 
 struct AudioEncoderConfig {
     AudioCodecType codec = AudioCodecType::kAAC;
     int sample_rate = 48000; int channels = 2; int bitrate = 128'000;
-    Backend force_backend = Backend::kAuto;
+    Backend backend = Backend::kAuto;
 };
 ```
 
@@ -124,7 +124,7 @@ Transitions not listed return `Status` (no state mutation, no crash). Diagram in
 
 ## 6. Backend Selection Model
 
-`ResolveBackend(force_backend)`:
+`ResolveBackend(backend)`:
 - `kAndroid` (and platform is android) → `MediaCodecVideoEncoder`
 - `kDarwin` → `FFmpegVideoEncoder` (VideoToolbox reserved; Apple falls back)
 - `kFFmpeg` / `kAuto` (non-android) → `FFmpegVideoEncoder`

@@ -63,7 +63,7 @@ VideoEncoderConfig MakeEncoderConfig() {
   cfg.fps = 30;
   cfg.bitrate = 800'000;
   cfg.input_format = PixelFormat::kI420;
-  cfg.force_backend = Backend::kFFmpeg;
+  cfg.backend = Backend::kFFmpeg;
   return cfg;
 }
 
@@ -74,7 +74,7 @@ MuxerConfig MakeMuxerConfig() {
   cfg.width = 320;
   cfg.height = 240;
   cfg.fps = 30;
-  cfg.force_backend = Backend::kFFmpeg;
+  cfg.backend = Backend::kFFmpeg;
   return cfg;
 }
 

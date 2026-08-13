@@ -46,7 +46,7 @@ namespace video::codec {
 }
 ```
 
-- `Create` resolves the backend via `ResolveBackend(config.force_backend)` (see
+- `Create` resolves the backend via `ResolveBackend(config.backend)` (see
   `data-model.md` §6). On an unsupported combination it returns `nullptr`
   (not an exception).
 - The returned object satisfies the `encoder-contract.md`.

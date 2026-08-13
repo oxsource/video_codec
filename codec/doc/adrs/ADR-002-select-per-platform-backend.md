@@ -16,13 +16,13 @@ Each backend is an independent `BUILD.bazel` subdirectory. The `public` target l
 backend via `select({ "//platforms:<name>": ["//src/framework/backend/<x>"], ... })`, so
 Bazel includes **only** the target platform's backend and its external dependency.
 Runtime `Create()` resolves the concrete class from a platform macro (and an optional
-`force_backend` override).
+`backend` override).
 
 ## Consequences
 
 - Minimal binary footprint per platform (no dead backends / external deps linked).
 - Adding a backend = new subdirectory + one `select()` entry; no central `#ifdef` maze.
-- `force_backend` can override runtime choice but cannot pull a backend the binary did
+- `backend` can override runtime choice but cannot pull a backend the binary did
   not link (it returns `nullptr` instead).
 
 ## Alternatives rejected

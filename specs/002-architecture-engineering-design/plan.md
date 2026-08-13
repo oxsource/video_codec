@@ -91,7 +91,7 @@ codec/doc/architecture/
 ├── module-dependencies.md       # Formal module dependency graph + visibility rules
 ├── error-handling.md            # Status / Result<T> propagation strategy
 ├── lifecycle-model.md           # Encoder lifecycle state machine
-├── backend-selection.md         # Factory + select() + force_backend model
+├── backend-selection.md         # Factory + select() + backend model
 ├── logging-slot.md              # LogSlot abstract interface, plug-in by consumer
 └── output-queue.md              # Ring-buffer transport: encoder → consumer
 
@@ -208,8 +208,8 @@ not mutate state. Full model in `codec/doc/architecture/lifecycle-model.md`.
 
 ```mermaid
 flowchart LR
-    CFG["VideoEncoderConfig / AudioEncoderConfig<br/>force_backend field"]
-    CFG --> RES["ResolveBackend(force_backend)"]
+    CFG["VideoEncoderConfig / AudioEncoderConfig<br/>backend field"]
+    CFG --> RES["ResolveBackend(backend)"]
     RES -->|android| B1["MediaCodecVideoEncoder"]
     RES -->|darwin| B2["FFmpegVideoEncoder (fallback; VT reserved)"]
     RES -->|ffmpeg / auto| B3["FFmpegVideoEncoder"]
@@ -219,7 +219,7 @@ flowchart LR
 ```
 
 Compile-time `select()` ensures the chosen backend (and only it, plus its external dep)
-is linked. `force_backend` overrides platform default for debug/test. Full model in
+is linked. `backend` overrides platform default for debug/test. Full model in
 `codec/doc/architecture/backend-selection.md`.
 
 ### Threading Model

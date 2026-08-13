@@ -40,7 +40,7 @@
 - [x] T005 修改 `codec/src/framework/consumer/packet_consumer.h`：include 从 `queue/queue_iface.h` 改为 `core/packet_sink.h`（保持 `PacketConsumer : public PacketSink`）
 - [x] T006 [P] 更新 `codec/src/framework/core/BUILD.bazel`：新增 `packet_sink` target（hdrs=["packet_sink.h"]），聚合 `core` target 加入依赖；更新 `queue/BUILD.bazel`、`consumer/BUILD.bazel` 中相关 target 依赖（如需要）
 - [x] T007 运行 `bazel test //tests/...`，确认 PacketSink 迁移后 13 测试全绿（纯重构，无行为变化）
-- [x] T008 修改 `codec/src/framework/core/types.h`：新增 `enum class MuxFormat { kMp4 };` 与 `struct MuxerConfig { MuxFormat format=kMp4; bool fragmented=true; int width=0; int height=0; int fps=30; Backend force_backend=kAuto; bool IsValid() const { return width>0 && height>0; } };`（`data-model.md` §MuxerConfig）
+- [x] T008 修改 `codec/src/framework/core/types.h`：新增 `enum class MuxFormat { kMp4 };` 与 `struct MuxerConfig { MuxFormat format=kMp4; bool fragmented=true; int width=0; int height=0; int fps=30; Backend backend=kAuto; bool IsValid() const { return width>0 && height>0; } };`（`data-model.md` §MuxerConfig）
 - [x] T009 新建 `codec/src/framework/api/muxer.h`：通用 `Muxer : public PacketSink` 抽象（`static Create(const MuxerConfig&)`、`virtual Status SetOutput(ByteSink*)`、`Push(VideoPacket&&) override=0`、`Push(AudioPacket&&) override` 默认 `kUnsupportedOperation`、`Flush()/Finish() override=0`、`virtual void Release()=0`），`class ByteSink;` 前向声明（`contracts/muxer-contract.md` §1）
 - [x] T010 更新 `codec/src/framework/api/encoder_factory.h`：新增 `using MuxerCreator = std::function<std::unique_ptr<Muxer>(const MuxerConfig&)>;`、`void RegisterMuxer(Backend, MuxerCreator);`、`std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig&);`（`contracts/muxer-contract.md` §2）
 - [x] T011 更新 `codec/src/framework/api/encoder_factory.cc`：Registry 增 `std::unordered_map<Backend, MuxerCreator> mux;`，实现 `RegisterMuxer`/`CreateMuxer`（经 `ResolveBackend` 选择，缺失返回 nullptr），并实现 `Muxer::Create` 转发
@@ -88,7 +88,7 @@
 
 ### Implementation for User Story 2
 
-- [x] T027 [P] [US2] 更新 `codec/tests/api/muxer_contract_test.cc`：新增用例——`RegisterMuxer` 后 `CreateMuxer(cfg)` 返回对应实例；未注册 Backend（如 kDarwin）返回 nullptr；`cfg.force_backend=kAuto` 解析到当前平台（`contracts/muxer-contract.md` §2）
+- [x] T027 [P] [US2] 更新 `codec/tests/api/muxer_contract_test.cc`：新增用例——`RegisterMuxer` 后 `CreateMuxer(cfg)` 返回对应实例；未注册 Backend（如 kDarwin）返回 nullptr；`cfg.backend=kAuto` 解析到当前平台（`contracts/muxer-contract.md` §2）
 - [x] T028 [US2] 验证 `codec/src/framework/backend/ffmpeg/register.cc` 的 `RegisterMuxer` 调用位于 `alwayslink` 的 register target 中（链接后自注册生效，`CreateMuxer` 非空）
 - [x] T029 [US2] 运行 `bazel test //tests/api:muxer_contract_test` 确认后端选择契约通过
 

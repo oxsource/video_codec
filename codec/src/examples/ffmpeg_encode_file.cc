@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
   cfg.fps = fps;
   cfg.bitrate = 2'000'000;
   cfg.input_format = vc::PixelFormat::kI420;
-  cfg.force_backend = vc::Backend::kFFmpeg;
+  cfg.backend = vc::Backend::kFFmpeg;
 
   // Transport: encoder (push) -> bounded ring buffer -> sink.
   vc::PacketQueue queue(64, vc::Backpressure::kBlock);
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
     mux_cfg.width = width;
     mux_cfg.height = height;
     mux_cfg.fps = fps;
-    mux_cfg.force_backend = vc::Backend::kFFmpeg;
+    mux_cfg.backend = vc::Backend::kFFmpeg;
     muxer = vc::CreateMuxer(mux_cfg);
     if (!muxer) {
       std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg muxer available\n");

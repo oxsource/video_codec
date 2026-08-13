@@ -94,7 +94,7 @@ machine, and factory/backend-selection exactly as in `contracts/encoder-contract
 and `contracts/public-api.md`.
 
 **Independent Test**: A test that constructs an encoder via the factory with
-`force_backend` and asserts the lifecycle rejects `Encode()` before `Init()` (returns
+`backend` and asserts the lifecycle rejects `Encode()` before `Init()` (returns
 `Status`, no crash).
 
 ### Implementation for User Story 1
@@ -110,11 +110,11 @@ and `contracts/public-api.md`.
       Flushed → Released` returning errors on invalid transitions in
       `codec/src/framework/api/encoder_lifecycle.h` / `.cc` per `lifecycle-model.md`.
 - [x] T012 [US1] Implement factory + backend-selection (compile-time platform macro OR
-      `force_backend`) in `codec/src/framework/api/encoder_factory.h` / `.cc` per
+      `backend`) in `codec/src/framework/api/encoder_factory.h` / `.cc` per
       `backend-selection.md` / ADR-002 (`select()`-per-platform backends).
 - [x] T013 [US1] Add lifecycle/selection unit tests in
       `codec/tests/api/encoder_lifecycle_test.cc` (invalid transition → error, not crash;
-      `force_backend` overrides platform default).
+      `backend` overrides platform default).
 
 **Checkpoint**: `api` builds; factory returns the platform-selected backend shim;
 lifecycle enforces order. No real encoding yet (backends are stubbed). ✅ done.

@@ -59,7 +59,7 @@ void RegisterMuxer(Backend b, MuxerCreator fn);
 std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig& cfg);
 ```
 
-- `CreateMuxer` 经 `ResolveBackend(cfg.force_backend)` 选择平台后端。
+- `CreateMuxer` 经 `ResolveBackend(cfg.backend)` 选择平台后端。
 - backend 在静态初始化时自注册（`register.cc`，`alwayslink` 保证链接）。
 - `Muxer::Create` 转发到 `CreateMuxer`。
 
@@ -74,7 +74,7 @@ struct MuxerConfig {
   int width = 0;
   int height = 0;
   int fps = 30;
-  Backend force_backend = Backend::kAuto;
+  Backend backend = Backend::kAuto;
   bool IsValid() const { return width > 0 && height > 0; }
 };
 ```

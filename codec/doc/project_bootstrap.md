@@ -107,7 +107,7 @@ auto aenc = AudioEncoder::Create(AudioEncoderConfig{
 - `android` → `MediaCodecVideoEncoder` / `MediaCodecAudioEncoder`
 - 其他（含 `darwin` 当前）→ `FFmpegVideoEncoder` / `FFmpegAudioEncoder`
 
-一期**只实现上述两套后端**。Apple `VideoToolbox` 后端在架构中预留（Phase 2+），当前 Apple 平台回退到 FFmpeg 后端。允许通过 `force_backend` 显式覆盖（调试 / 测试用途）。
+一期**只实现上述两套后端**。Apple `VideoToolbox` 后端在架构中预留（Phase 2+），当前 Apple 平台回退到 FFmpeg 后端。允许通过 `backend` 显式覆盖（调试 / 测试用途）。
 
 ### FR-003 Android MediaCodec Backend (Primary)
 
@@ -439,7 +439,7 @@ struct VideoEncoderConfig {
     BitrateMode bitrate_mode = BitrateMode::kConstant;
     int gop_size = 0;                        // 0 = auto (e.g. fps*2)
     PixelFormat input_format = PixelFormat::kNV12;
-    Backend force_backend = Backend::kAuto;  // kAuto → platform select
+    Backend backend = Backend::kAuto;  // kAuto → platform select
 };
 
 struct AudioEncoderConfig {
@@ -447,7 +447,7 @@ struct AudioEncoderConfig {
     int sample_rate = 48000;
     int channels = 2;
     int bitrate = 128'000;                   // bits per second
-    Backend force_backend = Backend::kAuto;
+    Backend backend = Backend::kAuto;
 };
 ```
 
@@ -460,7 +460,7 @@ class VideoEncoder {
 public:
     virtual ~VideoEncoder() = default;
 
-    // Factory: picks backend by platform (or force_backend).
+    // Factory: picks backend by platform (or backend).
     static std::unique_ptr<VideoEncoder> Create(const VideoEncoderConfig& config);
 
     virtual bool Init() = 0;
@@ -515,7 +515,7 @@ public:
 
 ```cpp
 std::unique_ptr<VideoEncoder> VideoEncoder::Create(const VideoEncoderConfig& c) {
-    switch (ResolveBackend(c.force_backend)) {
+    switch (ResolveBackend(c.backend)) {
 #if defined(__ANDROID__)
         case Backend::kAndroid:  return std::make_unique<MediaCodecVideoEncoder>(c);
         case Backend::kFFmpeg:   return std::make_unique<FFmpegVideoEncoder>(c);

@@ -30,7 +30,7 @@ implementation yet.
 - **Interface contracts**: pin the public surface (`VideoEncoder` / `AudioEncoder` /
   `InputSurface` / `NativeBuffer`) and the backend contract each platform implements.
 - **Lifecycle & selection**: formalize the encoder lifecycle state machine and the
-  factory/backend-selection rule (compile-time platform macro + `force_backend`).
+  factory/backend-selection rule (compile-time platform macro + `backend`).
 - **Error handling**: a uniform `Result<T>` / status-code strategy across all modules.
 - **Ownership model**: `std::unique_ptr` for owned objects, raw non-owning pointers,
   and the `NativeBuffer` pointer-object convention for zero-copy handles.

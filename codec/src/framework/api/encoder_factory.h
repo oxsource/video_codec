@@ -13,7 +13,7 @@ class VideoEncoder;
 class AudioEncoder;
 class Muxer;
 
-// Resolve which backend to instantiate given a force_backend request and the
+// Resolve which backend to instantiate given a backend request and the
 // current platform. kAuto -> platform select (non-Android -> FFmpeg; Android ->
 // MediaCodec; Apple falls back to FFmpeg, ADR-004).
 Backend ResolveBackend(Backend force);

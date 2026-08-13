@@ -75,7 +75,7 @@ struct VideoEncoderConfig {
   BitrateMode bitrate_mode = BitrateMode::kConstant;
   int gop_size = 0;  // 0 = auto
   PixelFormat input_format = PixelFormat::kNV12;
-  Backend force_backend = Backend::kAuto;  // kAuto -> platform select
+  Backend backend = Backend::kAuto;  // kAuto -> platform select
 
   // True when the config describes an encodable stream (dimensions set).
   // Backends call this to reject bad configs before doing any real work.
@@ -87,7 +87,7 @@ struct AudioEncoderConfig {
   int sample_rate = 48000;
   int channels = 2;
   int bitrate = 128'000;
-  Backend force_backend = Backend::kAuto;
+  Backend backend = Backend::kAuto;
 
   // True when the config describes an encodable stream (rate + channels set).
   bool IsValid() const { return sample_rate > 0 && channels > 0; }
@@ -103,7 +103,7 @@ struct MuxerConfig {
   int width = 0;           // stream metadata; SPS-parse fallbacks
   int height = 0;
   int fps = 30;
-  Backend force_backend = Backend::kAuto;  // kAuto -> platform select
+  Backend backend = Backend::kAuto;  // kAuto -> platform select
 
   // True when the config describes a muxable stream (dimensions set).
   // Backends call this to reject bad configs before doing any real work.

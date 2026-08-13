@@ -34,7 +34,7 @@ TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
   cfg.sample_rate = 48000;
   cfg.channels = 2;
   cfg.bitrate = 128'000;
-  cfg.force_backend = Backend::kFFmpeg;
+  cfg.backend = Backend::kFFmpeg;
 
   std::unique_ptr<AudioEncoder> encoder = CreateAudioEncoder(cfg);
   ASSERT_NE(encoder, nullptr);

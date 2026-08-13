@@ -47,7 +47,7 @@ VideoEncoderConfig MakeConfig() {
   cfg.fps = 30;
   cfg.bitrate = 800'000;
   cfg.input_format = PixelFormat::kI420;
-  cfg.force_backend = Backend::kFFmpeg;
+  cfg.backend = Backend::kFFmpeg;
   return cfg;
 }
 

@@ -60,7 +60,7 @@ Video/Audio 编码器完全对称，零新增抽象。
 ## R5 — MuxerConfig 设计
 
 **Decision**: `enum class MuxFormat { kMp4 };`（v1）与 `struct MuxerConfig { MuxFormat
-format; bool fragmented=true; int width/height/fps; Backend force_backend; IsValid(); }`
+format; bool fragmented=true; int width/height/fps; Backend backend; IsValid(); }`
 放入 `core/types.h`，与 Video/AudioEncoderConfig 同居。`VideoEncoderConfig` 不引用
 MuxerConfig。
 

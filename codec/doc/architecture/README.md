@@ -13,7 +13,7 @@ is externally visible. See [module-dependencies.md](module-dependencies.md).
 ## Key models
 
 - [lifecycle-model.md](lifecycle-model.md) — encoder lifecycle state machine
-- [backend-selection.md](backend-selection.md) — factory + `select()` + `force_backend`
+- [backend-selection.md](backend-selection.md) — factory + `select()` + `backend`
 - [threading.md](threading.md) — sync-by-default, caller-owns-thread
 - [error-handling.md](error-handling.md) — `Status` / `Result<T>`, no exceptions
 - [logging-slot.md](logging-slot.md) — pluggable `LogSlot`

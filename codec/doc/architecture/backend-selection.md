@@ -2,7 +2,7 @@
 
 ## At runtime (factory)
 
-`VideoEncoder::Create` / `AudioEncoder::Create` call `ResolveBackend(force_backend)`:
+`VideoEncoder::Create` / `AudioEncoder::Create` call `ResolveBackend(backend)`:
 
 ```cpp
 Backend ResolveBackend(Backend force) {
@@ -40,10 +40,10 @@ deps = [":core", ":api", ":utils"] + select({
 Consequences:
 - A non-Android build never pulls `@androidndk` (host stays NDK-free).
 - A non-desktop build never pulls `@ffmpeg` unless explicitly selected.
-- `force_backend` does **not** change the link; it changes only the runtime choice and
+- `backend` does **not** change the link; it changes only the runtime choice and
   is intended for debug/test on a build that already links the target backend.
 
-## `force_backend` use
+## `backend` use
 
 Set in `VideoEncoderConfig`/`AudioEncoderConfig` to override platform auto-selection
 (e.g. test the FFmpeg backend on Android, or the Android backend in an emulator build).

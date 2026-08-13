@@ -49,7 +49,7 @@ void RegisterAudioEncoder(Backend b, AudioEncoderCreator fn) {
 
 std::unique_ptr<VideoEncoder> CreateVideoEncoder(
     const VideoEncoderConfig& cfg) {
-  Backend b = ResolveBackend(cfg.force_backend);
+  Backend b = ResolveBackend(cfg.backend);
   std::lock_guard<std::mutex> lk(reg().mu);
   auto it = reg().video.find(b);
   if (it == reg().video.end()) return nullptr;
@@ -58,7 +58,7 @@ std::unique_ptr<VideoEncoder> CreateVideoEncoder(
 
 std::unique_ptr<AudioEncoder> CreateAudioEncoder(
     const AudioEncoderConfig& cfg) {
-  Backend b = ResolveBackend(cfg.force_backend);
+  Backend b = ResolveBackend(cfg.backend);
   std::lock_guard<std::mutex> lk(reg().mu);
   auto it = reg().audio.find(b);
   if (it == reg().audio.end()) return nullptr;
@@ -71,7 +71,7 @@ void RegisterMuxer(Backend b, MuxerCreator fn) {
 }
 
 std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig& cfg) {
-  Backend b = ResolveBackend(cfg.force_backend);
+  Backend b = ResolveBackend(cfg.backend);
   std::lock_guard<std::mutex> lk(reg().mu);
   auto it = reg().mux.find(b);
   if (it == reg().mux.end()) return nullptr;

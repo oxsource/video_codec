@@ -35,8 +35,8 @@ struct NativeBuffer {              // zero-copy pointer object
 };
 
 struct VideoEncoderConfig { /* codec, width, height, fps, bitrate, bitrate_mode,
-                              gop_size, input_format, force_backend */ };
-struct AudioEncoderConfig { /* codec, sample_rate, channels, bitrate, force_backend */ };
+                              gop_size, input_format, backend */ };
+struct AudioEncoderConfig { /* codec, sample_rate, channels, bitrate, backend */ };
 
 }  // namespace video::codec
 ```
@@ -80,7 +80,7 @@ public:
 
 ## 4. Factory Selection Contract
 
-- `Create()` resolves `force_backend` first, then compile-time platform macro.
+- `Create()` resolves `backend` first, then compile-time platform macro.
 - `Backend::kAuto` on Android → `backend/android`; elsewhere → `backend/ffmpeg`.
 - Apple (`darwin`) currently falls back to `backend/ffmpeg` (VideoToolbox reserved).
 

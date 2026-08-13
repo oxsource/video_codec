@@ -109,7 +109,7 @@ TEST(MuxerContractTest, CreateMuxerResolvesRegisteredBackend) {
   cfg.width = 320;
   cfg.height = 240;
   cfg.fps = 30;
-  cfg.force_backend = Backend::kDarwin;
+  cfg.backend = Backend::kDarwin;
   std::unique_ptr<Muxer> muxer = CreateMuxer(cfg);
   EXPECT_NE(muxer, nullptr);
 }
@@ -121,7 +121,7 @@ TEST(MuxerContractTest, CreateMuxerReturnsNullptrForUnregisteredBackend) {
   cfg.width = 320;
   cfg.height = 240;
   cfg.fps = 30;
-  cfg.force_backend = Backend::kAndroid;  // not registered on this host
+  cfg.backend = Backend::kAndroid;  // not registered on this host
   std::unique_ptr<Muxer> muxer = CreateMuxer(cfg);
   EXPECT_EQ(muxer, nullptr);
 }

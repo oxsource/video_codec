@@ -30,7 +30,7 @@ struct MuxerConfig {
   int width = 0;            // 流元数据；SPS 解析失败的兜底
   int height = 0;
   int fps = 30;
-  Backend force_backend = Backend::kAuto;
+  Backend backend = Backend::kAuto;
 
   bool IsValid() const { return width > 0 && height > 0; }
 };
