@@ -1,10 +1,11 @@
 // file_sink_consumer.h
 #pragma once
 
-#include <fstream>
+#include <memory>
 #include <string>
 
 #include "consumer/packet_consumer.h"
+#include "io/file_byte_sink.h"
 
 namespace video {
 namespace codec {
@@ -14,6 +15,9 @@ namespace codec {
 // keyframe boundaries are preserved because packets arrive in order from the
 // ring buffer. A muxer (`.mp4`) is just another PacketConsumer behind the same
 // interface.
+//
+// Byte-level output is delegated to io::FileByteSink, so this class only
+// adapts packets to a file: no FILE*/fstream handling of its own.
 class FileSinkConsumer : public PacketConsumer {
  public:
   // `video_path` is required; `audio_path` is optional.
@@ -25,10 +29,8 @@ class FileSinkConsumer : public PacketConsumer {
   Status Finish() override;  // flush + close
 
  private:
-  std::string video_path_;
-  std::string audio_path_;
-  std::ofstream video_file_;
-  std::ofstream audio_file_;
+  std::unique_ptr<FileByteSink> video_sink_;
+  std::unique_ptr<FileByteSink> audio_sink_;
 };
 
 }  // namespace codec

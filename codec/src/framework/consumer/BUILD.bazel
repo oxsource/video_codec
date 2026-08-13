@@ -23,7 +23,10 @@ cc_library(
     srcs = ["file_sink_consumer.cc"],
     hdrs = ["file_sink_consumer.h"],
     includes = [".."],
-    deps = [":packet_consumer"],
+    deps = [
+        ":packet_consumer",
+        "//src/framework/io:file_byte_sink",
+    ],
 )
 
 cc_library(
