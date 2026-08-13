@@ -19,8 +19,7 @@ cc_binary(
     deps = [
         "//src/framework/public:video_codec",  # encoder API + FFmpeg backend
         "//src/framework/queue",              # EncodedPacketQueue
-        "//src/framework/consumer",           # PacketPump + FileSinkConsumer
-        "//src/framework/mux",                # Mp4FileConsumer (mp4 output)
+        "//src/framework/consumer",           # PacketPump + FileSinkConsumer + Mp4FileConsumer
         "//src/framework/utils",              # SMPTE color-bars generator
     ],
 )

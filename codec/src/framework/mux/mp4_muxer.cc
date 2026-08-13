@@ -11,7 +11,7 @@ extern "C" {
 #include <libavutil/mem.h>
 }
 
-#include "consumer/byte_sink.h"
+#include "mux/byte_sink.h"
 
 namespace video {
 namespace codec {

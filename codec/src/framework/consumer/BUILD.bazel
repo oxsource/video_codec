@@ -1,8 +1,9 @@
 package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__", "//src/examples:__subpackages__"])
 
-# PacketConsumer interface, PacketPump drain loop, FileSinkConsumer, and the
-# ByteSink/FileByteSink byte-output primitives (used by muxers that write files).
-# Depends on core (types), queue (EncodedPacketSource), api (per module graph).
+# PacketConsumer interface, PacketPump drain loop, file sinks (FileSinkConsumer,
+# FileByteSink), and the PacketConsumer adapters over format converters
+# (Mp4FileConsumer: FileByteSink + mux::Mp4Muxer).
+# Depends on core (types), queue (EncodedPacketSource), api, and mux (format).
 cc_library(
     name = "consumer",
     srcs = glob(["*.cc"]),
@@ -12,5 +13,6 @@ cc_library(
         "//src/framework/core",
         "//src/framework/api",
         "//src/framework/queue",
+        "//src/framework/mux",
     ],
 )

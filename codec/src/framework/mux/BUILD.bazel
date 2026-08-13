@@ -4,11 +4,11 @@ package(default_visibility = [
     "//src/examples:__subpackages__",
 ])
 
-# Container muxers implemented as PacketConsumers (FFmpeg-based). The encoder and
-# pump are transport-agnostic; swapping FileSinkConsumer for Mp4FileConsumer is a
-# one-line change. Mp4Muxer is a pure format converter writing to a ByteSink;
-# Mp4FileConsumer wires it to a FileByteSink. Depends on FFmpeg's libavformat
-# (see third_party/ffmpeg).
+# MP4 container format conversion (FFmpeg-based). Mp4Muxer is a pure format
+# converter: Annex-B -> AVCC + avcC extradata, writing every output byte
+# through a ByteSink (the muxer's output contract, defined here). File I/O and
+# PacketConsumer adapters live in the consumer module, which depends on mux.
+# Depends on FFmpeg's libavformat (see third_party/ffmpeg).
 cc_library(
     name = "mux",
     srcs = glob(["*.cc"]),
@@ -16,7 +16,6 @@ cc_library(
     includes = [".."],
     deps = [
         "//src/framework/core",
-        "//src/framework/consumer",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],

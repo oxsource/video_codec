@@ -33,9 +33,9 @@
 #include "api/encoder_factory.h"
 #include "api/video_encoder.h"
 #include "consumer/file_sink_consumer.h"
+#include "consumer/mp4_file_consumer.h"
 #include "consumer/packet_consumer.h"
 #include "consumer/packet_pump.h"
-#include "mux/mp4_file_consumer.h"
 #include "queue/encoded_packet_queue.h"
 #include "utils/smpte_bars.h"
 
