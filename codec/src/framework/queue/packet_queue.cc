@@ -69,11 +69,14 @@ Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us) {
   bool video_done = false;
   bool audio_done = false;
 
-  while (!video_done || !audio_done) {
+  // DrainOne no-ops on a done stream, so the loop calls both unconditionally;
+  // termination is the explicit break once BOTH streams hit EOS.
+  while (true) {
     if (!DrainOne(*this, vp, video_done, sink, deadline_us, "video") ||
         !DrainOne(*this, ap, audio_done, sink, deadline_us, "audio")) {
       return Status::kEncodeFailed;
     }
+    if (video_done && audio_done) break;  // both streams finished
   }
   return sink.Finish();
 }
