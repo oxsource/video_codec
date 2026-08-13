@@ -127,15 +127,13 @@ Status FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
     uint8_t* dst = frame_->data[p];
     int src_stride =
         frame.stride[p] > 0 ? frame.stride[p] : frame_->linesize[p];
-    // Chroma height is h/2 for both NV12 and I420 (the original ternary was
-    // redundant).
+    // Chroma height is h/2 for both NV12 and I420.
     const int rows = (p == 0) ? frame.height : frame.height / 2;
-    // Bytes per row copied: luma = width; NV12 UV = width (interleaved); I420
-    // U/V = width/2.
-    int copy_bytes =
-        (p == 0) ? frame_->width
-                 : ((frame.format == PixelFormat::kNV12) ? frame_->width
-                                                         : frame_->width / 2);
+    // Bytes per row: luma = width; NV12 chroma = width (interleaved UV); I420
+    // chroma (U or V) = width/2.
+    const int copy_bytes = (p == 0 || frame.format == PixelFormat::kNV12)
+                               ? frame_->width
+                               : frame_->width / 2;
     for (int y = 0; y < rows; ++y) {
       std::memcpy(dst + y * frame_->linesize[p], src + y * src_stride,
                   static_cast<size_t>(copy_bytes));
