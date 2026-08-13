@@ -5,8 +5,10 @@ package(default_visibility = [
 ])
 
 # Container muxers implemented as PacketConsumers (FFmpeg-based). The encoder and
-# pump are transport-agnostic; swapping FileSinkConsumer for Mp4MuxConsumer is a
-# one-line change. Depends on FFmpeg's libavformat (see third_party/ffmpeg).
+# pump are transport-agnostic; swapping FileSinkConsumer for Mp4FileConsumer is a
+# one-line change. Mp4Muxer is a pure format converter writing to a ByteSink;
+# Mp4FileConsumer wires it to a FileByteSink. Depends on FFmpeg's libavformat
+# (see third_party/ffmpeg).
 cc_library(
     name = "mux",
     srcs = glob(["*.cc"]),

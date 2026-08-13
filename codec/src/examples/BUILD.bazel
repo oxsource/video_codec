@@ -1,7 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
 # Runnable example: SMPTE color bars -> FFmpeg encoder (push) -> queue ->
-# PacketPump -> consumer (.mp4 via Mp4MuxConsumer, or raw .h264). The FFmpeg
+# PacketPump -> consumer (.mp4 via Mp4FileConsumer, or raw .h264). The FFmpeg
 # static archive is force-loaded (ADR-001) exactly like the backend tests and
 # ffmpeg_spike.
 cc_binary(
@@ -20,7 +20,7 @@ cc_binary(
         "//src/framework/public:video_codec",  # encoder API + FFmpeg backend
         "//src/framework/queue",              # EncodedPacketQueue
         "//src/framework/consumer",           # PacketPump + FileSinkConsumer
-        "//src/framework/mux",                # Mp4MuxConsumer (mp4 output)
+        "//src/framework/mux",                # Mp4FileConsumer (mp4 output)
         "//src/framework/utils",              # SMPTE color-bars generator
     ],
 )

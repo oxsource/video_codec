@@ -13,7 +13,7 @@ filegroup(
 # with the libx264 encoder enabled, using the NDK-free host toolchain. Output is
 # a static lib + headers that the ffmpeg_spike (and the real backend/ffmpeg) can
 # consume. libavformat is required for the MP4 muxer consumer
-# (mux/mp4_mux_consumer); libswresample powers the audio sample-format converter
+# (mux/mp4_file_consumer); libswresample powers the audio sample-format converter
 # (backend/ffmpeg/swr).
 #
 # Why static + BSD-merged (not shared, not GNU-ar):

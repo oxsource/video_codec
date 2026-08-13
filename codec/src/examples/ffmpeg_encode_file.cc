@@ -16,7 +16,7 @@
 //
 //   --raw  write a raw Annex-B H.264 elementary stream (FileSinkConsumer).
 //          Otherwise the output is muxed into an MP4 container
-//          (Mp4MuxConsumer), regardless of the file extension.
+//          (Mp4FileConsumer), regardless of the file extension.
 //
 // Examples:
 //   bazel run //src/examples:ffmpeg_encode_file -- out.mp4 5
@@ -35,7 +35,7 @@
 #include "consumer/file_sink_consumer.h"
 #include "consumer/packet_consumer.h"
 #include "consumer/packet_pump.h"
-#include "mux/mp4_mux_consumer.h"
+#include "mux/mp4_file_consumer.h"
 #include "queue/encoded_packet_queue.h"
 #include "utils/smpte_bars.h"
 
@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
                       out_path.compare(out_path.size() - 4, 4, ".mp4") == 0;
   if (is_mp4) {
     consumer =
-        std::make_unique<vc::Mp4MuxConsumer>(out_path, width, height, fps);
+        std::make_unique<vc::Mp4FileConsumer>(out_path, width, height, fps);
   } else {
     consumer = std::make_unique<vc::FileSinkConsumer>(out_path);
   }

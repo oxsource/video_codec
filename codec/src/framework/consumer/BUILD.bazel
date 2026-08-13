@@ -1,6 +1,7 @@
 package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__", "//src/examples:__subpackages__"])
 
-# PacketConsumer interface, PacketPump drain loop, FileSinkConsumer.
+# PacketConsumer interface, PacketPump drain loop, FileSinkConsumer, and the
+# ByteSink/FileByteSink byte-output primitives (used by muxers that write files).
 # Depends on core (types), queue (EncodedPacketSource), api (per module graph).
 cc_library(
     name = "consumer",

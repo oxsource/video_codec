@@ -1,13 +1,17 @@
-// mp4_mux_consumer.cc
-#include "mux/mp4_mux_consumer.h"
+// mp4_muxer.cc
+#include "mux/mp4_muxer.h"
 
+#include <cerrno>
 #include <cstring>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#include <libavutil/mem.h>
 }
+
+#include "consumer/byte_sink.h"
 
 namespace video {
 namespace codec {
@@ -39,26 +43,51 @@ void AppendLenPrefixed(std::vector<uint8_t>* out, const uint8_t* nal,
   out->insert(out->end(), nal, nal + nalen);
 }
 
+// --- avio callbacks bridging the muxer's output to a ByteSink -------------
+
+int SinkWrite(void* opaque, uint8_t* buf, int size) {
+  auto* sink = static_cast<ByteSink*>(opaque);
+  return sink->Write(buf, static_cast<size_t>(size)) ? size : AVERROR(EIO);
+}
+
+int64_t SinkSeek(void* opaque, int64_t offset, int whence) {
+  auto* sink = static_cast<ByteSink*>(opaque);
+  switch (whence) {
+    case SEEK_SET:
+      return sink->Seek(offset) ? offset : -1;
+    case SEEK_CUR: {
+      const int64_t pos = sink->Tell();
+      if (pos < 0) return -1;
+      return sink->Seek(pos + offset) ? pos + offset : -1;
+    }
+    default:
+      return -1;  // SEEK_END / AVSEEK_SIZE unsupported
+  }
+}
+
+constexpr int kIoBufferSize = 64 * 1024;
+
 }  // namespace
 
-Mp4MuxConsumer::Mp4MuxConsumer(std::string path, int width, int height, int fps)
-    : path_(std::move(path)),
-      width_(width),
-      height_(height),
-      fps_(fps > 0 ? fps : 30) {}
+Mp4Muxer::Mp4Muxer(ByteSink* sink, int width, int height, int fps)
+    : sink_(sink), width_(width), height_(height), fps_(fps > 0 ? fps : 30) {}
 
-Mp4MuxConsumer::~Mp4MuxConsumer() {
+Mp4Muxer::~Mp4Muxer() {
+  // Safety net: write the trailer if the caller never called Finish().
   if (opened_) {
     av_write_trailer(fmt_);
-    if (fmt_ && fmt_->pb) avio_closep(&fmt_->pb);
+    if (fmt_->pb) {
+      avio_flush(fmt_->pb);
+      avio_context_free(&fmt_->pb);
+    }
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     opened_ = false;
   }
 }
 
-StatusCode Mp4MuxConsumer::BuildExtradata(const uint8_t* data, size_t size,
-                                          std::vector<uint8_t>* out) {
+StatusCode Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
+                                    std::vector<uint8_t>* out) {
   const uint8_t* p = data;
   const uint8_t* end = data + size;
   std::vector<uint8_t> sps, pps;
@@ -98,8 +127,8 @@ StatusCode Mp4MuxConsumer::BuildExtradata(const uint8_t* data, size_t size,
   return StatusCode::kOk;
 }
 
-StatusCode Mp4MuxConsumer::AnnexBToAvcc(const uint8_t* data, size_t size,
-                                        std::vector<uint8_t>* out) {
+StatusCode Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
+                                  std::vector<uint8_t>* out) {
   out->clear();
   const uint8_t* p = data;
   const uint8_t* end = data + size;
@@ -121,9 +150,8 @@ StatusCode Mp4MuxConsumer::AnnexBToAvcc(const uint8_t* data, size_t size,
   return out->empty() ? StatusCode::kEncodeFailed : StatusCode::kOk;
 }
 
-StatusCode Mp4MuxConsumer::OpenMuxer(const EncodedPacket& first_keyframe) {
-  if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", path_.c_str()) <
-          0 ||
+StatusCode Mp4Muxer::OpenMuxer(const EncodedPacket& first_keyframe) {
+  if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", nullptr) < 0 ||
       !fmt_) {
     fmt_ = nullptr;
     return StatusCode::kEncodeFailed;
@@ -156,15 +184,23 @@ StatusCode Mp4MuxConsumer::OpenMuxer(const EncodedPacket& first_keyframe) {
     par->extradata_size = static_cast<int>(extradata.size());
   }
 
-  if (!(fmt_->oformat->flags & AVFMT_NOFILE)) {
-    if (avio_open(&fmt_->pb, path_.c_str(), AVIO_FLAG_WRITE) < 0) {
-      avformat_free_context(fmt_);
-      fmt_ = nullptr;
-      return StatusCode::kEncodeFailed;
-    }
+  // Route all output through the caller's ByteSink via a custom AVIOContext.
+  uint8_t* iobuf = static_cast<uint8_t*>(av_malloc(kIoBufferSize));
+  if (!iobuf) {
+    avformat_free_context(fmt_);
+    fmt_ = nullptr;
+    return StatusCode::kEncodeFailed;
+  }
+  fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, sink_, nullptr,
+                                SinkWrite, SinkSeek);
+  if (!fmt_->pb) {
+    av_free(iobuf);
+    avformat_free_context(fmt_);
+    fmt_ = nullptr;
+    return StatusCode::kEncodeFailed;
   }
   if (avformat_write_header(fmt_, nullptr) < 0) {
-    avio_closep(&fmt_->pb);
+    avio_context_free(&fmt_->pb);
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     return StatusCode::kEncodeFailed;
@@ -174,7 +210,7 @@ StatusCode Mp4MuxConsumer::OpenMuxer(const EncodedPacket& first_keyframe) {
   return StatusCode::kOk;
 }
 
-StatusCode Mp4MuxConsumer::Consume(EncodedPacket&& pkt) {
+StatusCode Mp4Muxer::Consume(const EncodedPacket& pkt) {
   if (pkt.data.empty()) return StatusCode::kOk;
 
   if (!opened_) {
@@ -210,10 +246,13 @@ StatusCode Mp4MuxConsumer::Consume(EncodedPacket&& pkt) {
   return ret < 0 ? StatusCode::kEncodeFailed : StatusCode::kOk;
 }
 
-StatusCode Mp4MuxConsumer::Finish() {
+StatusCode Mp4Muxer::Finish() {
   if (opened_) {
     av_write_trailer(fmt_);
-    if (fmt_->pb) avio_closep(&fmt_->pb);
+    if (fmt_->pb) {
+      avio_flush(fmt_->pb);
+      avio_context_free(&fmt_->pb);
+    }
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     opened_ = false;
