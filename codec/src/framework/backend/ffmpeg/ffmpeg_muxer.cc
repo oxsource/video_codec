@@ -44,6 +44,16 @@ void AppendLenPrefixed(std::vector<uint8_t>* out, const uint8_t* nal, size_t nal
   out->insert(out->end(), nal, nal + nalen);
 }
 
+// libavformat container name for the requested format. Extend when new
+// MuxFormat values are added (kMkv, kTs, kWebm).
+const char* MuxFormatName(MuxFormat format) {
+  switch (format) {
+    case MuxFormat::kMp4:
+      return "mp4";
+  }
+  return "mp4";  // unreachable for the current single-format enum
+}
+
 }  // namespace
 
 int FFmpegMuxer::SinkWrite(void* opaque, uint8_t* buf, int size) {
@@ -139,7 +149,8 @@ Status FFmpegMuxer::AnnexBToAvcc(const uint8_t* data, size_t size, std::vector<u
 }
 
 Status FFmpegMuxer::OpenMuxer(const VideoPacket& first_keyframe) {
-  if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", nullptr) < 0 || !fmt_) {
+  if (avformat_alloc_output_context2(&fmt_, nullptr, MuxFormatName(config_.format), nullptr) < 0 ||
+      !fmt_) {
     fmt_ = nullptr;
     return Status::kEncodeFailed;
   }
