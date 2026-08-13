@@ -124,11 +124,11 @@ int main(int argc, char** argv) {
   }
 
   // Drain thread: Await delivers packets to the sink (muxer or raw consumer)
-  // and finishes it at EOS. Both implement PacketSink, so the conditional
-  // resolves to the common base PacketSink* and Await needs no branch.
+  // and finishes it at EOS. Both implement PacketSink; PacketSink::Ptr
+  // upcasts the concrete unique_ptr to the common base so Await needs no
+  // branch.
   const auto drain = [&] {
-    vc::PacketSink* sink = muxer ? static_cast<vc::PacketSink*>(muxer.get())
-                                 : static_cast<vc::PacketSink*>(consumer.get());
+    vc::PacketSink* sink = muxer ? vc::PacketSink::Ptr(muxer) : vc::PacketSink::Ptr(consumer);
     queue.Await(*sink);
   };
   std::thread worker(drain);

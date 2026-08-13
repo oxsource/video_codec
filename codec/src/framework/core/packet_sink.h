@@ -1,6 +1,8 @@
 // packet_sink.h
 #pragma once
 
+#include <memory>
+
 #include "core/status.h"
 #include "core/types.h"
 
@@ -23,6 +25,14 @@ class PacketSink {
   virtual Status Push(AudioPacket&& pkt) = 0;
   virtual Status Flush() { return Status::kOk; }   // segment boundary
   virtual Status Finish() { return Status::kOk; }  // EOS / teardown
+
+  // Upcast a derived `unique_ptr<T>` (T : PacketSink) to a base PacketSink*.
+  // Lets callers select between sinks of different concrete types through the
+  // common interface (e.g. a conditional `a ? Ptr(x) : Ptr(y)`).
+  template <typename T>
+  static PacketSink* Ptr(const std::unique_ptr<T>& p) {
+    return p.get();
+  }
 };
 
 }  // namespace codec
