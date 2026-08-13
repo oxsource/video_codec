@@ -190,8 +190,13 @@ Result<VideoPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
 
     // Convert this codec packet to Annex-B via the bsf.
     AVPacket* bsf_out = av_packet_alloc();
+    if (!bsf_out) {
+      av_packet_unref(pkt_.get());
+      return Err<VideoPacket>(Status::kEncodeFailed);
+    }
     if (av_bsf_send_packet(bsf_.get(), pkt_.get()) < 0) {
       av_packet_free(&bsf_out);
+      av_packet_unref(pkt_.get());  // release the codec packet's ref
       return Err<VideoPacket>(Status::kEncodeFailed);
     }
     while (av_bsf_receive_packet(bsf_.get(), bsf_out) == 0) {
