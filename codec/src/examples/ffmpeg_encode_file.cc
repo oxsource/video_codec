@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
   //   default -> Muxer (implements PacketSink; Await hands packets straight
   //              to it, writing a fragmented MP4 through the ByteSink)
   //   --raw   -> FileConsumer writing a raw Annex-B file
-  std::unique_ptr<vc::FileByteSink> mp4_sink;  // must outlive the muxer
+  std::unique_ptr<vc::ByteSink> mp4_sink;  // must outlive the muxer
   std::unique_ptr<vc::Muxer> muxer;
   std::unique_ptr<vc::PacketConsumer> consumer;
   if (raw) {
