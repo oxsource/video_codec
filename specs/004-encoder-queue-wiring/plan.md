@@ -7,7 +7,7 @@
 ## Summary
 
 Wire the encoder to the output queue (spec-002 task T020). The encoder gains an optional
-`OutputSink` attachment (`SetOutputSink`); when a sink is attached, every packet produced by
+`PacketSink` attachment (`SetOutputSink`); when a sink is attached, every packet produced by
 a successful `Encode()`/`Flush()` is handed to the sink (push mode, single destination), while
 the pull API stays the default and unchanged when no sink is attached. The FFmpeg video/audio
 backends implement the push path and the backend package gains a dependency on `queue`.
@@ -39,7 +39,7 @@ allocations beyond the existing `Encode()` path; blocking back-pressure naturall
 producer (no busy-wait, no packet loss).
 
 **Constraints**:
-- `api` MUST NOT depend on `queue` — `OutputSink` is forward-declared in the api headers;
+- `api` MUST NOT depend on `queue` — `PacketSink` is forward-declared in the api headers;
   only `backend/*` (and consumers) include `queue/queue_iface.h`.
 - Push mode is opt-in; pull API remains the default and unchanged.
 - Encoders are not internally thread-safe (one encoder per thread); no new threads.
@@ -89,8 +89,8 @@ specs/004-encoder-queue-wiring/
 
 ```text
 codec/src/framework/api/
-├── video_encoder.h      # + virtual Status SetOutputSink(OutputSink*) (fwd-declared)
-└── audio_encoder.h      # + virtual Status SetOutputSink(OutputSink*) (fwd-declared)
+├── video_encoder.h      # + virtual Status SetOutputSink(PacketSink*) (fwd-declared)
+└── audio_encoder.h      # + virtual Status SetOutputSink(PacketSink*) (fwd-declared)
 
 codec/src/framework/backend/ffmpeg/
 ├── video_encoder.h/.cc  # override SetOutputSink; push in Drain()/Flush()
@@ -103,7 +103,7 @@ codec/tests/backend/ffmpeg/            # NEW package
 ```
 
 **Structure Decision**: The `SetOutputSink` hook lives on the abstract encoders in `api`
-(forward-declared `OutputSink`, default `kUnsupportedOperation`) so the contract is visible
+(forward-declared `PacketSink`, default `kUnsupportedOperation`) so the contract is visible
 on the public surface while `api` never depends on `queue`. The FFmpeg backends implement it;
 they already hold the produced packet in `Drain()`, so push is a small, localized addition.
 A new `tests/backend/ffmpeg` package hosts the real-encoder integration test (FFmpeg is

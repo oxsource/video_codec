@@ -14,7 +14,7 @@ on another. We need a decoupled, rate-decoupled hand-off with configurable back-
 ## Decision
 
 Use a **bounded SPSC ring buffer** (`PacketQueue`) between encoder and consumer:
-- Producer endpoint: `OutputSink::Submit(VideoPacket&&)` — the encoder pushes.
+- Producer endpoint: `PacketSink::Consume(VideoPacket&&)` — the encoder pushes.
 - Consumer endpoint: `PacketSource::Next(...)` — a `PacketSource::Await` drain loop pops.
 - Packets moved (no per-packet allocation); atomic `head_`/`tail_` over a power-of-two
   slot array; lock-free SPSC.

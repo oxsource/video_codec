@@ -148,13 +148,14 @@ network sender / file writer).
 ### Interfaces
 
 ```cpp
-class OutputSink {                       // producer endpoint (encoder writes here)
+class PacketSink {                       // packet destination (encoder + consumer)
   public:
-    virtual ~OutputSink() = default;
-    // Video and audio are distinct types, each with its own Submit.
-    virtual Status Submit(VideoPacket&& pkt) = 0;
-    virtual Status Submit(AudioPacket&& pkt) = 0;
-    virtual Status Flush() { return Status::kOk; }
+    virtual ~PacketSink() = default;
+    // Video and audio are distinct types, each with its own Consume.
+    virtual Status Consume(VideoPacket&& pkt) = 0;
+    virtual Status Consume(AudioPacket&& pkt) = 0;
+    virtual Status Flush() { return Status::kOk; }   // segment boundary
+    virtual Status Finish() { return Status::kOk; }  // EOS / teardown
 };
 
 class PacketSource {              // consumer endpoint (pops here)
@@ -166,8 +167,8 @@ class PacketSource {              // consumer endpoint (pops here)
 };
 ```
 
-`PacketQueue` implements **both** interfaces: producer side exposes `OutputSink`,
-consumer side exposes `PacketSource`.
+`PacketQueue` implements **both** interfaces: the producer side receives packets via
+`PacketSink::Consume`, the consumer side exposes `PacketSource`.
 
 ### Entity: PacketQueue
 
@@ -181,16 +182,16 @@ consumer side exposes `PacketSource`.
 ### Relationship to encoder
 
 - The encoder, after a successful `Encode()`, forwards the packet to a configured
-  `OutputSink` (see `output-queue-contract.md`). The pull API (`Encode()` returning
+  `PacketSink` (see `output-queue-contract.md`). The pull API (`Encode()` returning
   `Result<VideoPacket>` / `Result<AudioPacket>`) is unchanged; pushing is an **optional**
   sink mode.
 - Ownership transfers to the queue via move; the producer no longer references the packet
-  after `Submit()` returns.
+  after `Consume()` returns.
 
 ### Validation rules
 
 - `capacity > 0` and a power of two (fast index masking).
-- `Submit` on a full queue honors `policy`: `kBlock` waits, `kLatest` overwrites the
+- `Consume` on a full queue honors `policy`: `kBlock` waits, `kLatest` overwrites the
   oldest unconsumed slot, `kError` returns `kBackendUnavailable` (or a dedicated
   back-pressure code).
 - `Next(deadline)` on an empty queue returns `Status::kEmpty` (non-blocking when

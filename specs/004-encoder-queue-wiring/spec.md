@@ -12,7 +12,7 @@
 
 The library already has: a working encoder (pull API — the caller calls `Encode()` and
 receives `Packet`s back), and a bounded SPSC ring buffer (`PacketQueue`)
-with a producer endpoint (`OutputSink`) and a consumer endpoint (`PacketSource`).
+with a producer endpoint (`PacketSink`) and a consumer endpoint (`PacketSource`).
 What is missing is the **link between them**: a real encoder currently does not feed the
 ring buffer. This feature wires the encoder so that, when a caller opts in, every packet
 produced by a successful encode is **automatically pushed** into the output queue — while
@@ -112,7 +112,7 @@ delivered in order with zero loss.
 
 - **Encoder (video/audio)**: produces encoded output; gains an optional output-sink
   attachment and a push mode.
-- **OutputSink**: the producer endpoint of the queue (or any sink); receives submitted
+- **PacketSink**: the producer endpoint of the queue (or any sink); receives submitted
   encoded/audio packets.
 - **PacketQueue**: the bounded ring buffer the sink fronts; applies the configured
   back-pressure policy.

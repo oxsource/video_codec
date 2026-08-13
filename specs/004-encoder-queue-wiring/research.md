@@ -4,13 +4,13 @@
 **Feature**: [spec.md](spec.md)
 
 Resolves the open technical questions for wiring the encoder to the output queue. The queue
-(`PacketQueue`, producer `OutputSink` / consumer `PacketSource`) and the
+(`PacketQueue`, producer `PacketSink` / consumer `PacketSource`) and the
 consumer transport already exist; this feature only adds the encoder-side push path.
 
-## R1 — Where `OutputSink` is referenced vs. module dependencies
+## R1 — Where `PacketSink` is referenced vs. module dependencies
 
-- **Decision**: Add `virtual Status SetOutputSink(OutputSink* sink)` to the abstract
-  `VideoEncoder` and `AudioEncoder` in `api`, **forward-declaring** `OutputSink` in the api
+- **Decision**: Add `virtual Status SetOutputSink(PacketSink* sink)` to the abstract
+  `VideoEncoder` and `AudioEncoder` in `api`, **forward-declaring** `PacketSink` in the api
   headers (no `#include`). The default implementation returns
   `Status::kUnsupportedOperation`. Only the FFmpeg backends include
   `queue/queue_iface.h` and override the hook; the `backend/ffmpeg` BUILD gains a
@@ -19,11 +19,11 @@ consumer transport already exist; this feature only adds the encoder-side push p
   `api` dependent only on `core`; `queue` is a sibling. A forward-declared pointer parameter
   lets the contract surface live on the public API without a compile-time dependency.
   `backend/ffmpeg → queue` is acyclic (queue depends only on core) and matches the design's
-  hand-off role (`plan.md` mermaid: backend → `OutputSink/Packet` → queue).
+  hand-off role (`plan.md` mermaid: backend → `PacketSink/Packet` → queue).
 - **Alternatives considered**:
   - `api` depends on `queue`: simplest compile-wise, but broadens `api`'s dependency surface
     against the frozen module graph — rejected.
-  - Move `OutputSink` into `core`: would relocate a frozen contract — rejected.
+  - Move `PacketSink` into `core`: would relocate a frozen contract — rejected.
   - A separate push adapter wrapping the encoder (composition): keeps the encoder untouched,
     but task T020 explicitly calls for the sink on the encoder base, and the adapter would
     duplicate lifecycle handling — rejected.
@@ -43,8 +43,8 @@ consumer transport already exist; this feature only adds the encoder-side push p
 
 ## R3 — Back-pressure ownership
 
-- **Decision**: The sink (`OutputSink::Submit`) applies the queue's configured back-pressure
-  policy; the encoder simply calls `Submit(VideoPacket&&)` and propagates its `Status`.
+- **Decision**: The sink (`PacketSink::Consume`) applies the queue's configured back-pressure
+  policy; the encoder simply calls `Consume(VideoPacket&&)` and propagates its `Status`.
   No new pacing logic in the encoder; blocking (`kBlock`) naturally paces the producer.
 - **Rationale**: Back-pressure already lives in the queue (frozen contract,
   `output-queue-contract.md`). The encoder must honor whatever the sink returns (including

@@ -10,7 +10,7 @@ namespace video {
 namespace codec {
 
 class InputSurface;
-class OutputSink;  // fwd-declared: `api` stays free of a `queue` dependency.
+class PacketSink;  // fwd-declared: `api` stays free of a `queue` dependency.
 
 // Abstract video encoder. Every backend subclasses this; the contract is frozen
 // by contracts/encoder-contract.md. Not thread-safe: one instance per thread.
@@ -39,11 +39,11 @@ class VideoEncoder {
   Flush() = 0;                 // -> Flushed (drain + emit final pkt)
   virtual void Release() = 0;  // free external resources -> Released
 
-  // Attach an output sink to enable push mode: every produced packet is handed
-  // to the sink instead of returned (single destination). Pass nullptr to
-  // detach (back to pull mode). Backends without push support return
-  // Status::kUnsupportedOperation and stay in pull mode.
-  virtual Status SetOutputSink(OutputSink* sink) {
+  // Attach a packet sink to enable push mode: every produced packet is handed
+  // to the sink (Consume) instead of returned (single destination). Pass
+  // nullptr to detach (back to pull mode). Backends without push support
+  // return Status::kUnsupportedOperation and stay in pull mode.
+  virtual Status SetOutputSink(PacketSink* sink) {
     (void)sink;
     return Status::kUnsupportedOperation;
   }

@@ -53,21 +53,21 @@ thread** runs the `PacketSource::Await` drain loop:
 
 ```mermaid
 flowchart LR
-    ET["Encoder thread<br/>(Submit → ring)"]
+    ET["Encoder thread<br/>(Consume → ring)"]
     Q["PacketQueue"]
     CT["Consumer thread<br/>(PacketSource::Await: Next → Consume)"]
     ET --> Q
     Q --> CT
 ```
 
-- The encoder thread is the **producer** (calls `OutputSink::Submit`).
+- The encoder thread is the **producer** (calls `PacketSink::Consume`).
 - The consumer thread is the **reader** (calls `PacketSource::Next` in a loop, then
   `PacketConsumer::Consume`). This is the SPSC pairing the ring buffer assumes — exactly
   one producer, exactly one reader.
 - The two threads communicate **only** through the ring buffer; no shared mutable state
   outside it.
 - A slow consumer (e.g. blocked network socket in `StreamConsumer`) makes `Consume` slow
-  → the pump slows → the ring fills → `Submit` blocks (under `kBlock`) → the encoder
+  → the pump slows → the ring fills → `Consume` blocks (under `kBlock`) → the encoder
   thread slows. This end-to-end back-pressure is intentional; the pump must not swallow
   `Consume` errors and spin.
 - For simultaneous file + stream, run **two** consumer threads (one per `PacketConsumer`),

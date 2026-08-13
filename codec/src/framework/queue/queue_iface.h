@@ -8,31 +8,29 @@ namespace video {
 namespace codec {
 
 // Back-pressure policy applied when the ring is full.
-//   kBlock   : Submit() blocks until space is available (natural flow control).
-//   kLatest  : the oldest unconsumed packet is overwritten, keeping the newest
+//   kBlock   : Consume() blocks until space is available (natural flow
+//   control). kLatest  : the oldest unconsumed packet is overwritten, keeping
+//   the newest
 //              (lossy, real-time).
-//   kError   : Submit() returns kBackendUnavailable immediately (strict
+//   kError   : Consume() returns kBackendUnavailable immediately (strict
 //              pipelines).
 enum class Backpressure { kBlock, kLatest, kError };
 
-// Producer endpoint. The encoder (or any producer) pushes encoded packets here.
-// Video and audio are distinct types, each with its own Submit.
-class OutputSink {
- public:
-  virtual ~OutputSink() = default;
-  virtual Status Submit(VideoPacket&& pkt) = 0;
-  virtual Status Submit(AudioPacket&& pkt) = 0;
-  virtual Status Flush() { return Status::kOk; }
-};
-
-// Destination for packets popped from a source. Defined in `queue` so the
-// source (and its Await loop) depends only on this contract, never on the
-// `consumer` module; `consumer::PacketConsumer` implements it.
+// Destination for encoded packets. One contract serves BOTH transport
+// directions:
+//   - producer -> queue : the encoder hands packets to the queue through
+//     Consume(); PacketQueue implements PacketSink for this side.
+//   - queue -> consumer : PacketSource::Await() delivers packets to the
+//     consumer through the same Consume(); consumer::PacketConsumer
+//     implements PacketSink for this side.
+// Flush() marks a segment boundary (producer flush); Finish() is EOS teardown
+// (consumer finish).
 class PacketSink {
  public:
   virtual ~PacketSink() = default;
   virtual Status Consume(VideoPacket&& pkt) = 0;
   virtual Status Consume(AudioPacket&& pkt) = 0;
+  virtual Status Flush() { return Status::kOk; }   // segment boundary
   virtual Status Finish() { return Status::kOk; }  // EOS / teardown
 };
 

@@ -207,7 +207,7 @@ codec/src/framework/
 │   ├── android/ # MediaCodecVideoEncoder / MediaCodecAudioEncoder (NDK AMediaCodec)
 │   ├── darwin/  # VideoToolboxVideoEncoder (Phase 2+, reserved)
 │   └── ffmpeg/  # FFmpegVideoEncoder / FFmpegAudioEncoder (libx264/5, AAC, Opus)
-├── queue/       # PacketQueue（双 ring：视频/音频），OutputSink / PacketSource
+├── queue/       # PacketQueue（双 ring：视频/音频），PacketSink / PacketSource
 ├── io/          # ByteSink 输出契约 + FileByteSink/StreamByteSink/TeeByteSink
 ├── consumer/    # PacketConsumer, FileSinkConsumer, Mp4Consumer（io::ByteSink + Mp4Muxer）
 ├── mux/         # Mp4Muxer 纯格式封装（libavformat），输出到 io::ByteSink

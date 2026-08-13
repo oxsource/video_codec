@@ -1,20 +1,20 @@
-# Push-Mode Contract: Encoder → OutputSink (spec 004)
+# Push-Mode Contract: Encoder → PacketSink (spec 004)
 
 **Branch**: `004-encoder-queue-wiring` | **Date**: 2026-08-12
 **Feature**: [spec.md](../spec.md) | **Data model**: [data-model.md](../data-model.md) | **Research**: [research.md](../research.md)
 
 Defines the encoder-side push wiring added by this feature. It does not change the frozen
-`OutputSink`/`PacketSource` contracts in `contracts/output-queue-contract.md`
+`PacketSink`/`PacketSource` contracts in `contracts/output-queue-contract.md`
 (spec 002) or the encoder lifecycle contract.
 
 ## 1. Attachment contract
 
 ```cpp
-// On both VideoEncoder and AudioEncoder (api headers; OutputSink is fwd-declared):
+// On both VideoEncoder and AudioEncoder (api headers; PacketSink is fwd-declared):
 //   Attach a sink to enable push mode. Pass nullptr to detach (back to pull-only).
 //   Backends without push support return Status::kUnsupportedOperation and
 //   stay in pull mode.
-virtual Status SetOutputSink(OutputSink* sink);
+virtual Status SetOutputSink(PacketSink* sink);
 ```
 
 - Default implementation: `return Status::kUnsupportedOperation;`
@@ -29,7 +29,7 @@ virtual Status SetOutputSink(OutputSink* sink);
 | Push | non-null sink attached | packet **moved into the sink**; returns `kOk` with an empty (moved-from) packet |
 
 - A produced packet reaches **exactly one destination** (FR-006). No duplication.
-- Sink `Submit` errors propagate as the `Encode()`/`Flush()` result.
+- Sink `Consume` errors propagate as the `Encode()`/`Flush()` result.
 
 ## 3. Flush & end-of-stream
 
@@ -44,12 +44,12 @@ virtual Status SetOutputSink(OutputSink* sink);
 
 - The sink (queue) applies its configured policy (`kBlock` default, `kLatest`, `kError`).
 - The encoder makes no independent pacing decisions; it honors the `Status` returned by
-  `Submit`. Under `kBlock` a full queue naturally blocks the producer.
+  `Consume`. Under `kBlock` a full queue naturally blocks the producer.
 
 ## 5. Audio
 
 - `AudioEncoder` supports the same attachment and pushes audio `Packet`s via
-  `OutputSink::Submit(VideoPacket&&)`.
+  `PacketSink::Consume(AudioPacket&&)`.
 
 ## 6. Acceptance
 

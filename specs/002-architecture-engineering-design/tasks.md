@@ -154,7 +154,7 @@ H.264 stream is produced through the public API. MVP achieved. ⚠️ pending T0
 ## Phase 5: User Story 3 — Output ring buffer (Priority: P2)
 
 **Goal**: The encoder→consumer transport you designed: a bounded SPSC lock-free ring
-buffer (`PacketQueue`) implementing `OutputSink` (producer) and
+buffer (`PacketQueue`) implementing `PacketSink` (producer) and
 `PacketSource` (consumer), with configurable back-pressure (default `kBlock`).
 
 **Independent Test**: Producer pushes N packets, consumer drains with `Next(deadline)`
@@ -163,16 +163,16 @@ capacity + blocking back-pressure in unit tests.
 
 ### Implementation for User Story 3
 
-- [x] T018 [P] [US3] Declare `Backpressure` enum, `Status`, `OutputSink`,
+- [x] T018 [P] [US3] Declare `Backpressure` enum, `Status`, `PacketSink`,
       `PacketSource` interfaces in `codec/src/framework/queue/queue_iface.h`
       per `contracts/output-queue-contract.md`.
 - [x] T019 [US3] Implement `PacketQueue` (fixed power-of-two `slots[]`, atomic
-      `head_`/`tail_`, move-in/move-out, `Submit` honoring `Backpressure`) in
+      `head_`/`tail_`, move-in/move-out, `Consume` honoring `Backpressure`) in
       `codec/src/framework/queue/packet_queue.h` / `.cc`; constructor
       `PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock)`
       per ADR-005 / `output-queue.md`.
-- [x] T020 [US3] Wire the encoder's optional `OutputSink` push mode: add an
-      `OutputSink*` member to the encoder base and,
+- [x] T020 [US3] Wire the encoder's optional `PacketSink` push mode: add an
+      `PacketSink*` member to the encoder base and,
       after a successful `Encode()`, forward `Packet&&` to it (pull API still
       the default; push is opt-in) per `data-model.md` §8. **Done in spec 004
       (`004-encoder-queue-wiring`)**: `SetOutputSink` on the abstract encoders (default
@@ -314,7 +314,7 @@ buffer; CI is green on the target matrix.
 ```bash
 # After Foundational (Phase 2) completes:
 # US3 — ring buffer (independent of encoder surface):
-Task: "Declare Backpressure/Status/OutputSink/PacketSource in queue/queue_iface.h"
+Task: "Declare Backpressure/Status/PacketSink/PacketSource in queue/queue_iface.h"
 Task: "Implement PacketQueue SPSC in queue/packet_queue.{h,cc}"
 # US1 — encoder surface (independent of ring buffer):
 Task: "Declare VideoEncoder/AudioEncoder abstract in api/video_encoder.h"

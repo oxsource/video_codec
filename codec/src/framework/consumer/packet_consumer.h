@@ -12,9 +12,9 @@ namespace codec {
 // StreamConsumer implement this; swapping one for the other is a one-line
 // change and the encoder never knows which is attached.
 //
-// Inherits queue::PacketSink — the dispatch target the source's Await loop
-// delivers to — and adds Flush() (segment boundary). A PacketConsumer can be
-// handed straight to PacketSource::Await(PacketSink&).
+// Implements queue::PacketSink — the dispatch target the source's Await loop
+// delivers to (Consume) and the producer feeds (via the encoder's sink). A
+// PacketConsumer can be handed straight to PacketSource::Await(PacketSink&).
 class PacketConsumer : public PacketSink {
  public:
   ~PacketConsumer() override = default;
@@ -25,7 +25,7 @@ class PacketConsumer : public PacketSink {
   Status Consume(VideoPacket&& pkt) override = 0;
   Status Consume(AudioPacket&& pkt) override = 0;
 
-  Status Flush() { return Status::kOk; }
+  Status Flush() override { return Status::kOk; }   // segment boundary
   Status Finish() override { return Status::kOk; }  // EOS / teardown
 };
 

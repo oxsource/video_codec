@@ -11,7 +11,7 @@
 namespace video {
 namespace codec {
 
-class OutputSink;  // defined in queue/queue_iface.h (included by the .cc)
+class PacketSink;  // defined in queue/queue_iface.h (included by the .cc)
 
 // FFmpeg (libx264 / libx265) video encoder. Software path: CPU frames only;
 // Encode(NativeBuffer) returns kUnsupportedOperation (no HW surface).
@@ -25,7 +25,7 @@ class FFmpegVideoEncoder : public VideoEncoder {
   Result<VideoPacket> Encode(const NativeBuffer& buf) override;
   Result<VideoPacket> Flush() override;
   void Release() override;
-  Status SetOutputSink(OutputSink* sink) override;
+  Status SetOutputSink(PacketSink* sink) override;
 
  private:
   // Copy a framework VideoFrame into `frame_`, honoring stride. Returns
@@ -43,7 +43,7 @@ class FFmpegVideoEncoder : public VideoEncoder {
   ffmpeg::AvFramePtr frame_;
   ffmpeg::AvBsfPtr bsf_;
   ffmpeg::AvPacketPtr pkt_;
-  OutputSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
+  PacketSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
   int64_t pts_ = 0;
 };
 

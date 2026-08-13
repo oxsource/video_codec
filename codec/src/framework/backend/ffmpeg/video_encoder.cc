@@ -170,7 +170,7 @@ Result<VideoPacket> FFmpegVideoEncoder::Flush() {
   return r;
 }
 
-Status FFmpegVideoEncoder::SetOutputSink(OutputSink* sink) {
+Status FFmpegVideoEncoder::SetOutputSink(PacketSink* sink) {
   sink_ = sink;
   return Status::kOk;
 }
@@ -201,7 +201,7 @@ Result<VideoPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
       av_packet_unref(bsf_out);
       if (sink_) {
         // Push mode: single destination is the sink.
-        if (sink_->Submit(std::move(pkt)) != Status::kOk) {
+        if (sink_->Consume(std::move(pkt)) != Status::kOk) {
           av_packet_free(&bsf_out);
           av_packet_unref(pkt_.get());
           return Err<VideoPacket>(Status::kEncodeFailed);

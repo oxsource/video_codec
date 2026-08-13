@@ -79,7 +79,7 @@ specs/002-architecture-engineering-design/
 │   ├── encoder-contract.md
 │   ├── backend-contract.md
 │   ├── nativebuffer-contract.md
-│   └── output-queue-contract.md   # Ring-buffer transport: OutputSink / PacketSource
+│   └── output-queue-contract.md   # Ring-buffer transport: PacketSink / PacketSource
 └── tasks.md             # Phase 2 task breakdown (created by /speckit.tasks)
 ```
 
@@ -245,13 +245,13 @@ flowchart LR
     ENC["Encoder instance<br/>(backend thread)"]
     Q["PacketQueue<br/>(bounded SPSC ring buffer)"]
     CON["Consumer<br/>(muxer / network / file)"]
-    ENC -->|Submit(VideoPacket)| Q
+    ENC -->|Consume(VideoPacket)| Q
     Q -->|Next()| CON
     CON -->|back-pressure / drain| ENC
 ```
 
 Encoded output is handed off through a **bounded SPSC ring buffer**
-(`PacketQueue`): the encoder (producer) calls `OutputSink::Submit(...)`; a
+(`PacketQueue`): the encoder (producer) calls `PacketSink::Consume(...)`; a
 `PacketSource::Await` drain loop on the consumer thread calls `PacketSource::Next(...)` and
 forwards each packet to a `PacketConsumer`. The consumer is **transport-agnostic** — both
 target consumers implement `PacketConsumer`: `FileSinkConsumer` (save `.h264`/`.aac` or

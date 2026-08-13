@@ -9,7 +9,7 @@
 namespace video {
 namespace codec {
 
-class OutputSink;  // fwd-declared: `api` stays free of a `queue` dependency.
+class PacketSink;  // fwd-declared: `api` stays free of a `queue` dependency.
 
 // Abstract audio encoder (backend subclass). No Surface/InputSurface for audio.
 class AudioEncoder {
@@ -23,10 +23,10 @@ class AudioEncoder {
   virtual Result<AudioPacket> Flush() = 0;
   virtual void Release() = 0;
 
-  // Attach an output sink to enable push mode (see
+  // Attach a packet sink to enable push mode (see
   // VideoEncoder::SetOutputSink). Audio packets are handed to the sink via
-  // OutputSink::Submit(AudioPacket&&).
-  virtual Status SetOutputSink(OutputSink* sink) {
+  // PacketSink::Consume(AudioPacket&&).
+  virtual Status SetOutputSink(PacketSink* sink) {
     (void)sink;
     return Status::kUnsupportedOperation;
   }

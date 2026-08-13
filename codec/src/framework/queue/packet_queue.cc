@@ -129,7 +129,7 @@ bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink,
 PacketQueue::PacketQueue(size_t capacity, Backpressure policy)
     : video_(capacity, policy), audio_(capacity, policy) {}
 
-Status PacketQueue::Submit(VideoPacket&& pkt) {
+Status PacketQueue::Consume(VideoPacket&& pkt) {
   if (video_.Push(std::move(pkt))) return Status::kOk;
   // Rejected: full under kError (kBackendUnavailable), or push-after-EOS
   // (kInvalidArgument). Under kBlock/kLatest Push only fails at EOS.
@@ -137,7 +137,7 @@ Status PacketQueue::Submit(VideoPacket&& pkt) {
                                                  : Status::kInvalidArgument;
 }
 
-Status PacketQueue::Submit(AudioPacket&& pkt) {
+Status PacketQueue::Consume(AudioPacket&& pkt) {
   if (audio_.Push(std::move(pkt))) return Status::kOk;
   return audio_.policy() == Backpressure::kError ? Status::kBackendUnavailable
                                                  : Status::kInvalidArgument;

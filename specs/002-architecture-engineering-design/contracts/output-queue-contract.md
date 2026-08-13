@@ -5,8 +5,8 @@
 
 This contract freezes the transport between encoder output and a consumer. It is
 **transport-first**: the encoder and the consumer never reference each other directly —
-only the `OutputSink` / `PacketSource` / `PacketConsumer` interfaces. A file sink
-and a network streamer both implement `PacketConsumer` and are therefore
+only the `PacketSink` / `PacketSource` interfaces. A file sink
+and a network streamer both implement `PacketSink` and are therefore
 interchangeable.
 
 ## Enums
@@ -17,30 +17,15 @@ enum class Backpressure { kBlock, kLatest, kError };
 // kEos (end-of-stream and drained).
 ```
 
-## Producer endpoint — `OutputSink`
+## Packet sink — the one endpoint contract
 
-Implemented by the ring buffer's producer side. The encoder writes here.
+`PacketSink` is the single destination contract for encoded packets, serving
+BOTH transport directions:
 
-```cpp
-class OutputSink {
-  public:
-    virtual ~OutputSink() = default;
-    virtual Status Submit(VideoPacket&& pkt) = 0;
-    virtual Status Submit(AudioPacket&& pkt) = 0;
-    virtual Status Flush() { return Status::kOk; }  // segment boundary
-};
-```
-
-- `Submit` **moves** ownership of the packet into the queue.
-- On a full queue, behavior follows the queue's `Backpressure` policy
-  (`kBlock` waits, `kLatest` overwrites, `kError` returns a back-pressure code).
-- `Flush()` signals "end of current segment" — distinct from stream end.
-
-## Consumer endpoint — `PacketSource`
-
-Implemented by the ring buffer's consumer side. The drain loop reads here. Also
-defines `PacketSink` — the dispatch target `Await` delivers to (defined in
-`queue`, implemented by `consumer::PacketConsumer`).
+- **producer → queue**: the encoder hands packets to the queue via `Consume`
+  (the ring buffer's producer side implements `PacketSink` for this side);
+- **queue → consumer**: `PacketSource::Await` delivers packets to the consumer
+  via the same `Consume` (`consumer::PacketConsumer` implements `PacketSink`).
 
 ```cpp
 class PacketSink {
@@ -48,9 +33,24 @@ class PacketSink {
     virtual ~PacketSink() = default;
     virtual Status Consume(VideoPacket&& pkt) = 0;
     virtual Status Consume(AudioPacket&& pkt) = 0;
+    virtual Status Flush() { return Status::kOk; }   // segment boundary
     virtual Status Finish() { return Status::kOk; }  // EOS / teardown
 };
+```
 
+- `Consume` **moves** ownership of the packet into the sink.
+- On a full queue, behavior follows the queue's `Backpressure` policy
+  (`kBlock` waits, `kLatest` overwrites, `kError` returns a back-pressure code).
+- `Flush()` signals "end of current segment" — distinct from stream end.
+- `Finish()` is the EOS teardown (e.g. flush + close the file).
+
+## Consumer endpoint — `PacketSource`
+
+Implemented by the ring buffer's consumer side. The drain loop reads here. `Await`
+delivers every packet to a `PacketSink` (the unified contract above, implemented by
+`consumer::PacketConsumer`).
+
+```cpp
 class PacketSource {
   public:
     virtual ~PacketSource() = default;
@@ -78,13 +78,13 @@ class PacketSource {
 ## Ring buffer — `PacketQueue`
 
 ```cpp
-class PacketQueue : public OutputSink, public PacketSource {
+class PacketQueue : public PacketSink, public PacketSource {
   public:
     // capacity MUST be > 0 and a power of two (index masking).
     PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
-    // OutputSink
-    Status Submit(VideoPacket&&) override;
-    Status Submit(AudioPacket&&) override;
+    // PacketSink (producer side: encoder Consumes into the queue)
+    Status Consume(VideoPacket&&) override;
+    Status Consume(AudioPacket&&) override;
     // PacketSource
     Status Next(VideoPacket&, int64_t) override;
     Status Next(AudioPacket&, int64_t) override;
@@ -144,6 +144,7 @@ Implements `PacketConsumer`. Contract obligations:
 ## Acceptance
 
 A transport is contract-complete when:
-- encoder pushes via `OutputSink` and an independent `PacketSource::Await`+`PacketConsumer`
-  drains it with no packet loss (under `kBlock`) and correct order, AND
+- encoder pushes via `PacketSink` (the queue's producer side) and an independent
+  `PacketSource::Await`+`PacketConsumer` drains it with no packet loss (under
+  `kBlock`) and correct order, AND
 - swapping `FileSinkConsumer` for `StreamConsumer` requires no encoder change.

@@ -5,7 +5,7 @@
 
 **Prerequisites**: spec 002 implementation (encoder framework, `PacketQueue`,
 `PacketSource::Await`, `FileSinkConsumer` shipped) and spec 003 (`utils`, public umbrella). The queue
-producer endpoint is `OutputSink`; consumer endpoint is `PacketSource` — both exist.
+producer endpoint is `PacketSink`; consumer endpoint is `PacketSource` — both exist.
 
 **Tests**: Included — the spec's acceptance criteria (zero-loss push, pull unchanged, flush +
 EOS, back-pressure) and the project testing strategy require them. Tests are written first
@@ -33,7 +33,7 @@ the build dependency the push implementation needs.
       `//src/framework/api`, and `@com_google_googletest//:gtest_main`.
 - [x] T002 Add `//src/framework/queue` to `deps` in
       `codec/src/framework/backend/ffmpeg/BUILD.bazel` (backends must include
-      `queue/queue_iface.h` for `OutputSink`).
+      `queue/queue_iface.h` for `PacketSink`).
 
 **Checkpoint**: The ffmpeg backend compiles with the queue dep; the test package resolves.
 
@@ -42,11 +42,11 @@ the build dependency the push implementation needs.
 ## Phase 2: Foundational (Contract hook on the encoder surface)
 
 **Purpose**: The `SetOutputSink` hook that all backends and tests build on. `api` stays
-`queue`-free (forward-declared `OutputSink`).
+`queue`-free (forward-declared `PacketSink`).
 
-- [x] T003 [P] Add `virtual Status SetOutputSink(OutputSink* sink)` to
+- [x] T003 [P] Add `virtual Status SetOutputSink(PacketSink* sink)` to
       `codec/src/framework/api/video_encoder.h` and
-      `codec/src/framework/api/audio_encoder.h`, with `class OutputSink;` forward declaration
+      `codec/src/framework/api/audio_encoder.h`, with `class PacketSink;` forward declaration
       and a default `return Status::kUnsupportedOperation;`. No `queue` include in `api`.
 
 **Checkpoint**: `api` compiles; a non-overriding subclass sees `kUnsupportedOperation`.
@@ -81,12 +81,12 @@ produces all N packets in order with zero loss; with no sink, pull still returns
 ### Implementation for User Story 1
 
 - [x] T007 [US1] Implement push in `codec/src/framework/backend/ffmpeg/video_encoder.h` /
-      `.cc`: override `SetOutputSink` to store a non-owning `OutputSink* sink_`; in `Drain()`
+      `.cc`: override `SetOutputSink` to store a non-owning `PacketSink* sink_`; in `Drain()`
       and `Flush()`, when `sink_` is set, move the produced `Packet&&` into
-      `sink_->Submit(...)` and return an empty packet with `kOk`; on `Release()` set
+      `sink_->Consume(...)` and return an empty packet with `kOk`; on `Release()` set
       `sink_ = nullptr`.
 - [x] T008 [US1] Implement push in `codec/src/framework/backend/ffmpeg/audio_encoder.h` /
-      `.cc`: same pattern for audio via `OutputSink::Submit(VideoPacket&&)`.
+      `.cc`: same pattern for audio via `PacketSink::Consume(VideoPacket&&)`.
 
 **Checkpoint**: `bazel test //tests/backend/ffmpeg/...` passes — real encoder → queue → drain
 is order-preserving and lossless; pull mode is unchanged.

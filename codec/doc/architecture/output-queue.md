@@ -15,13 +15,13 @@ flowchart LR
     FC["FileSinkConsumer<br/>(write .h264 / mux)"]
     SC["StreamConsumer<br/>(RTMP / SRT / WebRTC)"]
 
-    ENC -->|OutputSink::Submit| Q
+    ENC -->|PacketSink::Consume| Q
     Q -->|PacketSource::Next| AW
     AW -->|PacketSink::Consume| FC
     AW -->|PacketSink::Consume| SC
 ```
 
-The encoder never knows who consumes its packets. It pushes to an `OutputSink`; a drain
+The encoder never knows who consumes its packets. It pushes to a `PacketSink`; a drain
 loop pops from the `PacketSource` and forwards each packet to a `PacketConsumer`.
 Swapping file output for streaming is a one-line change of the `PacketConsumer`
 implementation.
@@ -29,10 +29,10 @@ implementation.
 ## 1. Producer side — encoder → ring buffer
 
 The encoder, after a successful `Encode()`, forwards the packet to a configured
-`OutputSink`. The pull API (`Encode()` returning `Result<Packet>`) is unchanged;
+`PacketSink`. The pull API (`Encode()` returning `Result<Packet>`) is unchanged;
 pushing is an **optional** sink mode (see `contracts/output-queue-contract.md`).
 
-`PacketQueue` implements `OutputSink` (producer endpoint). Packets are **moved**
+`PacketQueue` implements `PacketSink` (producer endpoint). Packets are **moved**
 into pre-allocated slots — no per-packet heap allocation on the encode hot path.
 
 ## 2. The ring buffer (`PacketQueue`)
@@ -40,11 +40,11 @@ into pre-allocated slots — no per-packet heap allocation on the encode hot pat
 - Bounded, fixed `capacity` (power of two) chosen at construction.
 - Single producer (encoder), single consumer (drain loop) → **SPSC** over a slot array.
 - Video and audio are **distinct types** (`VideoPacket` / `AudioPacket`), each with its own
-  `Submit`/`Next` overload, stored on **two independent rings** — one per media — so
+  `Consume`/`Next` overload, stored on **two independent rings** — one per media — so
   back-pressure and drain are per-media: a stall on video does not block audio and vice
   versa.
 - Back-pressure when full (configurable):
-  - `kBlock` (default): `Submit` waits — natural flow control; a slow consumer slows the
+  - `kBlock` (default): `Consume` waits — natural flow control; a slow consumer slows the
     encoder instead of dropping frames.
   - `kLatest`: overwrites the oldest unconsumed slot (lossy, for real-time).
   - `kError`: returns a back-pressure `Status` (strict pipelines).
@@ -172,7 +172,7 @@ The architecture fixes the `PacketConsumer` contract; the two target consumers a
   - **Connection lifecycle**: connect, (re)connect on drop, teardown on `Finish()`.
   - **Pacing**: use `pts_us` to pace sends; don't dump the whole buffer at once.
   - **Network back-pressure**: a slow/blocked socket makes `Consume` slow → the drain loop
-    slows → the ring buffer fills → `Submit` blocks (or drops) → the **encoder** slows.
+    slows → the ring buffer fills → `Consume` blocks (or drops) → the **encoder** slows.
     This end-to-end back-pressure is a feature of the ring buffer and must be preserved
     (do not swallow `Consume` errors and spin).
   - **Audio + video**: a stream usually needs both; either one `StreamConsumer` muxes
@@ -183,7 +183,7 @@ The architecture fixes the `PacketConsumer` contract; the two target consumers a
 To both save to a file **and** stream at once, do **not** share one ring buffer between
 two consumers (SPSC assumes one reader). Instead:
 - instantiate **two** `PacketQueue`s (one per consumer) off the same encoder, **or**
-- insert a **tee** that fans one `PacketSource` out to N `OutputSink`s.
+- insert a **tee** that fans one `PacketSource` out to N `PacketSink`s.
 
 The architecture leaves the choice to the wiring layer; the ring buffer + `PacketConsumer`
 contract stay SPSC-clean.
@@ -193,7 +193,7 @@ contract stay SPSC-clean.
 - `Consume` returns `Status`; the pump logs and may back-off or stop on failure.
 - `Finish()` is called at EOS (encoder `Flush`/`Release`) so the consumer flushes the
   file / sends the RTMP stop and closes the connection.
-- The encoder's `OutputSink::Flush()` (if implemented) signals "no more packets until
+- The encoder's `PacketSink::Flush()` (if implemented) signals "no more packets until
   next segment" — distinct from `Finish()` (stream end).
 
 See [contracts/output-queue-contract.md](../../../specs/002-architecture-engineering-design/contracts/output-queue-contract.md)

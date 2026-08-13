@@ -61,14 +61,14 @@ class Ring {
 // Bounded SPSC ring buffer implementing both transport endpoints. Video and
 // audio are distinct packet types stored on INDEPENDENT rings: back-pressure
 // and drain are per-media, so a stall on one does not block the other.
-class PacketQueue : public OutputSink, public PacketSource {
+class PacketQueue : public PacketSink, public PacketSource {
  public:
   // `capacity` MUST be > 0 and a power of two (index masking).
   PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
 
-  // OutputSink (producer).
-  Status Submit(VideoPacket&& pkt) override;
-  Status Submit(AudioPacket&& pkt) override;
+  // PacketSink (producer side: the encoder submits into the queue).
+  Status Consume(VideoPacket&& pkt) override;
+  Status Consume(AudioPacket&& pkt) override;
   Status Flush() override { return Status::kOk; }
 
   // PacketSource (consumer). Each ring blocks/drains independently.

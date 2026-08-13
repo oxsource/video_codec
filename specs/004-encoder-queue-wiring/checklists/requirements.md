@@ -32,7 +32,7 @@
 ## Notes
 
 - Implements the still-open task T020 in `specs/002-architecture-engineering-design/tasks.md`
-  (encoder → queue OutputSink wiring), building on the already-shipped queue/consumer and
+  (encoder → queue PacketSink wiring), building on the already-shipped queue/consumer and
   encoder framework.
 - Scope is bounded to the encoder-side wiring: no changes to `PacketSource::Await`, `FileSinkConsumer`,
   or the queue implementation itself; no new threads.
