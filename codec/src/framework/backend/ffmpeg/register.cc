@@ -4,6 +4,7 @@
 // factory in `api` can instantiate them without `api` depending on `backend/*`.
 #include "api/encoder_factory.h"
 #include "backend/ffmpeg/audio_encoder.h"
+#include "backend/ffmpeg/ffmpeg_muxer.h"
 #include "backend/ffmpeg/video_encoder.h"
 
 namespace video {
@@ -17,6 +18,9 @@ struct RegisterFFmpeg {
     });
     RegisterAudioEncoder(Backend::kFFmpeg, [](const AudioEncoderConfig& c) {
       return std::make_unique<FFmpegAudioEncoder>(c);
+    });
+    RegisterMuxer(Backend::kFFmpeg, [](const MuxerConfig& c) {
+      return std::make_unique<FFmpegMuxer>(c);
     });
   }
 };

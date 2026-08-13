@@ -48,6 +48,26 @@ cc_test(
 )
 
 cc_test(
+    name = "muxer_test",
+    srcs = ["muxer_test.cc"],
+    data = [
+        "@ffmpeg//:ffmpeg_codec_archive",
+    ],
+    linkopts = [
+        "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
+    ],
+    linkstatic = True,
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/io",
+        "//src/framework/queue",
+        "//src/framework/backend/ffmpeg",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "swr_audio_convert_test",
     srcs = ["swr_audio_convert_test.cc"],
     data = [

@@ -2,8 +2,9 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `consumer` target deps on all modules for backward compatibility.
-#   PacketConsumer (implements queue::PacketSink), FileSinkConsumer (raw
-#   Annex-B / ADTS), Mp4Consumer (any io::ByteSink + mux::Mp4Muxer).
+#   PacketConsumer (implements core::PacketSink), FileSinkConsumer (raw
+#   Annex-B / ADTS). MP4 muxing now lives in the api Muxer interface +
+#   backend implementations, so no mp4 consumer exists here.
 # Byte-level sinks (file / stream / tee) live in the `io` module; the drain
 # loop lives in PacketSource::Await (queue module).
 
@@ -12,9 +13,9 @@ cc_library(
     hdrs = ["packet_consumer.h"],
     includes = [".."],
     deps = [
+        "//src/framework/core:packet_sink",
         "//src/framework/core:status",
         "//src/framework/core:types",
-        "//src/framework/queue:queue_iface",
     ],
 )
 
@@ -30,23 +31,9 @@ cc_library(
 )
 
 cc_library(
-    name = "mp4_consumer",
-    srcs = ["mp4_consumer.cc"],
-    hdrs = ["mp4_consumer.h"],
-    includes = [".."],
-    deps = [
-        ":packet_consumer",
-        "//src/framework/core:types",
-        "//src/framework/io:byte_sink",
-        "//src/framework/mux:mp4_muxer",
-    ],
-)
-
-cc_library(
     name = "consumer",
     deps = [
         ":packet_consumer",
         ":file_sink_consumer",
-        ":mp4_consumer",
     ],
 )

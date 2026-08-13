@@ -1,7 +1,6 @@
-// mp4_muxer.cc
-#include "mux/mp4_muxer.h"
+// ffmpeg_muxer.cc
+#include "backend/ffmpeg/ffmpeg_muxer.h"
 
-#include <cerrno>
 #include <cstring>
 
 extern "C" {
@@ -18,6 +17,8 @@ namespace video {
 namespace codec {
 
 namespace {
+
+constexpr int kIoBufferSize = 64 * 1024;
 
 // H.264 NAL unit type (low 5 bits of the NAL header byte).
 int NalType(uint8_t b) { return b & 0x1F; }
@@ -44,41 +45,18 @@ void AppendLenPrefixed(std::vector<uint8_t>* out, const uint8_t* nal,
   out->insert(out->end(), nal, nal + nalen);
 }
 
-// --- avio callbacks bridging the muxer's output to a ByteSink -------------
-
-int SinkWrite(void* opaque, uint8_t* buf, int size) {
-  auto* sink = static_cast<ByteSink*>(opaque);
-  return sink->Write(buf, static_cast<size_t>(size)) ? size : AVERROR(EIO);
-}
-
-int64_t SinkSeek(void* opaque, int64_t offset, int whence) {
-  auto* sink = static_cast<ByteSink*>(opaque);
-  switch (whence) {
-    case SEEK_SET:
-      return sink->Seek(offset) ? offset : -1;
-    case SEEK_CUR: {
-      const int64_t pos = sink->Tell();
-      if (pos < 0) return -1;
-      return sink->Seek(pos + offset) ? pos + offset : -1;
-    }
-    default:
-      return -1;  // SEEK_END / AVSEEK_SIZE unsupported
-  }
-}
-
-constexpr int kIoBufferSize = 64 * 1024;
-
 }  // namespace
 
-Mp4Muxer::Mp4Muxer(ByteSink* sink, int width, int height, int fps,
-                   const MuxOptions& options)
-    : sink_(sink),
-      width_(width),
-      height_(height),
-      fps_(fps > 0 ? fps : 30),
-      fragmented_(options.fragmented) {}
+int FFmpegMuxer::SinkWrite(void* opaque, uint8_t* buf, int size) {
+  auto* muxer = static_cast<FFmpegMuxer*>(opaque);
+  return muxer->sink_ && muxer->sink_->Write(buf, static_cast<size_t>(size))
+             ? size
+             : AVERROR(EIO);
+}
 
-Mp4Muxer::~Mp4Muxer() {
+FFmpegMuxer::FFmpegMuxer(const MuxerConfig& config) : config_(config) {}
+
+FFmpegMuxer::~FFmpegMuxer() {
   // Safety net: write the trailer if the caller never called Finish().
   if (opened_) {
     av_write_trailer(fmt_);
@@ -89,12 +67,17 @@ Mp4Muxer::~Mp4Muxer() {
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     opened_ = false;
-    sink_->Flush();
+    if (sink_) sink_->Flush();
   }
 }
 
-Status Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
-                                std::vector<uint8_t>* out) {
+Status FFmpegMuxer::SetOutput(ByteSink* sink) {
+  sink_ = sink;
+  return Status::kOk;
+}
+
+Status FFmpegMuxer::BuildExtradata(const uint8_t* data, size_t size,
+                                   std::vector<uint8_t>* out) {
   const uint8_t* p = data;
   const uint8_t* end = data + size;
   std::vector<uint8_t> sps, pps;
@@ -137,8 +120,8 @@ Status Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
   return Status::kOk;
 }
 
-Status Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
-                              std::vector<uint8_t>* out) {
+Status FFmpegMuxer::AnnexBToAvcc(const uint8_t* data, size_t size,
+                                 std::vector<uint8_t>* out) {
   out->clear();
   const uint8_t* p = data;
   const uint8_t* end = data + size;
@@ -160,7 +143,7 @@ Status Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
   return out->empty() ? Status::kEncodeFailed : Status::kOk;
 }
 
-Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
+Status FFmpegMuxer::OpenMuxer(const VideoPacket& first_keyframe) {
   if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", nullptr) < 0 ||
       !fmt_) {
     fmt_ = nullptr;
@@ -173,12 +156,13 @@ Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
     return Status::kEncodeFailed;
   }
   st->id = 0;
-  st->time_base = AVRational{1, fps_};
+  const int fps = config_.fps > 0 ? config_.fps : 30;
+  st->time_base = AVRational{1, fps};
   AVCodecParameters* par = st->codecpar;
   par->codec_type = AVMEDIA_TYPE_VIDEO;
   par->codec_id = AV_CODEC_ID_H264;
-  par->width = width_;
-  par->height = height_;
+  par->width = config_.width;
+  par->height = config_.height;
 
   std::vector<uint8_t> extradata;
   if (BuildExtradata(first_keyframe.data.data(), first_keyframe.data.size(),
@@ -194,15 +178,15 @@ Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
     par->extradata_size = static_cast<int>(extradata.size());
   }
 
-  // Route all output through the caller's ByteSink via a custom AVIOContext.
+  // Route all output through the attached ByteSink via a custom AVIOContext.
   uint8_t* iobuf = static_cast<uint8_t*>(av_malloc(kIoBufferSize));
   if (!iobuf) {
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     return Status::kEncodeFailed;
   }
-  fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, sink_, nullptr,
-                                SinkWrite, SinkSeek);
+  fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, this, nullptr,
+                                &FFmpegMuxer::SinkWrite, nullptr);
   if (!fmt_->pb) {
     av_free(iobuf);
     avformat_free_context(fmt_);
@@ -212,7 +196,7 @@ Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
   // Fragmented mode writes the header (ftyp + moov) upfront and emits one
   // fragment per keyframe — sequential, no seeking needed.
   AVDictionary* opts = nullptr;
-  if (fragmented_) {
+  if (config_.fragmented) {
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
   }
   const int hdr_ret = avformat_write_header(fmt_, &opts);
@@ -228,8 +212,9 @@ Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
   return Status::kOk;
 }
 
-Status Mp4Muxer::Consume(const VideoPacket& pkt) {
+Status FFmpegMuxer::Push(VideoPacket&& pkt) {
   if (pkt.data.empty()) return Status::kOk;
+  if (!sink_) return Status::kInvalidArgument;
 
   if (!opened_) {
     // Wait for the first keyframe: the Annex-B bsf prepends SPS/PPS there.
@@ -261,14 +246,15 @@ Status Mp4Muxer::Consume(const VideoPacket& pkt) {
 
   // Fragmented mode: write each sample immediately (single stream, no
   // interleaving needed); on a keyframe boundary the mov muxer completes a
-  // fragment, so flush it to the sink — the commit point for unstable/streaming
-  // sinks. Non-fragmented keeps the interleaved path (moov at end).
+  // fragment, so flush the io buffer to the sink — the commit point for
+  // unstable/streaming sinks. Non-fragmented keeps the interleaved path
+  // (moov at end).
   int ret;
-  if (fragmented_) {
+  if (config_.fragmented) {
     ret = av_write_frame(fmt_, avpkt);
     if (ret >= 0 && pkt.keyframe) {
       avio_flush(fmt_->pb);  // push the completed fragment bytes to the sink
-      sink_->Flush();        // commit point (file fsync / cloud upload)
+      if (sink_ && !sink_->Flush()) ret = -1;  // commit point
     }
   } else {
     ret = av_interleaved_write_frame(fmt_, avpkt);
@@ -277,7 +263,9 @@ Status Mp4Muxer::Consume(const VideoPacket& pkt) {
   return ret < 0 ? Status::kEncodeFailed : Status::kOk;
 }
 
-Status Mp4Muxer::Finish() {
+Status FFmpegMuxer::Flush() { return Status::kOk; }
+
+Status FFmpegMuxer::Finish() {
   if (opened_) {
     av_write_trailer(fmt_);
     if (fmt_->pb) {
@@ -287,9 +275,24 @@ Status Mp4Muxer::Finish() {
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     opened_ = false;
-    sink_->Flush();  // final commit (trailer + last fragment)
+    if (sink_ && !sink_->Flush()) return Status::kEncodeFailed;
   }
   return Status::kOk;
+}
+
+void FFmpegMuxer::Release() {
+  if (opened_) {
+    av_write_trailer(fmt_);
+    if (fmt_->pb) {
+      avio_flush(fmt_->pb);
+      avio_context_free(&fmt_->pb);
+    }
+    avformat_free_context(fmt_);
+    fmt_ = nullptr;
+    opened_ = false;
+    if (sink_) sink_->Flush();
+  }
+  sink_ = nullptr;
 }
 
 }  // namespace codec

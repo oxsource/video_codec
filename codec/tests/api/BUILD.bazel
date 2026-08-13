@@ -19,3 +19,14 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "muxer_contract_test",
+    srcs = ["muxer_contract_test.cc"],
+    deps = [
+        "//src/framework/core",
+        "//src/framework/api",
+        "//src/framework/io",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

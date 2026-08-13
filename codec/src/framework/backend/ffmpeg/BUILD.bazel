@@ -55,12 +55,27 @@ cc_library(
 )
 
 cc_library(
+    name = "muxer",
+    srcs = ["ffmpeg_muxer.cc"],
+    hdrs = ["ffmpeg_muxer.h"],
+    includes = [".."],
+    deps = [
+        "//src/framework/api:muxer",
+        "//src/framework/core:types",
+        "//src/framework/io:byte_sink",
+        "@ffmpeg//:ffmpeg_codec",
+        "@ffmpeg//:ffmpeg_codec_impl",
+    ],
+)
+
+cc_library(
     name = "register",
     srcs = ["register.cc"],
     includes = [".."],
     alwayslink = True,
     deps = [
         ":audio_encoder",
+        ":muxer",
         ":video_encoder",
         "//src/framework/api:encoder_factory",
     ],
@@ -71,6 +86,7 @@ cc_library(
     deps = [
         ":video_encoder",
         ":audio_encoder",
+        ":muxer",
         ":register",
     ],
 )

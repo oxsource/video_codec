@@ -59,22 +59,22 @@
 
 ### Tests for User Story 1 ⚠️（先写并预期 FAIL）
 
-- [ ] T014 [P] [US1] 新建 `codec/tests/api/muxer_contract_test.cc`：StubMuxer（实现 Muxer 的最小假类）验证契约——`Push(AudioPacket&&)` 默认返回 `kUnsupportedOperation`、无 `SetOutput` 即 `Push` 返回 `kInvalidArgument`、`Finish`/`Release` 幂等（`contracts/muxer-contract.md` §6 A4/A5）
-- [ ] T015 [P] [US1] 新建 `codec/tests/backend/ffmpeg/muxer_test.cc`：真实编码（SMPTE 帧）→ `encoder->SetOutputSink(&q)` → `q.Await(*muxer)` → 内存 ByteSink，断言首字节 `ftyp`、Finish 后含 moov/mdat、非关键帧丢弃（`contracts/muxer-contract.md` §6 A1/A2/A3）
-- [ ] T016 更新 `codec/tests/api/BUILD.bazel` 与 `codec/tests/backend/ffmpeg/BUILD.bazel`：注册 `muxer_contract_test`、`muxer_test`（后者复用 encode_push_test 的 `data=["@ffmpeg//:ffmpeg_codec_archive"]` + `linkopts=["-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)"]` + `linkstatic=True`）
-- [ ] T017 运行两个新测试，确认 FAIL（编译通过但断言失败或 target 缺失）——TDD 红灯
+- [x] T014 [P] [US1] 新建 `codec/tests/api/muxer_contract_test.cc`：StubMuxer（实现 Muxer 的最小假类）验证契约——`Push(AudioPacket&&)` 默认返回 `kUnsupportedOperation`、无 `SetOutput` 即 `Push` 返回 `kInvalidArgument`、`Finish`/`Release` 幂等（`contracts/muxer-contract.md` §6 A4/A5）
+- [x] T015 [P] [US1] 新建 `codec/tests/backend/ffmpeg/muxer_test.cc`：真实编码（SMPTE 帧）→ `encoder->SetOutputSink(&q)` → `q.Await(*muxer)` → 内存 ByteSink，断言首字节 `ftyp`、Finish 后含 moov/mdat、非关键帧丢弃（`contracts/muxer-contract.md` §6 A1/A2/A3）
+- [x] T016 更新 `codec/tests/api/BUILD.bazel` 与 `codec/tests/backend/ffmpeg/BUILD.bazel`：注册 `muxer_contract_test`、`muxer_test`（后者复用 encode_push_test 的 `data=["@ffmpeg//:ffmpeg_codec_archive"]` + `linkopts=["-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)"]` + `linkstatic=True`）
+- [x] T017 运行两个新测试，确认 FAIL（编译通过但断言失败或 target 缺失）——TDD 红灯
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] 新建 `codec/src/framework/backend/ffmpeg/ffmpeg_muxer.h`：`class FFmpegMuxer : public Muxer`，成员（`MuxerConfig`、`ByteSink* sink_`、AVFormatContext 裸指针 + RAII、stream_index、opened 标志），声明私有辅助（`OpenMuxer`、`BuildExtradata`、`AnnexBToAvcc`、`EmitPending`）（`research.md` R2/R3/R6）
-- [ ] T019 [US1] 新建 `codec/src/framework/backend/ffmpeg/ffmpeg_muxer.cc`：移植 `codec/src/framework/mux/mp4_muxer.cc` 的 NAL 解析/avcC 构造/AVIO 回调逻辑；实现 `SetOutput`、`Push(VideoPacket&&)`（首关键帧懒打开，产出"头+首分片"单次提交）、`Flush`、`Finish`（写尾部 + sink flush）、`Release`；音频 Push 继承默认 `kUnsupportedOperation`；`SetOutput` 前置校验返回 `kInvalidArgument`（`contracts/muxer-contract.md` §4）
-- [ ] T020 [US1] 更新 `codec/src/framework/backend/ffmpeg/register.cc`：静态初始化中调用 `RegisterMuxer(Backend::kFFmpeg, [](const MuxerConfig& c){ return std::make_unique<FFmpegMuxer>(c); })`
-- [ ] T021 [US1] 更新 `codec/src/framework/backend/ffmpeg/BUILD.bazel`：新增 `muxer` target（srcs/hdrs=ffmpeg_muxer.{h,cc}，deps: api:muxer、core:types、io:byte_sink、@ffmpeg//:ffmpeg_codec、@ffmpeg//:ffmpeg_codec_impl），`register` target 增加对 `:muxer` 的依赖，聚合 `ffmpeg` 纳入
-- [ ] T022 [US1] 删除 `codec/src/framework/mux/` 整目录（mp4_muxer.{h,cc}、BUILD.bazel）——逻辑已迁入 backend（`research.md` R6）
-- [ ] T023 [US1] 删除 `codec/src/framework/consumer/mp4_consumer.{h,cc}`；更新 `codec/src/framework/consumer/BUILD.bazel` 移除 `mp4_consumer` target 与 `//src/framework/mux:mp4_muxer` 依赖（FR-009）
-- [ ] T024 [US1] 更新 `codec/src/examples/ffmpeg_encode_file.cc`：默认路径改为 `CreateMuxer(mux_cfg)` → `muxer->SetOutput(file_byte_sink)` → `queue.Await(*muxer)`；`--raw` 分支保留 `FileSinkConsumer`；删除 Mp4Consumer/FileByteSink 组合构造（`quickstart.md` 走法）
-- [ ] T025 [US1] 更新 `codec/src/examples/BUILD.bazel`：deps 调整（去掉对已删 target 的引用，确认保留 `//src/framework/consumer`、`//src/framework/api`、`//src/framework/io`）
-- [ ] T026 运行 `bazel test //tests/...`：T014/T015 由红转绿，其余 13 测试保持绿（TDD 绿灯）
+- [x] T018 [US1] 新建 `codec/src/framework/backend/ffmpeg/ffmpeg_muxer.h`：`class FFmpegMuxer : public Muxer`，成员（`MuxerConfig`、`ByteSink* sink_`、AVFormatContext 裸指针 + RAII、stream_index、opened 标志），声明私有辅助（`OpenMuxer`、`BuildExtradata`、`AnnexBToAvcc`、`EmitPending`）（`research.md` R2/R3/R6）
+- [x] T019 [US1] 新建 `codec/src/framework/backend/ffmpeg/ffmpeg_muxer.cc`：移植 `codec/src/framework/mux/mp4_muxer.cc` 的 NAL 解析/avcC 构造/AVIO 回调逻辑；实现 `SetOutput`、`Push(VideoPacket&&)`（首关键帧懒打开，产出"头+首分片"单次提交）、`Flush`、`Finish`（写尾部 + sink flush）、`Release`；音频 Push 继承默认 `kUnsupportedOperation`；`SetOutput` 前置校验返回 `kInvalidArgument`（`contracts/muxer-contract.md` §4）
+- [x] T020 [US1] 更新 `codec/src/framework/backend/ffmpeg/register.cc`：静态初始化中调用 `RegisterMuxer(Backend::kFFmpeg, [](const MuxerConfig& c){ return std::make_unique<FFmpegMuxer>(c); })`
+- [x] T021 [US1] 更新 `codec/src/framework/backend/ffmpeg/BUILD.bazel`：新增 `muxer` target（srcs/hdrs=ffmpeg_muxer.{h,cc}，deps: api:muxer、core:types、io:byte_sink、@ffmpeg//:ffmpeg_codec、@ffmpeg//:ffmpeg_codec_impl），`register` target 增加对 `:muxer` 的依赖，聚合 `ffmpeg` 纳入
+- [x] T022 [US1] 删除 `codec/src/framework/mux/` 整目录（mp4_muxer.{h,cc}、BUILD.bazel）——逻辑已迁入 backend（`research.md` R6）
+- [x] T023 [US1] 删除 `codec/src/framework/consumer/mp4_consumer.{h,cc}`；更新 `codec/src/framework/consumer/BUILD.bazel` 移除 `mp4_consumer` target 与 `//src/framework/mux:mp4_muxer` 依赖（FR-009）
+- [x] T024 [US1] 更新 `codec/src/examples/ffmpeg_encode_file.cc`：默认路径改为 `CreateMuxer(mux_cfg)` → `muxer->SetOutput(file_byte_sink)` → `queue.Await(*muxer)`；`--raw` 分支保留 `FileSinkConsumer`；删除 Mp4Consumer/FileByteSink 组合构造（`quickstart.md` 走法）
+- [x] T025 [US1] 更新 `codec/src/examples/BUILD.bazel`：deps 调整（去掉对已删 target 的引用，确认保留 `//src/framework/consumer`、`//src/framework/api`、`//src/framework/io`）
+- [x] T026 运行 `bazel test //tests/...`：T014/T015 由红转绿，其余 13 测试保持绿（TDD 绿灯）
 
 **Checkpoint**: US1 完成——通用 Muxer 接口 + FFmpeg 实现可用，旧 mux/Mp4Consumer 已删，example 新路径产出合法 MP4
 
