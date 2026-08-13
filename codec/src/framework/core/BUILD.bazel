@@ -1,8 +1,40 @@
 package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__"])
 
+# One cc_library per module (a .cc/.h pair, or a header-only unit). The
+# aggregate `core` target deps on all modules for backward compatibility.
+
+cc_library(
+    name = "types",
+    hdrs = ["types.h"],
+    includes = [".."],
+)
+
+cc_library(
+    name = "status",
+    hdrs = ["status.h"],
+    includes = [".."],
+)
+
+cc_library(
+    name = "result",
+    hdrs = ["result.h"],
+    includes = [".."],
+    deps = [":status"],
+)
+
+cc_library(
+    name = "log_slot",
+    srcs = ["log_slot.cc"],
+    hdrs = ["log_slot.h"],
+    includes = [".."],
+)
+
 cc_library(
     name = "core",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
-    includes = [".."],
+    deps = [
+        ":types",
+        ":status",
+        ":result",
+        ":log_slot",
+    ],
 )

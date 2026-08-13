@@ -4,19 +4,37 @@ package(default_visibility = [
     "//src/examples:__subpackages__",
 ])
 
-# MP4 container format conversion (FFmpeg-based). Mp4Muxer is a pure format
-# converter: Annex-B -> AVCC + avcC extradata, writing every output byte
-# through a ByteSink (the muxer's output contract, defined here). File I/O and
-# PacketConsumer adapters live in the consumer module, which depends on mux.
-# Depends on FFmpeg's libavformat (see third_party/ffmpeg).
+# One cc_library per module (a .cc/.h pair, or a header-only unit). The
+# aggregate `mux` target deps on all modules for backward compatibility.
+# MP4 container format conversion (FFmpeg-based): Mp4Muxer is a pure format
+# converter (Annex-B -> AVCC + avcC extradata) writing every output byte
+# through a ByteSink (the muxer's output contract, defined here). Depends on
+# FFmpeg's libavformat (see third_party/ffmpeg).
+
 cc_library(
-    name = "mux",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
+    name = "byte_sink",
+    hdrs = ["byte_sink.h"],
+    includes = [".."],
+)
+
+cc_library(
+    name = "mp4_muxer",
+    srcs = ["mp4_muxer.cc"],
+    hdrs = ["mp4_muxer.h"],
     includes = [".."],
     deps = [
-        "//src/framework/core",
+        ":byte_sink",
+        "//src/framework/core:status",
+        "//src/framework/core:types",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
+    ],
+)
+
+cc_library(
+    name = "mux",
+    deps = [
+        ":byte_sink",
+        ":mp4_muxer",
     ],
 )

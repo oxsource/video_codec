@@ -9,22 +9,61 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 # linkopts when it is linked into a dylib. Consumers of this backend MUST add:
 #   data = ["@ffmpeg//:ffmpeg_codec_archive"],
 #   linkopts = ["-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)"],
+#
+# One cc_library per module (a .cc/.h pair, or a header-only unit). The
+# aggregate `ffmpeg` target deps on all modules for backward compatibility.
+# `register` carries alwayslink so its object (static initializer
+# self-registering the backend in the factory) is force-loaded into any binary
+# that links this backend — otherwise CreateVideoEncoder returns nullptr.
+
 cc_library(
-    name = "ffmpeg",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
+    name = "video_encoder",
+    srcs = ["video_encoder.cc"],
+    hdrs = ["video_encoder.h"],
     includes = [".."],
-    # alwayslink force-loads this library's objects (including register.cc,
-    # whose static initializer self-registers the backend in the factory).
-    # Without it, register.o is unreferenced and dropped, so CreateVideoEncoder
-    # returns nullptr at runtime.
-    alwayslink = True,
     deps = [
-        "//src/framework/core",
-        "//src/framework/api",
-        "//src/framework/utils",
-        "//src/framework/queue",
+        "//src/framework/api:encoder_lifecycle",
+        "//src/framework/api:video_encoder",
+        "//src/framework/core:log_slot",
+        "//src/framework/core:types",
+        "//src/framework/queue:queue_iface",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
+    ],
+)
+
+cc_library(
+    name = "audio_encoder",
+    srcs = ["audio_encoder.cc"],
+    hdrs = ["audio_encoder.h"],
+    includes = [".."],
+    deps = [
+        "//src/framework/api:audio_encoder",
+        "//src/framework/api:encoder_lifecycle",
+        "//src/framework/core:types",
+        "//src/framework/queue:queue_iface",
+        "@ffmpeg//:ffmpeg_codec",
+        "@ffmpeg//:ffmpeg_codec_impl",
+    ],
+)
+
+cc_library(
+    name = "register",
+    srcs = ["register.cc"],
+    includes = [".."],
+    alwayslink = True,
+    deps = [
+        ":audio_encoder",
+        ":video_encoder",
+        "//src/framework/api:encoder_factory",
+    ],
+)
+
+cc_library(
+    name = "ffmpeg",
+    deps = [
+        ":video_encoder",
+        ":audio_encoder",
+        ":register",
     ],
 )

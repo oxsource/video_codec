@@ -1,10 +1,34 @@
 package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__", "//src/examples:__subpackages__"])
 
-# Bounded SPSC ring buffer (PacketQueue). Depends only on core.
+# One cc_library per module (a .cc/.h pair, or a header-only unit). The
+# aggregate `queue` target deps on all modules for backward compatibility.
+
+cc_library(
+    name = "queue_iface",
+    hdrs = ["queue_iface.h"],
+    includes = [".."],
+    deps = [
+        "//src/framework/core:status",
+        "//src/framework/core:types",
+    ],
+)
+
+cc_library(
+    name = "packet_queue",
+    srcs = ["packet_queue.cc"],
+    hdrs = ["packet_queue.h"],
+    includes = [".."],
+    deps = [
+        ":queue_iface",
+        "//src/framework/core:log_slot",
+        "//src/framework/core:types",
+    ],
+)
+
 cc_library(
     name = "queue",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
-    includes = [".."],
-    deps = ["//src/framework/core"],
+    deps = [
+        ":queue_iface",
+        ":packet_queue",
+    ],
 )

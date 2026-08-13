@@ -4,10 +4,29 @@ package(default_visibility = [
     "//tests:__subpackages__",
 ])
 
+# One cc_library per module (a .cc/.h pair). The aggregate `utils` target deps
+# on all modules for backward compatibility.
+
+cc_library(
+    name = "smpte_bars",
+    srcs = ["smpte_bars.cc"],
+    hdrs = ["smpte_bars.h"],
+    includes = [".."],
+    deps = ["//src/framework/core:types"],
+)
+
+cc_library(
+    name = "stride",
+    srcs = ["stride.cc"],
+    hdrs = ["stride.h"],
+    includes = [".."],
+    deps = ["//src/framework/core:types"],
+)
+
 cc_library(
     name = "utils",
-    srcs = glob(["*.cc"]),
-    hdrs = glob(["*.h"]),
-    includes = [".."],
-    deps = ["//src/framework/core"],
+    deps = [
+        ":smpte_bars",
+        ":stride",
+    ],
 )
