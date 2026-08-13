@@ -12,10 +12,15 @@
 // raw Annex-B H.264 elementary stream.
 //
 // Usage:
-//   ffmpeg_encode_file [output.mp4|output.h264] [seconds]
+//   ffmpeg_encode_file [--raw] output [seconds]
 //
-// Example:
+//   --raw  write a raw Annex-B H.264 elementary stream (FileSinkConsumer).
+//          Otherwise the output is muxed into an MP4 container (Mp4MuxConsumer),
+//          regardless of the file extension.
+//
+// Examples:
 //   bazel run //src/examples:ffmpeg_encode_file -- out.mp4 5
+//   bazel run //src/examples:ffmpeg_encode_file -- --raw out.h264 5
 
 #include <chrono>
 #include <cstdint>
@@ -32,93 +37,30 @@
 #include "consumer/packet_pump.h"
 #include "mux/mp4_mux_consumer.h"
 #include "queue/encoded_packet_queue.h"
+#include "utils/smpte_bars.h"
 
 namespace vc = video::codec;
-
-namespace {
-
-struct RGB {
-  int r, g, b;
-};
-
-// SMPTE 75% color bars (BT.601 limited-range approximation). Left to right.
-const RGB kSmpteBars[] = {
-    {191, 191, 191},  // white
-    {191, 191, 0},    // yellow
-    {0, 191, 191},    // cyan
-    {0, 191, 0},      // green
-    {191, 0, 191},    // magenta
-    {191, 0, 0},      // red
-    {0, 0, 191},      // blue
-};
-constexpr int kBarCount = sizeof(kSmpteBars) / sizeof(kSmpteBars[0]);
-
-void RgbToYuv(const RGB& c, uint8_t& y, uint8_t& u, uint8_t& v) {
-  const float r = static_cast<float>(c.r);
-  const float g = static_cast<float>(c.g);
-  const float b = static_cast<float>(c.b);
-  y = static_cast<uint8_t>(16 + 0.257f * r + 0.504f * g + 0.098f * b);
-  u = static_cast<uint8_t>(128 - 0.148f * r - 0.291f * g + 0.439f * b);
-  v = static_cast<uint8_t>(128 + 0.439f * r - 0.368f * g - 0.071f * b);
-}
-
-// I420 (planar YUV420P) SMPTE color bars, one frame. `frame_index` drives the
-// moving white line near the bottom (motion => meaningful P-frames).
-vc::VideoFrame MakeColorBarsFrame(int w, int h, int fps, int frame_index) {
-  vc::VideoFrame f;
-  f.format = vc::PixelFormat::kI420;
-  f.width = w;
-  f.height = h;
-  f.timestamp_us = static_cast<int64_t>(frame_index) * 1'000'000 / fps;
-
-  const size_t ysz = static_cast<size_t>(w) * h;
-  const size_t csz = static_cast<size_t>(w / 2) * (h / 2);
-  f.planes[0].assign(ysz, 0);
-  f.planes[1].assign(csz, 128);
-  f.planes[2].assign(csz, 128);
-
-  // Moving white line position (sweeps left->right over ~fps frames).
-  const int line_x = (frame_index * w / fps) % w;
-  const int line_w = w / 40;
-  const int line_top = h - h / 10;
-
-  for (int y = 0; y < h; ++y) {
-    const bool in_line_row = y >= line_top;
-    for (int x = 0; x < w; ++x) {
-      int bar = x * kBarCount / w;
-      if (bar >= kBarCount) bar = kBarCount - 1;
-      uint8_t Y, U, V;
-      RgbToYuv(kSmpteBars[bar], Y, U, V);
-      if (in_line_row && x >= line_x && x < line_x + line_w) {
-        Y = 235;  // white line
-      }
-      f.planes[0][static_cast<size_t>(y) * w + x] = Y;
-      (void)U;
-      (void)V;
-    }
-  }
-
-  // Chroma (4:2:0): use the bar color of each 2x2 block's top-left luma pixel.
-  for (int y = 0; y < h / 2; ++y) {
-    for (int x = 0; x < w / 2; ++x) {
-      const int px = x * 2;
-      int bar = px * kBarCount / w;
-      if (bar >= kBarCount) bar = kBarCount - 1;
-      uint8_t Y, U, V;
-      RgbToYuv(kSmpteBars[bar], Y, U, V);
-      const size_t idx = static_cast<size_t>(y) * (w / 2) + x;
-      f.planes[1][idx] = U;
-      f.planes[2][idx] = V;
-    }
-  }
-  return f;
-}
-
-}  // namespace
+namespace vcu = video::codec::utils;
 
 int main(int argc, char** argv) {
-  const std::string out_path = argc > 1 ? argv[1] : "out.mp4";
-  int seconds = argc > 2 ? std::atoi(argv[2]) : 5;
+  bool raw = false;
+  std::string out_path = "out.mp4";
+  int seconds = 5;
+
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg = argv[i];
+    if (arg == "--raw") {
+      raw = true;
+    } else if (arg.rfind("--", 0) == 0) {
+      std::fprintf(stderr, "ffmpeg_encode_file: unknown option %s\n",
+                   arg.c_str());
+      return 1;
+    } else if (out_path == "out.mp4" && seconds == 5 && arg[0] != '-') {
+      out_path = arg;
+    } else {
+      seconds = std::atoi(arg.c_str());
+    }
+  }
   if (seconds <= 0) seconds = 5;
 
   const int width = 640;
@@ -170,7 +112,7 @@ int main(int argc, char** argv) {
   const auto start = std::chrono::steady_clock::now();
   int64_t produced = 0;
   for (int i = 0; i < frame_count; ++i) {
-    vc::VideoFrame frame = MakeColorBarsFrame(width, height, fps, i);
+    vc::VideoFrame frame = vcu::SmpteBars::MakeFrame(width, height, fps, i);
     const auto r = encoder->Encode(frame);
     if (!r.ok()) {
       std::fprintf(stderr, "ffmpeg_encode_file: Encode error %d at frame %d\n",

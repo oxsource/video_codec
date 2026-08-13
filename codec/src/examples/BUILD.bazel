@@ -21,5 +21,6 @@ cc_binary(
         "//src/framework/queue",              # EncodedPacketQueue
         "//src/framework/consumer",           # PacketPump + FileSinkConsumer
         "//src/framework/mux",                # Mp4MuxConsumer (mp4 output)
+        "//src/framework/utils",              # SMPTE color-bars generator
     ],
 )
