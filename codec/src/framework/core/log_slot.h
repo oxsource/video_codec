@@ -7,7 +7,7 @@
 namespace video {
 namespace codec {
 
-enum class LogLevel { kTrace, kInfo, kWarn, kError };
+enum class LogLevel { kInfo, kDebug, kWarn, kError };
 
 // Plug-in logging interface. The framework routes all logging through the
 // process-wide slot; by default it is a no-op so there is no hard dependency

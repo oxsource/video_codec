@@ -10,7 +10,7 @@ library. Consumers plug in their own logger; by default logging is a no-op.
 ```cpp
 namespace video::codec {
 
-enum class LogLevel { kTrace, kInfo, kWarn, kError };
+enum class LogLevel { kInfo, kDebug, kWarn, kError };
 
 class LogSlot {
   public:
