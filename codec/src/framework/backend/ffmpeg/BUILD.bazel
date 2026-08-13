@@ -17,11 +17,17 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 # that links this backend — otherwise CreateVideoEncoder returns nullptr.
 
 cc_library(
+    name = "ffmpeg_raii",
+    hdrs = ["ffmpeg_raii.h"],
+)
+
+cc_library(
     name = "video_encoder",
     srcs = ["video_encoder.cc"],
     hdrs = ["video_encoder.h"],
     includes = [".."],
     deps = [
+        ":ffmpeg_raii",
         "//src/framework/api:encoder_lifecycle",
         "//src/framework/api:video_encoder",
         "//src/framework/core:log_slot",
@@ -38,6 +44,7 @@ cc_library(
     hdrs = ["audio_encoder.h"],
     includes = [".."],
     deps = [
+        ":ffmpeg_raii",
         "//src/framework/api:audio_encoder",
         "//src/framework/api:encoder_lifecycle",
         "//src/framework/core:types",

@@ -58,14 +58,11 @@ Status FFmpegVideoEncoder::Init() {
     VC_LOG(LogLevel::kError, "FFmpegVideoEncoder: encoder not found");
     return Status::kPlatformUnsupported;
   }
-  ctx_ = avcodec_alloc_context3(codec);
+  ctx_.reset(avcodec_alloc_context3(codec));
   if (!ctx_) return Status::kEncodeFailed;
 
   AVPixelFormat pix = ToAvPixFmt(config_.input_format);
-  if (pix == AV_PIX_FMT_NONE) {
-    avcodec_free_context(&ctx_);
-    return Status::kUnsupportedFormat;
-  }
+  if (pix == AV_PIX_FMT_NONE) return Status::kUnsupportedFormat;
 
   ctx_->width = config_.width;
   ctx_->height = config_.height;
@@ -76,18 +73,15 @@ Status FFmpegVideoEncoder::Init() {
   ctx_->gop_size = config_.gop_size > 0 ? config_.gop_size : (config_.fps * 2);
   ctx_->max_b_frames = 0;  // simplify; keyframes carry SPS/PPS via the bsf
 
-  if (avcodec_open2(ctx_, codec, nullptr) < 0) {
-    avcodec_free_context(&ctx_);
+  if (avcodec_open2(ctx_.get(), codec, nullptr) < 0) {
     return Status::kEncodeFailed;
   }
 
-  frame_ = av_frame_alloc();
+  frame_.reset(av_frame_alloc());
   frame_->format = pix;
   frame_->width = config_.width;
   frame_->height = config_.height;
-  if (av_frame_get_buffer(frame_, 0) < 0) {
-    av_frame_free(&frame_);
-    avcodec_free_context(&ctx_);
+  if (av_frame_get_buffer(frame_.get(), 0) < 0) {
     return Status::kEncodeFailed;
   }
 
@@ -95,32 +89,27 @@ Status FFmpegVideoEncoder::Init() {
   // converts to start-code (Annex-B) and prepends SPS/PPS at the first
   // keyframe.
   const AVBitStreamFilter* filter = av_bsf_get_by_name(BsfName(config_.codec));
-  if (!filter || av_bsf_alloc(filter, &bsf_) < 0) {
-    av_frame_free(&frame_);
-    avcodec_free_context(&ctx_);
+  AVBSFContext* raw_bsf = nullptr;
+  if (!filter || av_bsf_alloc(filter, &raw_bsf) < 0) {
     return Status::kEncodeFailed;
   }
+  bsf_.reset(raw_bsf);
+
   AVCodecParameters* par = avcodec_parameters_alloc();
-  avcodec_parameters_from_context(par, ctx_);
+  avcodec_parameters_from_context(par, ctx_.get());
   // av_bsf_alloc leaves par_in/par_out NULL; allocate par_in before copying.
   bsf_->par_in = avcodec_parameters_alloc();
   if (!bsf_->par_in) {
     avcodec_parameters_free(&par);
-    av_bsf_free(&bsf_);
-    av_frame_free(&frame_);
-    avcodec_free_context(&ctx_);
     return Status::kEncodeFailed;
   }
   avcodec_parameters_copy(bsf_->par_in, par);
   avcodec_parameters_free(&par);
-  if (av_bsf_init(bsf_) < 0) {
-    av_bsf_free(&bsf_);
-    av_frame_free(&frame_);
-    avcodec_free_context(&ctx_);
+  if (av_bsf_init(bsf_.get()) < 0) {
     return Status::kEncodeFailed;
   }
 
-  pkt_ = av_packet_alloc();
+  pkt_.reset(av_packet_alloc());
 
   // All real init succeeded — only now commit the lifecycle transition.
   if (lifecycle_.Init() != Status::kOk) {  // unreachable given the top guard
@@ -134,7 +123,7 @@ Status FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
   if (frame.width != config_.width || frame.height != config_.height) {
     return Status::kInvalidArgument;
   }
-  if (av_frame_make_writable(frame_) < 0) return Status::kEncodeFailed;
+  if (av_frame_make_writable(frame_.get()) < 0) return Status::kEncodeFailed;
 
   const int planes = (frame.format == PixelFormat::kNV12) ? 2 : 3;
   for (int p = 0; p < planes; ++p) {
@@ -166,7 +155,7 @@ Result<VideoPacket> FFmpegVideoEncoder::Encode(const VideoFrame& frame) {
   if (CopyFrame(frame) != Status::kOk)
     return Err<VideoPacket>(Status::kInvalidArgument);
 
-  if (avcodec_send_frame(ctx_, frame_) < 0)
+  if (avcodec_send_frame(ctx_.get(), frame_.get()) < 0)
     return Err<VideoPacket>(Status::kEncodeFailed);
   return Drain(/*drain_eof=*/false);
 }
@@ -179,7 +168,7 @@ Result<VideoPacket> FFmpegVideoEncoder::Encode(const NativeBuffer&) {
 Result<VideoPacket> FFmpegVideoEncoder::Flush() {
   if (lifecycle_.Flush() != Status::kOk)
     return Err<VideoPacket>(Status::kNotInitialized);
-  if (avcodec_send_frame(ctx_, nullptr) < 0) {
+  if (avcodec_send_frame(ctx_.get(), nullptr) < 0) {
     // Already drained; still try to pull remaining bsf output.
   }
   Result<VideoPacket> r = Drain(/*drain_eof=*/true);
@@ -195,17 +184,17 @@ Status FFmpegVideoEncoder::SetOutputSink(OutputSink* sink) {
 Result<VideoPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
   VideoPacket out;  // pull-mode result (push mode returns an empty packet)
   for (;;) {
-    int ret = avcodec_receive_packet(ctx_, pkt_);
+    int ret = avcodec_receive_packet(ctx_.get(), pkt_.get());
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
     if (ret < 0) return Err<VideoPacket>(Status::kEncodeFailed);
 
     // Convert this codec packet to Annex-B via the bsf.
     AVPacket* bsf_out = av_packet_alloc();
-    if (av_bsf_send_packet(bsf_, pkt_) < 0) {
+    if (av_bsf_send_packet(bsf_.get(), pkt_.get()) < 0) {
       av_packet_free(&bsf_out);
       return Err<VideoPacket>(Status::kEncodeFailed);
     }
-    while (av_bsf_receive_packet(bsf_, bsf_out) == 0) {
+    while (av_bsf_receive_packet(bsf_.get(), bsf_out) == 0) {
       VideoPacket pkt;
       pkt.data.assign(bsf_out->data, bsf_out->data + bsf_out->size);
       pkt.pts_us = bsf_out->pts * av_q2d(ctx_->time_base) * 1'000'000;
@@ -215,7 +204,7 @@ Result<VideoPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
         // Push mode: single destination is the sink.
         if (sink_->Submit(std::move(pkt)) != Status::kOk) {
           av_packet_free(&bsf_out);
-          av_packet_unref(pkt_);
+          av_packet_unref(pkt_.get());
           return Err<VideoPacket>(Status::kEncodeFailed);
         }
       } else {
@@ -223,7 +212,7 @@ Result<VideoPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
       }
     }
     av_packet_free(&bsf_out);
-    av_packet_unref(pkt_);
+    av_packet_unref(pkt_.get());
     // Do NOT break on drain_eof: x264 buffers frames internally; flush must
     // drain every buffered codec packet so none are lost (push mode submits
     // each; pull mode returns the last one).
@@ -234,22 +223,10 @@ Result<VideoPacket> FFmpegVideoEncoder::Drain(bool drain_eof) {
 void FFmpegVideoEncoder::Release() {
   lifecycle_.Release();
   sink_ = nullptr;  // non-owning; caller owns the sink lifetime
-  if (bsf_) {
-    av_bsf_free(&bsf_);
-    bsf_ = nullptr;
-  }
-  if (pkt_) {
-    av_packet_free(&pkt_);
-    pkt_ = nullptr;
-  }
-  if (frame_) {
-    av_frame_free(&frame_);
-    frame_ = nullptr;
-  }
-  if (ctx_) {
-    avcodec_free_context(&ctx_);
-    ctx_ = nullptr;
-  }
+  bsf_.reset();
+  pkt_.reset();
+  frame_.reset();
+  ctx_.reset();
 }
 
 }  // namespace codec

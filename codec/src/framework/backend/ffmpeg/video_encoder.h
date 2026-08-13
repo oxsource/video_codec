@@ -5,12 +5,8 @@
 
 #include "api/encoder_lifecycle.h"
 #include "api/video_encoder.h"
+#include "backend/ffmpeg/ffmpeg_raii.h"
 #include "core/types.h"
-
-struct AVCodecContext;
-struct AVFrame;
-struct AVPacket;
-struct AVBSFContext;
 
 namespace video {
 namespace codec {
@@ -43,10 +39,10 @@ class FFmpegVideoEncoder : public VideoEncoder {
 
   VideoEncoderConfig config_;
   EncoderLifecycle lifecycle_;
-  AVCodecContext* ctx_ = nullptr;
-  AVFrame* frame_ = nullptr;
-  AVBSFContext* bsf_ = nullptr;
-  AVPacket* pkt_ = nullptr;
+  ffmpeg::Ptr<AVCodecContext, avcodec_free_context> ctx_;
+  ffmpeg::Ptr<AVFrame, av_frame_free> frame_;
+  ffmpeg::Ptr<AVBSFContext, av_bsf_free> bsf_;
+  ffmpeg::Ptr<AVPacket, av_packet_free> pkt_;
   OutputSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
   int64_t pts_ = 0;
 };

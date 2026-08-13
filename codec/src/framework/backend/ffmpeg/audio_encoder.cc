@@ -35,7 +35,7 @@ Status FFmpegAudioEncoder::Init() {
 
   const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_AAC);
   if (!codec) return Status::kPlatformUnsupported;
-  ctx_ = avcodec_alloc_context3(codec);
+  ctx_.reset(avcodec_alloc_context3(codec));
   if (!ctx_) return Status::kEncodeFailed;
 
   ctx_->sample_fmt = AV_SAMPLE_FMT_FLTP;
@@ -44,23 +44,20 @@ Status FFmpegAudioEncoder::Init() {
   ctx_->channel_layout = av_get_default_channel_layout(config_.channels);
   ctx_->bit_rate = config_.bitrate;
 
-  if (avcodec_open2(ctx_, codec, nullptr) < 0) {
-    avcodec_free_context(&ctx_);
+  if (avcodec_open2(ctx_.get(), codec, nullptr) < 0) {
     return Status::kEncodeFailed;
   }
 
-  frame_ = av_frame_alloc();
+  frame_.reset(av_frame_alloc());
   frame_->format = AV_SAMPLE_FMT_FLTP;
   frame_->sample_rate = config_.sample_rate;
   frame_->channels = config_.channels;
   frame_->nb_samples = ctx_->frame_size > 0 ? ctx_->frame_size : 1024;
-  if (av_frame_get_buffer(frame_, 0) < 0) {
-    av_frame_free(&frame_);
-    avcodec_free_context(&ctx_);
+  if (av_frame_get_buffer(frame_.get(), 0) < 0) {
     return Status::kEncodeFailed;
   }
 
-  pkt_ = av_packet_alloc();
+  pkt_.reset(av_packet_alloc());
 
   // All real init succeeded — only now commit the lifecycle transition.
   if (lifecycle_.Init() != Status::kOk) {  // unreachable given the top guard
@@ -81,7 +78,7 @@ Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
       static_cast<int>(frame.data.size()) / (channels * 2);  // S16
   const int16_t* src = reinterpret_cast<const int16_t*>(frame.data.data());
 
-  if (av_frame_make_writable(frame_) < 0)
+  if (av_frame_make_writable(frame_.get()) < 0)
     return Err<AudioPacket>(Status::kEncodeFailed);
   for (int c = 0; c < channels; ++c) {
     float* dst = reinterpret_cast<float*>(frame_->data[c]);
@@ -95,7 +92,7 @@ Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
   // Advance the consumer offset by the actual samples consumed.
   (void)in_samples;
 
-  if (avcodec_send_frame(ctx_, frame_) < 0)
+  if (avcodec_send_frame(ctx_.get(), frame_.get()) < 0)
     return Err<AudioPacket>(Status::kEncodeFailed);
   return Drain(/*drain_eof=*/false);
 }
@@ -103,7 +100,7 @@ Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
 Result<AudioPacket> FFmpegAudioEncoder::Flush() {
   if (lifecycle_.Flush() != Status::kOk)
     return Err<AudioPacket>(Status::kNotInitialized);
-  avcodec_send_frame(ctx_, nullptr);
+  avcodec_send_frame(ctx_.get(), nullptr);
   Result<AudioPacket> r = Drain(/*drain_eof=*/true);
   if (sink_) sink_->Flush();
   return r;
@@ -117,14 +114,14 @@ Status FFmpegAudioEncoder::SetOutputSink(OutputSink* sink) {
 Result<AudioPacket> FFmpegAudioEncoder::Drain(bool drain_eof) {
   AudioPacket out;  // pull-mode result (push mode returns an empty packet)
   for (;;) {
-    int ret = avcodec_receive_packet(ctx_, pkt_);
+    int ret = avcodec_receive_packet(ctx_.get(), pkt_.get());
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
     if (ret < 0) return Err<AudioPacket>(Status::kEncodeFailed);
     AudioPacket pkt;
     pkt.data.assign(pkt_->data, pkt_->data + pkt_->size);
     pkt.pts_us = pkt_->pts * av_q2d(ctx_->time_base) * 1'000'000;
     pkt.keyframe = false;
-    av_packet_unref(pkt_);
+    av_packet_unref(pkt_.get());
     if (sink_) {
       // Push mode: single destination is the sink.
       if (sink_->Submit(std::move(pkt)) != Status::kOk) {
@@ -142,18 +139,9 @@ Result<AudioPacket> FFmpegAudioEncoder::Drain(bool drain_eof) {
 void FFmpegAudioEncoder::Release() {
   lifecycle_.Release();
   sink_ = nullptr;  // non-owning; caller owns the sink lifetime
-  if (pkt_) {
-    av_packet_free(&pkt_);
-    pkt_ = nullptr;
-  }
-  if (frame_) {
-    av_frame_free(&frame_);
-    frame_ = nullptr;
-  }
-  if (ctx_) {
-    avcodec_free_context(&ctx_);
-    ctx_ = nullptr;
-  }
+  pkt_.reset();
+  frame_.reset();
+  ctx_.reset();
 }
 
 }  // namespace codec

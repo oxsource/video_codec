@@ -5,11 +5,8 @@
 
 #include "api/audio_encoder.h"
 #include "api/encoder_lifecycle.h"
+#include "backend/ffmpeg/ffmpeg_raii.h"
 #include "core/types.h"
-
-struct AVCodecContext;
-struct AVFrame;
-struct AVPacket;
 
 namespace video {
 namespace codec {
@@ -34,9 +31,9 @@ class FFmpegAudioEncoder : public AudioEncoder {
 
   AudioEncoderConfig config_;
   EncoderLifecycle lifecycle_;
-  AVCodecContext* ctx_ = nullptr;
-  AVFrame* frame_ = nullptr;
-  AVPacket* pkt_ = nullptr;
+  ffmpeg::Ptr<AVCodecContext, avcodec_free_context> ctx_;
+  ffmpeg::Ptr<AVFrame, av_frame_free> frame_;
+  ffmpeg::Ptr<AVPacket, av_packet_free> pkt_;
   OutputSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
   int64_t pts_ = 0;
 };
