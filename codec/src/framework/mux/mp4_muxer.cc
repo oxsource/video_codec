@@ -111,6 +111,9 @@ Status Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
     const size_t nalen = static_cast<size_t>(p - nal);
     if (nalen == 0) continue;
     const int type = NalType(nal[0]);
+    // SPS/PPS need at least NAL header + profile + constraint + level; skip
+    // truncated units so the avcC builder never reads sps[1..3] out of bounds.
+    if (nalen < 4) continue;
     if (type == 7 && sps.empty()) sps.assign(nal, nal + nalen);
     if (type == 8 && pps.empty()) pps.assign(nal, nal + nalen);
   }
@@ -198,7 +201,8 @@ Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
     fmt_ = nullptr;
     return Status::kEncodeFailed;
   }
-  fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, sink_, nullptr, SinkWrite, SinkSeek);
+  fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, sink_, nullptr,
+                                SinkWrite, SinkSeek);
   if (!fmt_->pb) {
     av_free(iobuf);
     avformat_free_context(fmt_);
@@ -242,7 +246,11 @@ Status Mp4Muxer::Consume(const VideoPacket& pkt) {
   // A refcounted packet is safe: the mov muxer buffers samples via
   // av_packet_ref until the trailer is written.
   AVPacket* avpkt = av_packet_alloc();
-  av_new_packet(avpkt, static_cast<int>(sample.size()));
+  if (!avpkt) return Status::kEncodeFailed;
+  if (av_new_packet(avpkt, static_cast<int>(sample.size())) < 0) {
+    av_packet_free(&avpkt);
+    return Status::kEncodeFailed;
+  }
   std::memcpy(avpkt->data, sample.data(), sample.size());
   avpkt->stream_index = stream_index_;
   const AVRational tb = fmt_->streams[stream_index_]->time_base;
