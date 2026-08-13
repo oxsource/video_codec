@@ -126,11 +126,11 @@ consumer sets once. No logging library is a hard dependency.
 
 ## R7. Error-handling model
 
-**Decision**: A `StatusCode` enum (OK + per-category errors: invalid-argument,
+**Decision**: A `Status` enum (OK + per-category errors: invalid-argument,
 not-initialized, encode-failed, unsupported-format, backend-unavailable,
 platform-unsupported) returned by all fallible APIs; a `Result<T>` wrapper
-(`Result<T> = StatusCode | T`) for value-returning fallible calls. **No exceptions cross
-the public API.** `VIDEO_CODEC_API` surfaces only `StatusCode` / `Result<T>`.
+(`Result<T> = Status | T`) for value-returning fallible calls. **No exceptions cross
+the public API.** `VIDEO_CODEC_API` surfaces only `Status` / `Result<T>`.
 
 **Rationale**: C ABI-friendly (the library may be consumed from other languages),
 predictable, matches the "library-first" principle. Exceptions would complicate the C
@@ -198,7 +198,7 @@ dropping frames — and is the safe default for both recording and streaming; `k
 
 **Decision**: Define a `PacketConsumer` interface (`Consume` / `Flush` / `Finish`) that
 both `FileSinkConsumer` (save `.h264`/`.aac` or mux to `.mp4`) and `StreamConsumer`
-(RTMP / SRT / WebRTC 推流) implement. A `PacketPump` drain loop on the consumer thread
+(RTMP / SRT / WebRTC 推流) implement. A `PacketSource::Await` drain loop on the consumer thread
 pops from `PacketSource` and forwards to the `PacketConsumer`. The encoder is
 never aware of which consumer is attached. Back-pressure propagates end-to-end: a slow
 socket makes `Consume` slow → pump slows → ring fills → encoder slows (under `kBlock`).

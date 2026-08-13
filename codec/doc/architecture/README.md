@@ -15,7 +15,7 @@ is externally visible. See [module-dependencies.md](module-dependencies.md).
 - [lifecycle-model.md](lifecycle-model.md) — encoder lifecycle state machine
 - [backend-selection.md](backend-selection.md) — factory + `select()` + `force_backend`
 - [threading.md](threading.md) — sync-by-default, caller-owns-thread
-- [error-handling.md](error-handling.md) — `StatusCode` / `Result<T>`, no exceptions
+- [error-handling.md](error-handling.md) — `Status` / `Result<T>`, no exceptions
 - [logging-slot.md](logging-slot.md) — pluggable `LogSlot`
 - [output-queue.md](output-queue.md) — ring-buffer transport (encoder → consumer)
 

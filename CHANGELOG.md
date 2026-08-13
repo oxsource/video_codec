@@ -8,12 +8,12 @@ All notable changes to video_codec are documented here. The format is based on
 ### Added
 - Architecture & engineering design (spec `002-architecture-engineering-design`):
   module dependency graph, encoder lifecycle, backend-selection model, threading,
-  error-handling (`StatusCode` / `Result<T>`), `LogSlot` logging interface, build/test/CI
+  error-handling (`Status` / `Result<T>`), `LogSlot` logging interface, build/test/CI
   conventions, and ADRs (static force-loaded FFmpeg, `select()`-per-platform, BSD
   `libtool` merge, deferred VideoToolbox).
 - Encoder framework implementation (spec `002-...` task list): abstract `VideoEncoder` /
   `AudioEncoder` interfaces, lifecycle state machine, encoder factory with self-registration,
-  FFmpeg video/audio backends, bounded SPSC `PacketQueue`, `PacketPump` +
+  FFmpeg video/audio backends, bounded SPSC `PacketQueue`, `PacketSource::Await` +
   `FileSinkConsumer` transport, and their unit tests.
 - Core utilities & public surface (spec `003-core-utils-public-api`): `utils` module
   (YUV420P↔NV12 conversion, stride helpers, PCM sample-format conversion) and the single

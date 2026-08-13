@@ -26,10 +26,10 @@ shared-library build defines `VIDEO_CODEC_SHARED_LIBRARY`).
 ## Exported types (frozen)
 
 - Enums: `VideoCodecType`, `AudioCodecType`, `PixelFormat`, `SampleFormat`,
-  `BitrateMode`, `Backend`, `StatusCode`.
+  `BitrateMode`, `Backend`, `Status`.
 - Values: `VideoFrame`, `AudioFrame`, `Packet`, `NativeBuffer`,
   `VideoEncoderConfig`, `AudioEncoderConfig`.
-- Error: `StatusCode`, `Result<T>`.
+- Error: `Status`, `Result<T>`.
 - Interfaces: `VideoEncoder`, `AudioEncoder`, `InputSurface`.
 - Logging: `LogSlot`, `SetLogSlot(LogSlot*)`.
 
@@ -55,6 +55,6 @@ namespace video::codec {
 
 - No `std::string` / `std::vector` cross the boundary by value in the *public* surface
   except the value types defined here (which are self-contained POD-ish structs).
-- All fallible calls return `StatusCode` / `Result<T>`; **no exceptions escape**.
+- All fallible calls return `Status` / `Result<T>`; **no exceptions escape**.
 - The shared library is built with `-fvisibility=hidden`; only `VIDEO_CODEC_API`-marked
   symbols are exported.

@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "consumer/packet_consumer.h"
-#include "consumer/packet_pump.h"
 #include "gtest/gtest.h"
 #include "queue/packet_queue.h"
 
@@ -23,13 +22,13 @@ std::string TempPath(const std::string& name) {
 // agnostic: swapping FileSinkConsumer for this requires no encoder change.
 class StubConsumer : public PacketConsumer {
  public:
-  StatusCode Consume(Packet&& pkt) override {
+  Status Consume(Packet&& pkt) override {
     received_.insert(received_.end(), pkt.data.begin(), pkt.data.end());
-    return StatusCode::kOk;
+    return Status::kOk;
   }
-  StatusCode Finish() override {
+  Status Finish() override {
     finished_ = true;
-    return StatusCode::kOk;
+    return Status::kOk;
   }
   std::vector<uint8_t> received_;
   bool finished_ = false;
@@ -46,7 +45,7 @@ std::vector<std::vector<uint8_t>> RunProducer(PacketQueue& q, int n,
       p.data = {static_cast<uint8_t>('A' + (i % 26)), static_cast<uint8_t>(i)};
       p.keyframe = (i % 10 == 0);
       expected.push_back(p.data);
-      EXPECT_EQ(q.Submit(std::move(p)), StatusCode::kOk);
+      EXPECT_EQ(q.Submit(std::move(p)), Status::kOk);
     }
     q.MarkEos();
   });
@@ -70,7 +69,7 @@ TEST(FileSinkConsumerTest, EncoderToRingToFile) {
   auto expected = RunProducer(q, 50, producer);
 
   FileSinkConsumer sink(path);
-  PacketPump::Run(q, sink);  // consumer thread (this thread) drains until EOS
+  q.Await(sink);  // consumer thread (this thread) drains until EOS
   producer.join();
 
   std::vector<uint8_t> file = ReadFile(path);
@@ -91,7 +90,7 @@ TEST(FileSinkConsumerTest, SwapConsumerNeedsNoEncoderChange) {
   auto expected = RunProducer(q, 30, producer);
 
   StubConsumer stub;
-  PacketPump::Run(q, stub);  // identical wiring; different consumer
+  q.Await(stub);  // identical wiring; different consumer
   producer.join();
 
   std::vector<uint8_t> concatenated;

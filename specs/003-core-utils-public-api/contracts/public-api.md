@@ -22,7 +22,7 @@ and obtain, with no further includes, the full public surface:
 `CreateAudioEncoder`, `ResolveBackend`, `RegisterVideoEncoder`, `RegisterAudioEncoder`),
 `VideoFrame`, `AudioFrame`,
 `Packet`, `NativeBuffer`, `PixelFormat`, `SampleFormat`,
-`VideoCodecType`, `AudioCodecType`, `Backend`, `StatusCode`, `Result<T>`, `LogSlot`,
+`VideoCodecType`, `AudioCodecType`, `Backend`, `Status`, `Result<T>`, `LogSlot`,
 `InputSurface`, and the `*EncoderConfig` structs — the public API intended to be decorated
 with `VIDEO_CODEC_API` (see §3).
 
@@ -60,13 +60,13 @@ to end consumers):
   (audio)
 
 Pixel-format conversion moved OUT of `utils` into the libyuv-backed
-`convert/libyuv` module — `PixelConverter::Convert(...)` → `StatusCode`
+`convert/libyuv` module — `PixelConverter::Convert(...)` → `Status`
 (v1: `kI420 ↔ kNV12`). libyuv is a neutral cross-platform dependency, so it is
 available everywhere libyuv links (unlike the FFmpeg-bound audio converter).
 
 PCM sample-format conversion moved OUT of `utils` into the FFmpeg-backed
 `backend/ffmpeg/swr` module (libswresample) — `SwrAudioConverter::Convert(...)`
-→ `StatusCode` (v1: `kS16`/`kF32` × interleaved/planar). It is only available
+→ `Status` (v1: `kS16`/`kF32` × interleaved/planar). It is only available
 where FFmpeg is linked (non-Android).
 
 All return the error model on unsupported input; none produce corrupt output.

@@ -19,6 +19,8 @@ namespace video {
 namespace codec {
 namespace {
 
+using PopResult = PacketSource::PopResult;
+
 VideoFrame MakeI420Frame(int w, int h, int seed) {
   VideoFrame f;
   f.format = PixelFormat::kI420;
@@ -56,8 +58,8 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
   PacketQueue q(64, Backpressure::kBlock);
   std::unique_ptr<VideoEncoder> encoder = CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
-  ASSERT_EQ(encoder->Init(), StatusCode::kOk);
-  ASSERT_EQ(encoder->SetOutputSink(&q), StatusCode::kOk);
+  ASSERT_EQ(encoder->Init(), Status::kOk);
+  ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);
 
   constexpr int kFrames = 20;
   for (int i = 0; i < kFrames; ++i) {
@@ -89,7 +91,7 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
 TEST(EncodePushTest, PullModeUnchangedWithoutSink) {
   std::unique_ptr<VideoEncoder> encoder = CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
-  ASSERT_EQ(encoder->Init(), StatusCode::kOk);
+  ASSERT_EQ(encoder->Init(), Status::kOk);
 
   int pull_packets = 0;
   for (int i = 0; i < 20; ++i) {
@@ -109,8 +111,8 @@ TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
   PacketQueue q(4, Backpressure::kBlock);
   std::unique_ptr<VideoEncoder> encoder = CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
-  ASSERT_EQ(encoder->Init(), StatusCode::kOk);
-  ASSERT_EQ(encoder->SetOutputSink(&q), StatusCode::kOk);
+  ASSERT_EQ(encoder->Init(), Status::kOk);
+  ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);
 
   std::atomic<bool> producer_done{false};
   std::atomic<bool> producer_failed{false};

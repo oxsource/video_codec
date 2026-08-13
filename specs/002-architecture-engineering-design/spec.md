@@ -76,7 +76,7 @@ Released`. Invalid transitions (e.g. `Encode` before `Init`) return an error, ne
 crash. Modeled as a state diagram in `doc/architecture/lifecycle-model.md`.
 
 ### FR-5 Error handling
-All fallible operations return a `StatusCode` (or `Result<T>`); no exceptions cross the
+All fallible operations return a `Status` (or `Result<T>`); no exceptions cross the
 public API. Strategy in `doc/architecture/error-handling.md`.
 
 ### FR-6 Logging slot

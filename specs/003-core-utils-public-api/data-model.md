@@ -10,13 +10,13 @@ surface, built on the core types already defined in `core/types.h` (commit `628e
 ## 1. Conversion I/O shapes (utils module)
 
 All helpers operate on caller-owned buffers and report failures via the existing error
-model (`StatusCode` / `Result<T>`). They never allocate the primary payload internally on
+model (`Status` / `Result<T>`). They never allocate the primary payload internally on
 the expected path.
 
 ### 1.1 Pixel-format conversion
 - **Input**: source `VideoFrame` (or raw plane pointers + `PixelFormat` + width/height +
   per-format strides), destination `PixelFormat` (`kI420` or `kNV12`).
-- **Output**: destination planes filled; `StatusCode::kOk` on success, or an error status
+- **Output**: destination planes filled; `Status::kOk` on success, or an error status
   for unsupported/unaligned input.
 - **Relationship**: consumes `PixelFormat`, `VideoFrame` from `core`; produces no new types.
 
@@ -40,7 +40,7 @@ no new types; it is a forwarding include surface.
 | Re-exported header (from `core` / `api`) | Exposes |
 |------------------------------------------|---------|
 | `core/types.h` | `VideoCodecType`, `AudioCodecType`, `PixelFormat`, `SampleFormat`, `Backend`, `VideoFrame`, `AudioFrame`, `Packet`, `NativeBuffer`, `*EncoderConfig` |
-| `core/status.h`, `core/result.h` | `StatusCode`, `Result<T>` |
+| `core/status.h`, `core/result.h` | `Status`, `Result<T>` |
 | `core/log_slot.h` | `LogSlot` (pluggable logging interface) |
 | `api/video_encoder.h`, `api/audio_encoder.h` | `VideoEncoder`, `AudioEncoder` (abstract) |
 | `api/input_surface.h` | `InputSurface` / `NativeBuffer` semantics |

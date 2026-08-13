@@ -13,8 +13,7 @@ interchangeable.
 
 ```cpp
 enum class Backpressure { kBlock, kDropOldest, kError };
-
-enum class PopResult { kOk, kEmpty, kEos };   // from PacketSource::Pop
+// PacketSource::PopResult is a nested enum of PacketSource (see below).
 ```
 
 ## Producer endpoint — `OutputSink`
@@ -27,8 +26,8 @@ class OutputSink {
     virtual ~OutputSink() = default;
     // Unified packet; the packet's PacketType (kVideo / kAudio) routes it to
     // the matching internal ring.
-    virtual StatusCode Submit(Packet&& pkt) = 0;
-    virtual StatusCode Flush() { return StatusCode::kOk; }  // segment boundary
+    virtual Status Submit(Packet&& pkt) = 0;
+    virtual Status Flush() { return Status::kOk; }  // segment boundary
 };
 ```
 
@@ -39,20 +38,41 @@ class OutputSink {
 
 ## Consumer endpoint — `PacketSource`
 
-Implemented by the ring buffer's consumer side. The drain loop reads here.
+Implemented by the ring buffer's consumer side. The drain loop reads here. Also
+defines `PacketSink` — the dispatch target `Await` delivers to (defined in
+`queue`, implemented by `consumer::PacketConsumer`).
 
 ```cpp
+class PacketSink {
+  public:
+    virtual ~PacketSink() = default;
+    virtual Status Consume(Packet&& pkt) = 0;
+    virtual Status Finish() { return Status::kOk; }  // EOS / teardown
+};
+
 class PacketSource {
   public:
+    // Result of Pop(): kOk (packet in `out`), kEmpty (timeout/empty), kEos
+    // (end-of-stream and drained).
+    enum class PopResult { kOk, kEmpty, kEos };
+
     virtual ~PacketSource() = default;
     virtual PopResult Pop(Packet& out, int64_t deadline_us) = 0;  // blocking
+
+    // Await mechanism (replaces the former PacketSource::Await): blocks on the calling
+    // thread, delivering every packet to `sink` until EOS (then sink.Finish());
+    // a failing Consume stops the loop.
+    virtual Status Await(PacketSink& sink, int64_t deadline_us = 100'000) = 0;
+
     virtual void MarkEos() = 0;   // encoder signals end of stream
 };
 ```
 
-- `Pop(deadline_us)` blocks up to `deadline_us` (negative/0 = non-blocking `TryPop`
-  semantics); returns `kEmpty` on timeout, `kEos` after `MarkEos()` and drained.
+- `Pop(deadline_us)` blocks up to `deadline_us` (negative/0 = non-blocking
+  `TryPop` semantics); returns `kEmpty` on timeout, `kEos` after `MarkEos()` and drained.
 - The consumer never allocates; packets are moved out of slots.
+- `Await(sink)` runs on the consumer thread; the caller just spawns a thread and
+  calls `source.Await(*consumer)` — no separate pump class.
 
 ## Ring buffer — `PacketQueue`
 
@@ -62,9 +82,9 @@ class PacketQueue : public OutputSink, public PacketSource {
     // capacity MUST be > 0 and a power of two (index masking).
     PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
     // OutputSink
-    StatusCode Submit(Packet&&) override;   // routed to video/audio ring by type
+    Status Submit(Packet&&) override;   // routed to video/audio ring by type
     // PacketSource
-    PopResult Pop(Packet&, int64_t) override;  // round-robin across both rings
+    PacketSource::PopResult Pop(Packet&, int64_t) override;  // round-robin across both rings
     void MarkEos() override;
 };
 ```
@@ -75,7 +95,7 @@ class PacketQueue : public OutputSink, public PacketSource {
 
 ## Consumer interface — `PacketConsumer`
 
-Implemented by file sink and streamer. The drain loop (`PacketPump`) calls this.
+Implemented by file sink and streamer. The drain loop (`PacketSource::Await`) calls this.
 
 ```cpp
 class PacketConsumer {
@@ -83,13 +103,13 @@ class PacketConsumer {
     virtual ~PacketConsumer() = default;
     // One Consume for both media; PacketType tells the consumer which media.
     // Media-specific consumers return kUnsupportedOperation for the other.
-    virtual StatusCode Consume(Packet&& pkt) = 0;
-    virtual StatusCode Flush() { return StatusCode::kOk; }
-    virtual StatusCode Finish() { return StatusCode::kOk; } // EOS / teardown
+    virtual Status Consume(Packet&& pkt) = 0;
+    virtual Status Flush() { return Status::kOk; }
+    virtual Status Finish() { return Status::kOk; } // EOS / teardown
 };
 ```
 
-## Drain loop — `PacketPump`
+## Drain loop — `PacketSource::Await`
 
 Not an interface; a reusable helper that bridges source → consumer on the consumer
 thread (see `output-queue.md` §3). Calls `Consume` for each popped packet; `Finish()` at
@@ -102,7 +122,7 @@ Implements `PacketConsumer`. Contract obligations:
 2. Raw bitstream: write Annex-B to `.h264`/`.aac`; **or** feed a muxer for
    `.mp4`/`.mkv` (muxing deferred — muxer is itself a `PacketConsumer`).
 3. On `Finish()`: flush and close the file.
-4. Must not block the pump indefinitely; file I/O errors return a `StatusCode`.
+4. Must not block the pump indefinitely; file I/O errors return a `Status`.
 
 ## Concrete consumer: `StreamConsumer` (推流, implement later)
 
@@ -120,6 +140,6 @@ Implements `PacketConsumer`. Contract obligations:
 ## Acceptance
 
 A transport is contract-complete when:
-- encoder pushes via `OutputSink` and an independent `PacketPump`+`PacketConsumer`
+- encoder pushes via `OutputSink` and an independent `PacketSource::Await`+`PacketConsumer`
   drains it with no packet loss (under `kBlock`) and correct order, AND
 - swapping `FileSinkConsumer` for `StreamConsumer` requires no encoder change.

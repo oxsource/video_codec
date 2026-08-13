@@ -13,25 +13,25 @@ namespace codec {
 template <typename T>
 class Result {
  public:
-  Result() : status_(StatusCode::kOk), has_value_(false) {}
+  Result() : status_(Status::kOk), has_value_(false) {}
 
   static Result Ok(T v) {
     Result r;
     r.value_ = std::move(v);
-    r.status_ = StatusCode::kOk;
+    r.status_ = Status::kOk;
     r.has_value_ = true;
     return r;
   }
 
-  static Result Error(StatusCode c) {
+  static Result Error(Status c) {
     Result r;
     r.status_ = c;
     r.has_value_ = false;
     return r;
   }
 
-  bool ok() const { return status_ == StatusCode::kOk; }
-  StatusCode status() const { return status_; }
+  bool ok() const { return status_ == Status::kOk; }
+  Status status() const { return status_; }
   bool has_value() const { return has_value_; }
 
   const T& value() const { return value_; }
@@ -40,7 +40,7 @@ class Result {
 
  private:
   T value_{};
-  StatusCode status_;
+  Status status_;
   bool has_value_;
 };
 
@@ -50,7 +50,7 @@ Result<T> Ok(T v) {
 }
 
 template <typename T>
-Result<T> Err(StatusCode c) {
+Result<T> Err(Status c) {
   return Result<T>::Error(c);
 }
 

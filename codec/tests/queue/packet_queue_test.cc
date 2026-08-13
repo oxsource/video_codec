@@ -12,6 +12,8 @@ namespace video {
 namespace codec {
 namespace {
 
+using PopResult = PacketSource::PopResult;
+
 Packet MakePkt(uint8_t tag) {
   Packet p;
   p.data = {tag};
@@ -28,7 +30,7 @@ TEST(PacketQueueTest, SpscInOrderNoLoss) {
   std::thread producer([&] {
     for (int i = 0; i < kN; ++i) {
       ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>('a' + (i % 26)))),
-                StatusCode::kOk);
+                Status::kOk);
     }
   });
 
@@ -61,15 +63,14 @@ TEST(PacketQueueTest, SpscInOrderNoLoss) {
 TEST(PacketQueueTest, BlockWaitsForConsumer) {
   PacketQueue q(2, Backpressure::kBlock);
   // Fill the ring (capacity 2).
-  ASSERT_EQ(q.Submit(MakePkt(1)), StatusCode::kOk);
-  ASSERT_EQ(q.Submit(MakePkt(2)), StatusCode::kOk);
+  ASSERT_EQ(q.Submit(MakePkt(1)), Status::kOk);
+  ASSERT_EQ(q.Submit(MakePkt(2)), Status::kOk);
 
   std::atomic<bool> producer_blocked{true};
   std::atomic<int> produced{0};
   std::thread producer([&] {
     for (int i = 0; i < 5; ++i) {
-      ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>(3 + i))),
-                StatusCode::kOk);
+      ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>(3 + i))), Status::kOk);
       produced.fetch_add(1);
     }
     producer_blocked = false;
@@ -100,7 +101,7 @@ TEST(PacketQueueTest, BlockWaitsForConsumer) {
 TEST(PacketQueueTest, DropOldestKeepsNewest) {
   PacketQueue q(4, Backpressure::kDropOldest);
   for (int i = 0; i < 10; ++i) {
-    ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>(i))), StatusCode::kOk);
+    ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>(i))), Status::kOk);
   }
   ASSERT_EQ(q.size(), 4u);
   // Remaining packets are the last 4 (6,7,8,9).
@@ -115,15 +116,15 @@ TEST(PacketQueueTest, DropOldestKeepsNewest) {
 // -----------------------
 TEST(PacketQueueTest, ErrorReturnsBackpressureCode) {
   PacketQueue q(2, Backpressure::kError);
-  ASSERT_EQ(q.Submit(MakePkt(1)), StatusCode::kOk);
-  ASSERT_EQ(q.Submit(MakePkt(2)), StatusCode::kOk);
-  ASSERT_EQ(q.Submit(MakePkt(3)), StatusCode::kBackendUnavailable);
+  ASSERT_EQ(q.Submit(MakePkt(1)), Status::kOk);
+  ASSERT_EQ(q.Submit(MakePkt(2)), Status::kOk);
+  ASSERT_EQ(q.Submit(MakePkt(3)), Status::kBackendUnavailable);
 }
 
 // --- EOS: Pop returns kEos once drained --------------------------------------
 TEST(PacketQueueTest, EosReportedAfterDrain) {
   PacketQueue q(4, Backpressure::kBlock);
-  ASSERT_EQ(q.Submit(MakePkt(1)), StatusCode::kOk);
+  ASSERT_EQ(q.Submit(MakePkt(1)), Status::kOk);
   q.MarkEos();
 
   Packet p;

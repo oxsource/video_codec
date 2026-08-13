@@ -51,16 +51,16 @@ bool SwrAudioConverter::IsPlanar(SampleFormat fmt) {
   return fmt == SampleFormat::kS16Planar || fmt == SampleFormat::kF32Planar;
 }
 
-StatusCode SwrAudioConverter::Convert(const AudioFrame& src,
+Status SwrAudioConverter::Convert(const AudioFrame& src,
                                       SampleFormat dst_format,
                                       AudioFrame& dst) {
   if (src.channels <= 0 || src.sample_rate <= 0) {
-    return StatusCode::kInvalidArgument;
+    return Status::kInvalidArgument;
   }
   const AVSampleFormat in_fmt = ToAvFormat(src.format);
   const AVSampleFormat out_fmt = ToAvFormat(dst_format);
   if (in_fmt == AV_SAMPLE_FMT_NONE || out_fmt == AV_SAMPLE_FMT_NONE) {
-    return StatusCode::kUnsupportedFormat;
+    return Status::kUnsupportedFormat;
   }
 
   const int in_bps = av_get_bytes_per_sample(in_fmt);
@@ -75,7 +75,7 @@ StatusCode SwrAudioConverter::Convert(const AudioFrame& src,
   dst.channels = src.channels;
   dst.timestamp_us = src.timestamp_us;
   dst.data.clear();
-  if (n == 0) return StatusCode::kOk;
+  if (n == 0) return Status::kOk;
 
   // Same sample rate + channel layout on both sides: swresample performs a
   // pure format conversion, including interleaved <-> planar repacking.
@@ -93,7 +93,7 @@ StatusCode SwrAudioConverter::Convert(const AudioFrame& src,
     swr_free(&swr);
     av_channel_layout_uninit(&in_layout);
     av_channel_layout_uninit(&out_layout);
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
   av_channel_layout_uninit(&in_layout);
   av_channel_layout_uninit(&out_layout);
@@ -124,7 +124,7 @@ StatusCode SwrAudioConverter::Convert(const AudioFrame& src,
   const int converted =
       swr_convert(swr, out_planes.data(), n, in_planes.data(), n);
   swr_free(&swr);
-  if (converted < 0) return StatusCode::kEncodeFailed;
+  if (converted < 0) return Status::kEncodeFailed;
 
   // Repack into the single-buffer AudioFrame convention.
   dst.data.resize(static_cast<size_t>(converted) * out_bps * src.channels);
@@ -137,7 +137,7 @@ StatusCode SwrAudioConverter::Convert(const AudioFrame& src,
   } else {
     std::memcpy(dst.data.data(), out_planes[0], dst.data.size());
   }
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 }  // namespace codec

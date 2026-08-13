@@ -40,7 +40,7 @@ header-only compile test for the public umbrella.
 path; stride math is O(1). Hot encode path must not be surprised by extra copies.
 
 **Constraints**: `utils` depends ONLY on `core` (architecture `module-dependencies.md`);
-`public` is the ONLY `//visibility:public` module; error model (`StatusCode`/`Result<T>`)
+`public` is the ONLY `//visibility:public` module; error model (`Status`/`Result<T>`)
 crosses the public boundary — no exceptions. C++17 only.
 
 **Scale/Scope**: Two small modules: `utils` (3 helper areas) and `public` (1 umbrella

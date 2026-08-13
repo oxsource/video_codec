@@ -40,24 +40,24 @@ FFmpegVideoEncoder::FFmpegVideoEncoder(const VideoEncoderConfig& config)
 
 FFmpegVideoEncoder::~FFmpegVideoEncoder() { Release(); }
 
-StatusCode FFmpegVideoEncoder::Init() {
-  if (lifecycle_.Init() != StatusCode::kOk) return StatusCode::kInvalidArgument;
+Status FFmpegVideoEncoder::Init() {
+  if (lifecycle_.Init() != Status::kOk) return Status::kInvalidArgument;
 
   if (config_.width <= 0 || config_.height <= 0)
-    return StatusCode::kInvalidArgument;
+    return Status::kInvalidArgument;
 
   const AVCodec* codec = avcodec_find_encoder(ToCodecId(config_.codec));
   if (!codec) {
     VC_LOG(LogLevel::kError, "FFmpegVideoEncoder: encoder not found");
-    return StatusCode::kPlatformUnsupported;
+    return Status::kPlatformUnsupported;
   }
   ctx_ = avcodec_alloc_context3(codec);
-  if (!ctx_) return StatusCode::kEncodeFailed;
+  if (!ctx_) return Status::kEncodeFailed;
 
   AVPixelFormat pix = ToAvPixFmt(config_.input_format);
   if (pix == AV_PIX_FMT_NONE) {
     avcodec_free_context(&ctx_);
-    return StatusCode::kUnsupportedFormat;
+    return Status::kUnsupportedFormat;
   }
 
   ctx_->width = config_.width;
@@ -71,7 +71,7 @@ StatusCode FFmpegVideoEncoder::Init() {
 
   if (avcodec_open2(ctx_, codec, nullptr) < 0) {
     avcodec_free_context(&ctx_);
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
 
   frame_ = av_frame_alloc();
@@ -81,7 +81,7 @@ StatusCode FFmpegVideoEncoder::Init() {
   if (av_frame_get_buffer(frame_, 0) < 0) {
     av_frame_free(&frame_);
     avcodec_free_context(&ctx_);
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
 
   // Annex-B bitstream filter: FFmpeg emits length-prefixed (AVCC); the bsf
@@ -91,7 +91,7 @@ StatusCode FFmpegVideoEncoder::Init() {
   if (!filter || av_bsf_alloc(filter, &bsf_) < 0) {
     av_frame_free(&frame_);
     avcodec_free_context(&ctx_);
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
   AVCodecParameters* par = avcodec_parameters_alloc();
   avcodec_parameters_from_context(par, ctx_);
@@ -102,7 +102,7 @@ StatusCode FFmpegVideoEncoder::Init() {
     av_bsf_free(&bsf_);
     av_frame_free(&frame_);
     avcodec_free_context(&ctx_);
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
   avcodec_parameters_copy(bsf_->par_in, par);
   avcodec_parameters_free(&par);
@@ -110,19 +110,19 @@ StatusCode FFmpegVideoEncoder::Init() {
     av_bsf_free(&bsf_);
     av_frame_free(&frame_);
     avcodec_free_context(&ctx_);
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
 
   pkt_ = av_packet_alloc();
   initialized_ = true;
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
-StatusCode FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
+Status FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
   if (frame.width != config_.width || frame.height != config_.height) {
-    return StatusCode::kInvalidArgument;
+    return Status::kInvalidArgument;
   }
-  if (av_frame_make_writable(frame_) < 0) return StatusCode::kEncodeFailed;
+  if (av_frame_make_writable(frame_) < 0) return Status::kEncodeFailed;
 
   const int planes = (frame.format == PixelFormat::kNV12) ? 2 : 3;
   for (int p = 0; p < planes; ++p) {
@@ -146,28 +146,28 @@ StatusCode FFmpegVideoEncoder::CopyFrame(const VideoFrame& frame) {
     }
   }
   frame_->pts = pts_++;
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 Result<Packet> FFmpegVideoEncoder::Encode(const VideoFrame& frame) {
-  if (lifecycle_.Encode() != StatusCode::kOk)
-    return Err<Packet>(StatusCode::kNotInitialized);
-  if (CopyFrame(frame) != StatusCode::kOk)
-    return Err<Packet>(StatusCode::kInvalidArgument);
+  if (lifecycle_.Encode() != Status::kOk)
+    return Err<Packet>(Status::kNotInitialized);
+  if (CopyFrame(frame) != Status::kOk)
+    return Err<Packet>(Status::kInvalidArgument);
 
   if (avcodec_send_frame(ctx_, frame_) < 0)
-    return Err<Packet>(StatusCode::kEncodeFailed);
+    return Err<Packet>(Status::kEncodeFailed);
   return Drain(/*drain_eof=*/false);
 }
 
 Result<Packet> FFmpegVideoEncoder::Encode(const NativeBuffer&) {
   // Software FFmpeg path has no hardware surface.
-  return Err<Packet>(StatusCode::kUnsupportedOperation);
+  return Err<Packet>(Status::kUnsupportedOperation);
 }
 
 Result<Packet> FFmpegVideoEncoder::Flush() {
-  if (lifecycle_.Flush() != StatusCode::kOk)
-    return Err<Packet>(StatusCode::kNotInitialized);
+  if (lifecycle_.Flush() != Status::kOk)
+    return Err<Packet>(Status::kNotInitialized);
   if (avcodec_send_frame(ctx_, nullptr) < 0) {
     // Already drained; still try to pull remaining bsf output.
   }
@@ -176,9 +176,9 @@ Result<Packet> FFmpegVideoEncoder::Flush() {
   return r;
 }
 
-StatusCode FFmpegVideoEncoder::SetOutputSink(OutputSink* sink) {
+Status FFmpegVideoEncoder::SetOutputSink(OutputSink* sink) {
   sink_ = sink;
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 Result<Packet> FFmpegVideoEncoder::Drain(bool drain_eof) {
@@ -186,13 +186,13 @@ Result<Packet> FFmpegVideoEncoder::Drain(bool drain_eof) {
   for (;;) {
     int ret = avcodec_receive_packet(ctx_, pkt_);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
-    if (ret < 0) return Err<Packet>(StatusCode::kEncodeFailed);
+    if (ret < 0) return Err<Packet>(Status::kEncodeFailed);
 
     // Convert this codec packet to Annex-B via the bsf.
     AVPacket* bsf_out = av_packet_alloc();
     if (av_bsf_send_packet(bsf_, pkt_) < 0) {
       av_packet_free(&bsf_out);
-      return Err<Packet>(StatusCode::kEncodeFailed);
+      return Err<Packet>(Status::kEncodeFailed);
     }
     while (av_bsf_receive_packet(bsf_, bsf_out) == 0) {
       Packet pkt;
@@ -203,10 +203,10 @@ Result<Packet> FFmpegVideoEncoder::Drain(bool drain_eof) {
       av_packet_unref(bsf_out);
       if (sink_) {
         // Push mode: single destination is the sink.
-        if (sink_->Submit(std::move(pkt)) != StatusCode::kOk) {
+        if (sink_->Submit(std::move(pkt)) != Status::kOk) {
           av_packet_free(&bsf_out);
           av_packet_unref(pkt_);
-          return Err<Packet>(StatusCode::kEncodeFailed);
+          return Err<Packet>(Status::kEncodeFailed);
         }
       } else {
         out = std::move(pkt);

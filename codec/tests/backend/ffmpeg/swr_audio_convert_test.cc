@@ -29,12 +29,12 @@ TEST(SwrAudioConverterTest, S16ToF32PlanarRoundTrip) {
   AudioFrame src = MakeS16(2, 64);
   AudioFrame planar;
   ASSERT_EQ(SwrAudioConverter::Convert(src, SampleFormat::kF32Planar, planar),
-            StatusCode::kOk);
+            Status::kOk);
   EXPECT_EQ(planar.format, SampleFormat::kF32Planar);
 
   AudioFrame back;
   ASSERT_EQ(SwrAudioConverter::Convert(planar, SampleFormat::kS16, back),
-            StatusCode::kOk);
+            Status::kOk);
   ASSERT_EQ(back.data.size(), src.data.size());
   for (size_t i = 0; i < src.data.size() / 2; ++i) {
     int16_t a, b;
@@ -49,7 +49,7 @@ TEST(SwrAudioConverterTest, S16ToF32InterleavedSize) {
   AudioFrame src = MakeS16(2, 32);
   AudioFrame flt;
   ASSERT_EQ(SwrAudioConverter::Convert(src, SampleFormat::kF32, flt),
-            StatusCode::kOk);
+            Status::kOk);
   EXPECT_EQ(flt.format, SampleFormat::kF32);
   EXPECT_EQ(flt.data.size(), static_cast<size_t>(32) * 2 * 4);
 }
@@ -58,10 +58,10 @@ TEST(SwrAudioConverterTest, PlanarToInterleavedKeepsChannelData) {
   AudioFrame src = MakeS16(2, 8);
   AudioFrame planar;
   ASSERT_EQ(SwrAudioConverter::Convert(src, SampleFormat::kF32Planar, planar),
-            StatusCode::kOk);
+            Status::kOk);
   AudioFrame inter;
   ASSERT_EQ(SwrAudioConverter::Convert(planar, SampleFormat::kF32, inter),
-            StatusCode::kOk);
+            Status::kOk);
   EXPECT_EQ(inter.channels, 2);
   EXPECT_EQ(inter.sample_rate, src.sample_rate);
 }
@@ -70,7 +70,7 @@ TEST(SwrAudioConverterTest, InvalidChannels) {
   AudioFrame src = MakeS16(0, 8);
   AudioFrame dst;
   EXPECT_EQ(SwrAudioConverter::Convert(src, SampleFormat::kF32Planar, dst),
-            StatusCode::kInvalidArgument);
+            Status::kInvalidArgument);
 }
 
 }  // namespace

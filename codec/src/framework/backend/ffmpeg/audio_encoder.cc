@@ -20,16 +20,16 @@ FFmpegAudioEncoder::FFmpegAudioEncoder(const AudioEncoderConfig& config)
 
 FFmpegAudioEncoder::~FFmpegAudioEncoder() { Release(); }
 
-StatusCode FFmpegAudioEncoder::Init() {
-  if (lifecycle_.Init() != StatusCode::kOk) return StatusCode::kInvalidArgument;
+Status FFmpegAudioEncoder::Init() {
+  if (lifecycle_.Init() != Status::kOk) return Status::kInvalidArgument;
   if (config_.sample_rate <= 0 || config_.channels <= 0) {
-    return StatusCode::kInvalidArgument;
+    return Status::kInvalidArgument;
   }
 
   const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_AAC);
-  if (!codec) return StatusCode::kPlatformUnsupported;
+  if (!codec) return Status::kPlatformUnsupported;
   ctx_ = avcodec_alloc_context3(codec);
-  if (!ctx_) return StatusCode::kEncodeFailed;
+  if (!ctx_) return Status::kEncodeFailed;
 
   ctx_->sample_fmt = AV_SAMPLE_FMT_FLTP;
   ctx_->sample_rate = config_.sample_rate;
@@ -39,7 +39,7 @@ StatusCode FFmpegAudioEncoder::Init() {
 
   if (avcodec_open2(ctx_, codec, nullptr) < 0) {
     avcodec_free_context(&ctx_);
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
 
   frame_ = av_frame_alloc();
@@ -50,17 +50,17 @@ StatusCode FFmpegAudioEncoder::Init() {
   if (av_frame_get_buffer(frame_, 0) < 0) {
     av_frame_free(&frame_);
     avcodec_free_context(&ctx_);
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
 
   pkt_ = av_packet_alloc();
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 Result<Packet> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
-  if (lifecycle_.Encode() != StatusCode::kOk)
-    return Err<Packet>(StatusCode::kNotInitialized);
-  if (frame.data.empty()) return Err<Packet>(StatusCode::kInvalidArgument);
+  if (lifecycle_.Encode() != Status::kOk)
+    return Err<Packet>(Status::kNotInitialized);
+  if (frame.data.empty()) return Err<Packet>(Status::kInvalidArgument);
 
   const int channels = config_.channels;
   const int samples = frame_->nb_samples;
@@ -69,7 +69,7 @@ Result<Packet> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
   const int16_t* src = reinterpret_cast<const int16_t*>(frame.data.data());
 
   if (av_frame_make_writable(frame_) < 0)
-    return Err<Packet>(StatusCode::kEncodeFailed);
+    return Err<Packet>(Status::kEncodeFailed);
   for (int c = 0; c < channels; ++c) {
     float* dst = reinterpret_cast<float*>(frame_->data[c]);
     for (int i = 0; i < samples; ++i) {
@@ -83,22 +83,22 @@ Result<Packet> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
   (void)in_samples;
 
   if (avcodec_send_frame(ctx_, frame_) < 0)
-    return Err<Packet>(StatusCode::kEncodeFailed);
+    return Err<Packet>(Status::kEncodeFailed);
   return Drain(/*drain_eof=*/false);
 }
 
 Result<Packet> FFmpegAudioEncoder::Flush() {
-  if (lifecycle_.Flush() != StatusCode::kOk)
-    return Err<Packet>(StatusCode::kNotInitialized);
+  if (lifecycle_.Flush() != Status::kOk)
+    return Err<Packet>(Status::kNotInitialized);
   avcodec_send_frame(ctx_, nullptr);
   Result<Packet> r = Drain(/*drain_eof=*/true);
   if (sink_) sink_->Flush();
   return r;
 }
 
-StatusCode FFmpegAudioEncoder::SetOutputSink(OutputSink* sink) {
+Status FFmpegAudioEncoder::SetOutputSink(OutputSink* sink) {
   sink_ = sink;
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 Result<Packet> FFmpegAudioEncoder::Drain(bool drain_eof) {
@@ -106,7 +106,7 @@ Result<Packet> FFmpegAudioEncoder::Drain(bool drain_eof) {
   for (;;) {
     int ret = avcodec_receive_packet(ctx_, pkt_);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
-    if (ret < 0) return Err<Packet>(StatusCode::kEncodeFailed);
+    if (ret < 0) return Err<Packet>(Status::kEncodeFailed);
     Packet pkt;
     pkt.type = PacketType::kAudio;
     pkt.data.assign(pkt_->data, pkt_->data + pkt_->size);
@@ -115,8 +115,8 @@ Result<Packet> FFmpegAudioEncoder::Drain(bool drain_eof) {
     av_packet_unref(pkt_);
     if (sink_) {
       // Push mode: single destination is the sink.
-      if (sink_->Submit(std::move(pkt)) != StatusCode::kOk) {
-        return Err<Packet>(StatusCode::kEncodeFailed);
+      if (sink_->Submit(std::move(pkt)) != Status::kOk) {
+        return Err<Packet>(Status::kEncodeFailed);
       }
     } else {
       out = std::move(pkt);

@@ -61,7 +61,7 @@ added here — it is foundational and must land in Phase 2, before US2/US5 consu
 **Purpose**: The types and cross-cutting utilities every other module depends on.
 No story work starts until this is complete.
 
-- [x] T004 [P] Define `StatusCode` enum + `Result<T>` (expected<T>) in
+- [x] T004 [P] Define `Status` enum + `Result<T>` (expected<T>) in
       `codec/src/framework/core/status.h` and `codec/src/framework/core/result.h`
       per `error-handling.md` / `contracts/encoder-contract.md` (no exceptions cross
       the public API).
@@ -82,7 +82,7 @@ No story work starts until this is complete.
       breakdown never scheduled this module even though `module-dependencies.md` and
       the architecture graph depend on it. Land before US2/US5 consume it.
 
-**Checkpoint**: `core` + `utils` compile; `Result<T>` / `StatusCode` / `LogSlot` /
+**Checkpoint**: `core` + `utils` compile; `Result<T>` / `Status` / `LogSlot` /
 media types / pixel-format + PCM helpers are usable from `api`, `queue`, `consumer`.
 
 ---
@@ -95,7 +95,7 @@ and `contracts/public-api.md`.
 
 **Independent Test**: A test that constructs an encoder via the factory with
 `force_backend` and asserts the lifecycle rejects `Encode()` before `Init()` (returns
-`StatusCode`, no crash).
+`Status`, no crash).
 
 ### Implementation for User Story 1
 
@@ -163,7 +163,7 @@ capacity + blocking back-pressure in unit tests.
 
 ### Implementation for User Story 3
 
-- [x] T018 [P] [US3] Declare `Backpressure` enum, `PopResult`, `OutputSink`,
+- [x] T018 [P] [US3] Declare `Backpressure` enum, `PacketSource::PopResult`, `OutputSink`,
       `PacketSource` interfaces in `codec/src/framework/queue/queue_iface.h`
       per `contracts/output-queue-contract.md`.
 - [x] T019 [US3] Implement `PacketQueue` (fixed power-of-two `slots[]`, atomic
@@ -187,28 +187,28 @@ with no loss under `kBlock`. ⚠️ push path pending T020.
 
 ---
 
-## Phase 6: User Story 4 — Consumer (PacketConsumer / PacketPump / FileSink) (Priority: P2)
+## Phase 6: User Story 4 — Consumer (PacketConsumer / PacketSource::Await / FileSink) (Priority: P2)
 
-**Goal**: The consumer side of the ring buffer: a `PacketPump` drain loop pops from
+**Goal**: The consumer side of the ring buffer: a `PacketSource::Await` drain loop pops from
 `PacketSource` and forwards to a `PacketConsumer`. Ship `FileSinkConsumer`
 (write `.h264`/`.aac` or mux `.mp4`); define `StreamConsumer` contract (RTMP/SRT/WebRTC)
 as deferred-but-designed.
 
-**Independent Test**: End-to-end — encoder → `PacketQueue` → `PacketPump` →
+**Independent Test**: End-to-end — encoder → `PacketQueue` → `PacketSource::Await` →
 `FileSinkConsumer` writes a valid `.h264` with correct order and no packet loss under
 `kBlock`; swapping in a stub `StreamConsumer` requires no encoder change.
 
 ### Implementation for User Story 4
 
 - [x] T022 [P] [US4] Declare `PacketConsumer` interface (`Consume(Packet&&)`,
-      `Consume(Packet&&)Consume(Packet&&)`, `Flush`, `Finish`) and `PacketPump::Run` helper in
-      `codec/src/framework/consumer/packet_consumer.h` / `packet_pump.h` per
+      `Consume(Packet&&)`, `Flush`, `Finish`) and `PacketSource::Await::Run` helper in
+      `codec/src/framework/consumer/packet_consumer.h` / `queue/queue_iface.h` per
       `contracts/output-queue-contract.md` + `output-queue.md` §3.
 - [x] T023 [US4] Implement `FileSinkConsumer` (Annex-B → `.h264` / `.aac`; preserve
       order + keyframe/SPS-PPS at segment start; flush/close on `Finish()`) in
       `codec/src/framework/consumer/file_sink_consumer.cc` / `.h`.
 - [x] T024 [US4] Add the end-to-end drain test in
-      `codec/tests/consumer/file_sink_consumer_test.cc`: `PacketPump` → `FileSinkConsumer`
+      `codec/tests/consumer/file_sink_consumer_test.cc`: `PacketSource::Await` → `FileSinkConsumer`
       produces a valid file, in order, zero loss (contract *Acceptance*). Asserts swapping
       `FileSinkConsumer` for a stub `StreamConsumer` needs no encoder change. **Note**:
       the producer is synthetic (fake `Packet`s), not a real encoder — it proves
@@ -238,7 +238,7 @@ encodes a clip to `.h264` via `queue` + `FileSinkConsumer` and asserts the file 
       `contracts/public-api.md`; only `video_codec_export.h` exists today. Keep `public`
       as the only `//visibility:public` module.
 - [ ] T027 [US5] Add example `codec/src/examples/ffmpeg_encode_file.cc` that wires
-      `FFmpegVideoEncoder` → `PacketQueue` → `PacketPump` → `FileSinkConsumer`.
+      `FFmpegVideoEncoder` → `PacketQueue` → `PacketSource::Await` → `FileSinkConsumer`.
 - [ ] T028 [US5] Register the example + a smoke target in `codec/src/examples/BUILD.bazel`
       and add it to `codec/mk/` + `scripts/verify/` categorized validation (per spec 001
       mechanism).
@@ -264,7 +264,7 @@ buffer; CI is green on the target matrix.
 - [ ] T032 Run `codec/doc/quickstart.md` validation end-to-end and fix any drift between
       docs and the implemented BUILD/test layout.
 - [ ] T033 Optional: author `StreamConsumer` network clients (RTMP/SRT/WebRTC) as a
-      follow-on spec once `FileSinkConsumer` + `PacketPump` are proven.
+      follow-on spec once `FileSinkConsumer` + `PacketSource::Await` are proven.
 
 ---
 
@@ -314,7 +314,7 @@ buffer; CI is green on the target matrix.
 ```bash
 # After Foundational (Phase 2) completes:
 # US3 — ring buffer (independent of encoder surface):
-Task: "Declare Backpressure/PopResult/OutputSink/PacketSource in queue/queue_iface.h"
+Task: "Declare Backpressure/PacketSource::PopResult/OutputSink/PacketSource in queue/queue_iface.h"
 Task: "Implement PacketQueue SPSC in queue/packet_queue.{h,cc}"
 # US1 — encoder surface (independent of ring buffer):
 Task: "Declare VideoEncoder/AudioEncoder abstract in api/video_encoder.h"

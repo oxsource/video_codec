@@ -89,8 +89,8 @@ specs/004-encoder-queue-wiring/
 
 ```text
 codec/src/framework/api/
-├── video_encoder.h      # + virtual StatusCode SetOutputSink(OutputSink*) (fwd-declared)
-└── audio_encoder.h      # + virtual StatusCode SetOutputSink(OutputSink*) (fwd-declared)
+├── video_encoder.h      # + virtual Status SetOutputSink(OutputSink*) (fwd-declared)
+└── audio_encoder.h      # + virtual Status SetOutputSink(OutputSink*) (fwd-declared)
 
 codec/src/framework/backend/ffmpeg/
 ├── video_encoder.h/.cc  # override SetOutputSink; push in Drain()/Flush()

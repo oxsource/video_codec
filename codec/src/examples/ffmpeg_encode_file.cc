@@ -35,7 +35,6 @@
 #include "consumer/file_sink_consumer.h"
 #include "consumer/mp4_file_consumer.h"
 #include "consumer/packet_consumer.h"
-#include "consumer/packet_pump.h"
 #include "queue/packet_queue.h"
 #include "utils/smpte_bars.h"
 
@@ -97,17 +96,17 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg backend available\n");
     return 1;
   }
-  if (encoder->Init() != vc::StatusCode::kOk) {
+  if (encoder->Init() != vc::Status::kOk) {
     std::fprintf(stderr, "ffmpeg_encode_file: encoder Init failed\n");
     return 1;
   }
-  if (encoder->SetOutputSink(&queue) != vc::StatusCode::kOk) {
+  if (encoder->SetOutputSink(&queue) != vc::Status::kOk) {
     std::fprintf(stderr, "ffmpeg_encode_file: push mode unavailable\n");
     return 1;
   }
 
-  // Consumer thread drains the queue into the output.
-  std::thread pump([&] { vc::PacketPump::Run(queue, *consumer); });
+  // Consumer thread awaits packets from the queue into the output.
+  std::thread pump([&] { queue.Await(*consumer); });
 
   const auto start = std::chrono::steady_clock::now();
   int64_t produced = 0;
@@ -125,7 +124,7 @@ int main(int argc, char** argv) {
   }
 
   // Flush drains any remaining packets, then the CALLER marks end-of-stream
-  // (multi-producer safety). PacketPump finishes the file at EOS.
+  // (multi-producer safety). Await finishes the file at EOS.
   encoder->Flush();
   queue.MarkEos();
   pump.join();

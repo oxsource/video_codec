@@ -21,18 +21,18 @@ int PlaneStride(const VideoFrame& f, int plane) {
 
 }  // namespace
 
-StatusCode PixelConverter::Convert(const VideoFrame& src,
+Status PixelConverter::Convert(const VideoFrame& src,
                                    PixelFormat dst_format, VideoFrame& dst) {
-  if (src.width <= 0 || src.height <= 0) return StatusCode::kInvalidArgument;
+  if (src.width <= 0 || src.height <= 0) return Status::kInvalidArgument;
   if (src.format == dst_format) {
     dst = src;  // same-format request: plain copy
-    return StatusCode::kOk;
+    return Status::kOk;
   }
   const bool to_nv12 =
       (src.format == PixelFormat::kI420 && dst_format == PixelFormat::kNV12);
   const bool to_i420 =
       (src.format == PixelFormat::kNV12 && dst_format == PixelFormat::kI420);
-  if (!to_nv12 && !to_i420) return StatusCode::kUnsupportedFormat;
+  if (!to_nv12 && !to_i420) return Status::kUnsupportedFormat;
 
   const int w = src.width;
   const int h = src.height;
@@ -69,7 +69,7 @@ StatusCode PixelConverter::Convert(const VideoFrame& src,
                        dst.planes[0].data(), w, dst.planes[1].data(), cw,
                        dst.planes[2].data(), cw, w, h);
   }
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 }  // namespace codec

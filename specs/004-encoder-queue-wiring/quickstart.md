@@ -22,18 +22,17 @@ video_codec::Result<video_codec::Packet> r = encoder->Encode(frame);
 ```cpp
 #include <video_codec/video_codec.h>
 #include "queue/packet_queue.h"
-#include "consumer/packet_pump.h"
 #include "consumer/file_sink_consumer.h"
 
 video_codec::PacketQueue queue(64, video_codec::Backpressure::kBlock);
 
 auto encoder = video_codec::CreateVideoEncoder(cfg);
-if (encoder->Init() != video_codec::StatusCode::kOk) return 1;
-if (encoder->SetOutputSink(&queue) != video_codec::StatusCode::kOk) return 1;
+if (encoder->Init() != video_codec::Status::kOk) return 1;
+if (encoder->SetOutputSink(&queue) != video_codec::Status::kOk) return 1;
 
 // Drain on a consumer thread.
 video_codec::FileSinkConsumer sink("out.h264");
-std::thread pump([&] { video_codec::PacketPump::Run(queue, sink); });
+std::thread pump([&] { queue.Await(*sink); });
 
 for (int i = 0; i < N; ++i) {
   // In push mode the packet goes into the queue; the returned packet is empty.
@@ -44,7 +43,7 @@ queue.MarkEos();                  // CALLER marks EOS (all producers done)
 pump.join();                      // consumer sees kEos and stops; file is complete
 ```
 
-- Only the encoder side changes in this feature: `queue`, `PacketPump`,
+- Only the encoder side changes in this feature: `queue`, `PacketSource::Await`,
   `FileSinkConsumer` already exist and are used as-is.
 - Back-pressure is the queue's job (`kBlock` default): a slow consumer naturally slows the
   encoder, zero loss.

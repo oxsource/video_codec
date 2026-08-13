@@ -44,7 +44,7 @@ and is visible inside the framework; `public` remains the only public-visibility
 ## Phase 2: Foundational (Blocking Prerequisites)
 
 **Purpose**: The only prerequisite — the `core` types/error model (`VideoFrame`, `AudioFrame`,
-`Packet`, `PixelFormat`, `SampleFormat`, `StatusCode`, `Result<T>`) — is already
+`Packet`, `PixelFormat`, `SampleFormat`, `Status`, `Result<T>`) — is already
 implemented (commit `628e5be`). Enforce the architecture rule that `utils` must stay
 `core`-only.
 
@@ -72,7 +72,7 @@ references, and unsupported conversions return an error status rather than corru
 
 - [x] T004 [P] [US1] Add YUV conversion round-trip test in
       `codec/tests/utils/yuv_convert_test.cc`: `kI420 → kNV12 → kI420` is bit-exact on a
-      reference buffer; an unsupported format pair returns an error `StatusCode`.
+      reference buffer; an unsupported format pair returns an error `Status`.
 - [x] T005 [P] [US1] Add stride reference test in `codec/tests/utils/stride_test.cc`:
       `RowStride(width, PixelFormat)` matches expected byte layouts for representative
       widths/formats; `width == 0` returns an error status.
@@ -85,13 +85,13 @@ references, and unsupported conversions return an error status rather than corru
 - [x] T007 [P] [US1] Implement `yuv_convert.h` / `yuv_convert.cc` in
       `codec/src/framework/utils/` — `ConvertPixelFormat(VideoFrame, PixelFormat::kNV12, ...)`
       doing planar YUV420P ↔ semi-planar NV12 with explicit per-plane strides; returns
-      `StatusCode`.
+      `Status`.
 - [x] T008 [P] [US1] Implement `stride.h` / `stride.cc` in `codec/src/framework/utils/` —
       `RowStride(width, PixelFormat)` and `SampleStride(...)` returning padded byte counts;
       returns error status for invalid input.
 - [x] T009 [P] [US1] Implement `pcm_convert.h` / `pcm_convert.cc` in
       `codec/src/framework/utils/` — `ConvertSampleFormat(...)` among `kS16`/`kF32` ×
-      interleaved/planar; returns `StatusCode`.
+      interleaved/planar; returns `Status`.
 
 **Checkpoint**: `bazel test //tests/utils/...` is green; `utils` is independently usable and
 `core`-only.

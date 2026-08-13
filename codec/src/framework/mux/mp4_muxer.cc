@@ -86,7 +86,7 @@ Mp4Muxer::~Mp4Muxer() {
   }
 }
 
-StatusCode Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
+Status Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
                                     std::vector<uint8_t>* out) {
   const uint8_t* p = data;
   const uint8_t* end = data + size;
@@ -107,7 +107,7 @@ StatusCode Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
     if (type == 7 && sps.empty()) sps.assign(nal, nal + nalen);
     if (type == 8 && pps.empty()) pps.assign(nal, nal + nalen);
   }
-  if (sps.empty() || pps.empty()) return StatusCode::kEncodeFailed;
+  if (sps.empty() || pps.empty()) return Status::kEncodeFailed;
 
   // avcC: SPS/PPS include their NAL header byte (ISO 14496-15).
   out->clear();
@@ -124,10 +124,10 @@ StatusCode Mp4Muxer::BuildExtradata(const uint8_t* data, size_t size,
   out->push_back(static_cast<uint8_t>(pps.size() >> 8));
   out->push_back(static_cast<uint8_t>(pps.size() & 0xFF));
   out->insert(out->end(), pps.begin(), pps.end());
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
-StatusCode Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
+Status Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
                                   std::vector<uint8_t>* out) {
   out->clear();
   const uint8_t* p = data;
@@ -147,20 +147,20 @@ StatusCode Mp4Muxer::AnnexBToAvcc(const uint8_t* data, size_t size,
     if (type == 7 || type == 8) continue;  // SPS/PPS live in extradata only
     AppendLenPrefixed(out, nal, nalen);
   }
-  return out->empty() ? StatusCode::kEncodeFailed : StatusCode::kOk;
+  return out->empty() ? Status::kEncodeFailed : Status::kOk;
 }
 
-StatusCode Mp4Muxer::OpenMuxer(const Packet& first_keyframe) {
+Status Mp4Muxer::OpenMuxer(const Packet& first_keyframe) {
   if (avformat_alloc_output_context2(&fmt_, nullptr, "mp4", nullptr) < 0 ||
       !fmt_) {
     fmt_ = nullptr;
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
   AVStream* st = avformat_new_stream(fmt_, nullptr);
   if (!st) {
     avformat_free_context(fmt_);
     fmt_ = nullptr;
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
   st->id = 0;
   st->time_base = AVRational{1, fps_};
@@ -172,13 +172,13 @@ StatusCode Mp4Muxer::OpenMuxer(const Packet& first_keyframe) {
 
   std::vector<uint8_t> extradata;
   if (BuildExtradata(first_keyframe.data.data(), first_keyframe.data.size(),
-                     &extradata) == StatusCode::kOk) {
+                     &extradata) == Status::kOk) {
     par->extradata = static_cast<uint8_t*>(
         av_mallocz(extradata.size() + AV_INPUT_BUFFER_PADDING_SIZE));
     if (!par->extradata) {
       avformat_free_context(fmt_);
       fmt_ = nullptr;
-      return StatusCode::kEncodeFailed;
+      return Status::kEncodeFailed;
     }
     std::memcpy(par->extradata, extradata.data(), extradata.size());
     par->extradata_size = static_cast<int>(extradata.size());
@@ -189,7 +189,7 @@ StatusCode Mp4Muxer::OpenMuxer(const Packet& first_keyframe) {
   if (!iobuf) {
     avformat_free_context(fmt_);
     fmt_ = nullptr;
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
   fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, sink_, nullptr,
                                 SinkWrite, SinkSeek);
@@ -197,36 +197,36 @@ StatusCode Mp4Muxer::OpenMuxer(const Packet& first_keyframe) {
     av_free(iobuf);
     avformat_free_context(fmt_);
     fmt_ = nullptr;
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
   if (avformat_write_header(fmt_, nullptr) < 0) {
     avio_context_free(&fmt_->pb);
     avformat_free_context(fmt_);
     fmt_ = nullptr;
-    return StatusCode::kEncodeFailed;
+    return Status::kEncodeFailed;
   }
   stream_index_ = st->index;
   opened_ = true;
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
-StatusCode Mp4Muxer::Consume(const Packet& pkt) {
+Status Mp4Muxer::Consume(const Packet& pkt) {
   if (pkt.type == PacketType::kAudio) {
-    return StatusCode::kUnsupportedOperation;  // video-only muxer
+    return Status::kUnsupportedOperation;  // video-only muxer
   }
-  if (pkt.data.empty()) return StatusCode::kOk;
+  if (pkt.data.empty()) return Status::kOk;
 
   if (!opened_) {
     // Wait for the first keyframe: the Annex-B bsf prepends SPS/PPS there.
-    if (!pkt.keyframe) return StatusCode::kOk;
-    StatusCode s = OpenMuxer(pkt);
-    if (s != StatusCode::kOk) return s;
+    if (!pkt.keyframe) return Status::kOk;
+    Status s = OpenMuxer(pkt);
+    if (s != Status::kOk) return s;
   }
 
   std::vector<uint8_t> sample;
   if (AnnexBToAvcc(pkt.data.data(), pkt.data.size(), &sample) !=
-      StatusCode::kOk) {
-    return StatusCode::kEncodeFailed;
+      Status::kOk) {
+    return Status::kEncodeFailed;
   }
 
   // A refcounted packet is safe: the mov muxer buffers samples via
@@ -246,10 +246,10 @@ StatusCode Mp4Muxer::Consume(const Packet& pkt) {
   // tables (stsz/stco) consistent with the data written to mdat.
   const int ret = av_interleaved_write_frame(fmt_, avpkt);
   av_packet_free(&avpkt);
-  return ret < 0 ? StatusCode::kEncodeFailed : StatusCode::kOk;
+  return ret < 0 ? Status::kEncodeFailed : Status::kOk;
 }
 
-StatusCode Mp4Muxer::Finish() {
+Status Mp4Muxer::Finish() {
   if (opened_) {
     av_write_trailer(fmt_);
     if (fmt_->pb) {
@@ -260,7 +260,7 @@ StatusCode Mp4Muxer::Finish() {
     fmt_ = nullptr;
     opened_ = false;
   }
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 }  // namespace codec

@@ -15,6 +15,8 @@ namespace video {
 namespace codec {
 namespace {
 
+using PopResult = PacketSource::PopResult;
+
 AudioFrame MakePcmFrame(int samples) {
   AudioFrame f;
   f.format = SampleFormat::kS16;
@@ -38,8 +40,8 @@ TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
 
   std::unique_ptr<AudioEncoder> encoder = CreateAudioEncoder(cfg);
   ASSERT_NE(encoder, nullptr);
-  ASSERT_EQ(encoder->Init(), StatusCode::kOk);
-  ASSERT_EQ(encoder->SetOutputSink(&q), StatusCode::kOk);
+  ASSERT_EQ(encoder->Init(), Status::kOk);
+  ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);
 
   for (int i = 0; i < 10; ++i) {
     Result<Packet> r = encoder->Encode(MakePcmFrame(1024));

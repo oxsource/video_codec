@@ -24,17 +24,17 @@ class FFmpegVideoEncoder : public VideoEncoder {
   explicit FFmpegVideoEncoder(const VideoEncoderConfig& config);
   ~FFmpegVideoEncoder() override;
 
-  StatusCode Init() override;
+  Status Init() override;
   Result<Packet> Encode(const VideoFrame& frame) override;
   Result<Packet> Encode(const NativeBuffer& buf) override;
   Result<Packet> Flush() override;
   void Release() override;
-  StatusCode SetOutputSink(OutputSink* sink) override;
+  Status SetOutputSink(OutputSink* sink) override;
 
  private:
   // Copy a framework VideoFrame into `frame_`, honoring stride. Returns
   // kUnsupportedFormat for pixel formats this backend cannot accept.
-  StatusCode CopyFrame(const VideoFrame& frame);
+  Status CopyFrame(const VideoFrame& frame);
 
   // Pull available packets from the codec, run them through the Annex-B
   // bitstream filter, and return the resulting Packet (empty if none

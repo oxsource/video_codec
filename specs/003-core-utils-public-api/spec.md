@@ -144,7 +144,7 @@ shared build configurations.
 - The architecture and module-visibility rules from spec `002-architecture-engineering-design`
   (`codec/doc/architecture/module-dependencies.md`, `build-conventions.md`) are authoritative;
   the utilities module depends only on `core`, and only the public module is `//visibility:public`.
-- The core types, error model (`StatusCode`/`Result`), `LogSlot`, and abstract encoder
+- The core types, error model (`Status`/`Result`), `LogSlot`, and abstract encoder
   interfaces referenced here were already implemented in an earlier commit; this proposal does
   NOT re-implement them — it adds the utilities module (a still-missing foundational piece,
   tracked as T008 in `specs/002-.../tasks.md`) and the public umbrella/export surface

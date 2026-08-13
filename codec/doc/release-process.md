@@ -24,7 +24,7 @@ and optionally as a shared library.
 - The C++ public API (`public-api.md`) is the stability boundary. Anything under
   `src/framework/{core,api,utils,backend}` not exported via `VIDEO_CODEC_API` may change
   in a MINOR.
-- `StatusCode` values are append-only (new codes may be added; existing codes keep their
+- `Status` values are append-only (new codes may be added; existing codes keep their
   meaning) to preserve ABI for consumers that switch on them.
 
 ## CHANGELOG

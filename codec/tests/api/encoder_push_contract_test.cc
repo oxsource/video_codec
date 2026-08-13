@@ -15,10 +15,10 @@ namespace {
 
 class StubVideoEncoder : public VideoEncoder {
  public:
-  StatusCode Init() override { return StatusCode::kOk; }
+  Status Init() override { return Status::kOk; }
   Result<Packet> Encode(const VideoFrame&) override { return Ok(Packet{}); }
   Result<Packet> Encode(const NativeBuffer&) override {
-    return Err<Packet>(StatusCode::kUnsupportedOperation);
+    return Err<Packet>(Status::kUnsupportedOperation);
   }
   Result<Packet> Flush() override { return Ok(Packet{}); }
   void Release() override {}
@@ -26,7 +26,7 @@ class StubVideoEncoder : public VideoEncoder {
 
 class StubAudioEncoder : public AudioEncoder {
  public:
-  StatusCode Init() override { return StatusCode::kOk; }
+  Status Init() override { return Status::kOk; }
   Result<Packet> Encode(const AudioFrame&) override {
     Packet p;
     p.type = PacketType::kAudio;
@@ -42,12 +42,12 @@ class StubAudioEncoder : public AudioEncoder {
 
 TEST(EncoderPushContractTest, DefaultVideoSetOutputSinkIsUnsupported) {
   StubVideoEncoder enc;
-  EXPECT_EQ(enc.SetOutputSink(nullptr), StatusCode::kUnsupportedOperation);
+  EXPECT_EQ(enc.SetOutputSink(nullptr), Status::kUnsupportedOperation);
 }
 
 TEST(EncoderPushContractTest, DefaultAudioSetOutputSinkIsUnsupported) {
   StubAudioEncoder enc;
-  EXPECT_EQ(enc.SetOutputSink(nullptr), StatusCode::kUnsupportedOperation);
+  EXPECT_EQ(enc.SetOutputSink(nullptr), Status::kUnsupportedOperation);
 }
 
 }  // namespace

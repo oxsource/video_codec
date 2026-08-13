@@ -22,8 +22,8 @@ class Mp4FileConsumer : public PacketConsumer {
                            int fps = 30);
   ~Mp4FileConsumer() override = default;
 
-  StatusCode Consume(Packet&& pkt) override;
-  StatusCode Finish() override;
+  Status Consume(Packet&& pkt) override;
+  Status Finish() override;
 
  private:
   FileByteSink sink_;

@@ -15,10 +15,10 @@ class EncoderLifecycle {
  public:
   enum class State { kCreated, kInitialized, kEncoding, kFlushed, kReleased };
 
-  StatusCode Init();
-  StatusCode Encode();   // call before producing a packet
-  StatusCode Flush();    // -> Flushed
-  StatusCode Release();  // -> Released (idempotent)
+  Status Init();
+  Status Encode();   // call before producing a packet
+  Status Flush();    // -> Flushed
+  Status Release();  // -> Released (idempotent)
 
   State state() const { return state_; }
   bool ready() const {  // Init() has succeeded and not yet Released

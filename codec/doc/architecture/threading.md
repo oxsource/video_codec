@@ -49,13 +49,13 @@ wrapper in the base design — it is a consumer/utility concern.
 ## Consumer thread (drain loop)
 
 When output goes to a ring buffer (see [output-queue.md](output-queue.md)), a **second
-thread** runs the `PacketPump` drain loop:
+thread** runs the `PacketSource::Await` drain loop:
 
 ```mermaid
 flowchart LR
     ET["Encoder thread<br/>(Submit → ring)"]
     Q["PacketQueue"]
-    CT["Consumer thread<br/>(PacketPump: Pop → Consume)"]
+    CT["Consumer thread<br/>(PacketSource::Await: Pop → Consume)"]
     ET --> Q
     Q --> CT
 ```

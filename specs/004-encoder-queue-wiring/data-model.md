@@ -17,7 +17,7 @@ and a **mode flag** (push vs pull) to the existing encoder entities.
 ### OutputSink (existing, `queue/queue_iface.h`)
 - Producer endpoint of the queue. `Submit(Packet&&)`, `Submit(Packet&&)Submit(Packet&&)`,
   `Flush()`.
-- Applies the queue's back-pressure policy; returns `StatusCode`.
+- Applies the queue's back-pressure policy; returns `Status`.
 
 ### PacketQueue (existing)
 - Implements `OutputSink` + `PacketSource`.

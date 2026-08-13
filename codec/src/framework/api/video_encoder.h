@@ -22,7 +22,7 @@ class VideoEncoder {
   // Returns nullptr if no matching backend is linked for this platform/config.
   static std::unique_ptr<VideoEncoder> Create(const VideoEncoderConfig& config);
 
-  virtual StatusCode Init() = 0;  // -> Initialized
+  virtual Status Init() = 0;  // -> Initialized
 
   // CPU path. Init() must have succeeded; returns kNotInitialized otherwise.
   virtual Result<Packet> Encode(const VideoFrame& frame) = 0;
@@ -42,10 +42,10 @@ class VideoEncoder {
   // Attach an output sink to enable push mode: every produced packet is handed
   // to the sink instead of returned (single destination). Pass nullptr to
   // detach (back to pull mode). Backends without push support return
-  // StatusCode::kUnsupportedOperation and stay in pull mode.
-  virtual StatusCode SetOutputSink(OutputSink* sink) {
+  // Status::kUnsupportedOperation and stay in pull mode.
+  virtual Status SetOutputSink(OutputSink* sink) {
     (void)sink;
-    return StatusCode::kUnsupportedOperation;
+    return Status::kUnsupportedOperation;
   }
 };
 

@@ -36,13 +36,13 @@ TEST(PixelConverterTest, I420ToNV12RoundTrip) {
   VideoFrame src = MakeI420(16, 16);
   VideoFrame nv12;
   ASSERT_EQ(PixelConverter::Convert(src, PixelFormat::kNV12, nv12),
-            StatusCode::kOk);
+            Status::kOk);
   EXPECT_EQ(nv12.format, PixelFormat::kNV12);
   EXPECT_EQ(nv12.planes[1].size(), static_cast<size_t>(16) * 8);
 
   VideoFrame back;
   ASSERT_EQ(PixelConverter::Convert(nv12, PixelFormat::kI420, back),
-            StatusCode::kOk);
+            Status::kOk);
   EXPECT_TRUE(Equals(src, back)) << "I420->NV12->I420 must be bit-exact";
 }
 
@@ -50,7 +50,7 @@ TEST(PixelConverterTest, SameFormatCopies) {
   VideoFrame src = MakeI420(8, 8);
   VideoFrame dst;
   ASSERT_EQ(PixelConverter::Convert(src, PixelFormat::kI420, dst),
-            StatusCode::kOk);
+            Status::kOk);
   EXPECT_TRUE(Equals(src, dst));
 }
 
@@ -59,14 +59,14 @@ TEST(PixelConverterTest, UnsupportedPairReturnsError) {
   src.format = PixelFormat::kRGBA;  // kRGBA <-> kI420 not supported in v1
   VideoFrame dst;
   EXPECT_EQ(PixelConverter::Convert(src, PixelFormat::kI420, dst),
-            StatusCode::kUnsupportedFormat);
+            Status::kUnsupportedFormat);
 }
 
 TEST(PixelConverterTest, InvalidDimensions) {
   VideoFrame src = MakeI420(0, 8);
   VideoFrame dst;
   EXPECT_EQ(PixelConverter::Convert(src, PixelFormat::kNV12, dst),
-            StatusCode::kInvalidArgument);
+            Status::kInvalidArgument);
 }
 
 }  // namespace

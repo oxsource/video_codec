@@ -1,8 +1,9 @@
 package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subpackages__", "//src/examples:__subpackages__"])
 
-# PacketConsumer interface, PacketPump drain loop, file sinks (FileSinkConsumer,
+# PacketConsumer (implements queue::PacketSink), file sinks (FileSinkConsumer,
 # FileByteSink), and the PacketConsumer adapters over format converters
-# (Mp4FileConsumer: FileByteSink + mux::Mp4Muxer).
+# (Mp4FileConsumer: FileByteSink + mux::Mp4Muxer). The drain loop lives in
+# PacketSource::Await (queue module); this module only supplies sinks.
 # Depends on core (types), queue (PacketSource), api, and mux (format).
 cc_library(
     name = "consumer",

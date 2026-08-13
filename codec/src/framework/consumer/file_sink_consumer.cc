@@ -17,29 +17,29 @@ FileSinkConsumer::FileSinkConsumer(std::string video_path,
   }
 }
 
-StatusCode FileSinkConsumer::Consume(Packet&& pkt) {
+Status FileSinkConsumer::Consume(Packet&& pkt) {
   if (pkt.type == PacketType::kAudio) {
     if (audio_path_.empty() || !audio_file_.is_open()) {
-      return StatusCode::kOk;  // no audio sink configured: no-op success
+      return Status::kOk;  // no audio sink configured: no-op success
     }
     if (!pkt.data.empty()) {
       audio_file_.write(reinterpret_cast<const char*>(pkt.data.data()),
                         static_cast<std::streamsize>(pkt.data.size()));
     }
-    return audio_file_.good() ? StatusCode::kOk : StatusCode::kEncodeFailed;
+    return audio_file_.good() ? Status::kOk : Status::kEncodeFailed;
   }
-  if (!video_file_.is_open()) return StatusCode::kInvalidArgument;
+  if (!video_file_.is_open()) return Status::kInvalidArgument;
   if (!pkt.data.empty()) {
     video_file_.write(reinterpret_cast<const char*>(pkt.data.data()),
                       static_cast<std::streamsize>(pkt.data.size()));
   }
-  return video_file_.good() ? StatusCode::kOk : StatusCode::kEncodeFailed;
+  return video_file_.good() ? Status::kOk : Status::kEncodeFailed;
 }
 
-StatusCode FileSinkConsumer::Finish() {
+Status FileSinkConsumer::Finish() {
   if (video_file_.is_open()) video_file_.close();
   if (audio_file_.is_open()) audio_file_.close();
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 }  // namespace codec

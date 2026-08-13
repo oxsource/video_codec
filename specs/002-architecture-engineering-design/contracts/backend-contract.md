@@ -15,7 +15,7 @@ obligations below. Backends **must not** depend on each other.
    `VTCompressionSession`) and returns `kOk` only when ready to accept frames.
 3. Convert between the framework's `VideoFrame`/`AudioFrame` and the backend's native
    frame type using `utils` for pixel/sample conversion.
-4. Map external errors to `StatusCode` (never throw).
+4. Map external errors to `Status` (never throw).
 5. `Release()` frees ALL external resources and is idempotent.
 6. Register itself only via the factory `select()` wiring in `public` — no global
    side effects at load.

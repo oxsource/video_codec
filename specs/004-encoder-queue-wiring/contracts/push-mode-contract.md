@@ -12,12 +12,12 @@ Defines the encoder-side push wiring added by this feature. It does not change t
 ```cpp
 // On both VideoEncoder and AudioEncoder (api headers; OutputSink is fwd-declared):
 //   Attach a sink to enable push mode. Pass nullptr to detach (back to pull-only).
-//   Backends without push support return StatusCode::kUnsupportedOperation and
+//   Backends without push support return Status::kUnsupportedOperation and
 //   stay in pull mode.
-virtual StatusCode SetOutputSink(OutputSink* sink);
+virtual Status SetOutputSink(OutputSink* sink);
 ```
 
-- Default implementation: `return StatusCode::kUnsupportedOperation;`
+- Default implementation: `return Status::kUnsupportedOperation;`
 - Non-owning: the caller keeps the sink alive for the encoder's lifetime; `Release()`
   clears the pointer.
 
@@ -43,7 +43,7 @@ virtual StatusCode SetOutputSink(OutputSink* sink);
 ## 4. Back-pressure
 
 - The sink (queue) applies its configured policy (`kBlock` default, `kDropOldest`, `kError`).
-- The encoder makes no independent pacing decisions; it honors the `StatusCode` returned by
+- The encoder makes no independent pacing decisions; it honors the `Status` returned by
   `Submit`. Under `kBlock` a full queue naturally blocks the producer.
 
 ## 5. Audio

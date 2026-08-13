@@ -15,43 +15,43 @@ TEST(EncoderLifecycleTest, Created) {
   EncoderLifecycle lc;
   ASSERT_EQ(lc.state(), EncoderLifecycle::State::kCreated);
   // Invalid transitions from Created (must Init first).
-  EXPECT_EQ(lc.Encode(), StatusCode::kNotInitialized);
-  EXPECT_EQ(lc.Flush(), StatusCode::kNotInitialized);
-  EXPECT_EQ(lc.Init(), StatusCode::kOk);
+  EXPECT_EQ(lc.Encode(), Status::kNotInitialized);
+  EXPECT_EQ(lc.Flush(), Status::kNotInitialized);
+  EXPECT_EQ(lc.Init(), Status::kOk);
   EXPECT_EQ(lc.state(), EncoderLifecycle::State::kInitialized);
-  EXPECT_EQ(lc.Release(), StatusCode::kOk);
+  EXPECT_EQ(lc.Release(), Status::kOk);
   EXPECT_EQ(lc.state(), EncoderLifecycle::State::kReleased);
 }
 
 TEST(EncoderLifecycleTest, Initialized) {
   EncoderLifecycle lc;
-  ASSERT_EQ(lc.Init(), StatusCode::kOk);
-  EXPECT_EQ(lc.Init(), StatusCode::kInvalidArgument);  // already initialized
-  EXPECT_EQ(lc.Encode(), StatusCode::kOk);
+  ASSERT_EQ(lc.Init(), Status::kOk);
+  EXPECT_EQ(lc.Init(), Status::kInvalidArgument);  // already initialized
+  EXPECT_EQ(lc.Encode(), Status::kOk);
   EXPECT_EQ(lc.state(), EncoderLifecycle::State::kEncoding);
-  EXPECT_EQ(lc.Encode(), StatusCode::kOk);  // Encoding -> Encoding
-  EXPECT_EQ(lc.Flush(), StatusCode::kOk);
+  EXPECT_EQ(lc.Encode(), Status::kOk);  // Encoding -> Encoding
+  EXPECT_EQ(lc.Flush(), Status::kOk);
   EXPECT_EQ(lc.state(), EncoderLifecycle::State::kFlushed);
 }
 
 TEST(EncoderLifecycleTest, FlushedReuse) {
   EncoderLifecycle lc;
-  ASSERT_EQ(lc.Init(), StatusCode::kOk);
-  ASSERT_EQ(lc.Encode(), StatusCode::kOk);
-  ASSERT_EQ(lc.Flush(), StatusCode::kOk);
-  EXPECT_EQ(lc.Encode(), StatusCode::kNotInitialized);  // must Init again
-  EXPECT_EQ(lc.Init(), StatusCode::kOk);                // reuse from Flushed
+  ASSERT_EQ(lc.Init(), Status::kOk);
+  ASSERT_EQ(lc.Encode(), Status::kOk);
+  ASSERT_EQ(lc.Flush(), Status::kOk);
+  EXPECT_EQ(lc.Encode(), Status::kNotInitialized);  // must Init again
+  EXPECT_EQ(lc.Init(), Status::kOk);                // reuse from Flushed
   EXPECT_EQ(lc.state(), EncoderLifecycle::State::kInitialized);
 }
 
 TEST(EncoderLifecycleTest, ReleasedIsTerminal) {
   EncoderLifecycle lc;
-  ASSERT_EQ(lc.Init(), StatusCode::kOk);
-  ASSERT_EQ(lc.Release(), StatusCode::kOk);
-  EXPECT_EQ(lc.Init(), StatusCode::kInvalidArgument);
-  EXPECT_EQ(lc.Encode(), StatusCode::kNotInitialized);
-  EXPECT_EQ(lc.Flush(), StatusCode::kNotInitialized);
-  EXPECT_EQ(lc.Release(), StatusCode::kOk);  // idempotent
+  ASSERT_EQ(lc.Init(), Status::kOk);
+  ASSERT_EQ(lc.Release(), Status::kOk);
+  EXPECT_EQ(lc.Init(), Status::kInvalidArgument);
+  EXPECT_EQ(lc.Encode(), Status::kNotInitialized);
+  EXPECT_EQ(lc.Flush(), Status::kNotInitialized);
+  EXPECT_EQ(lc.Release(), Status::kOk);  // idempotent
 }
 
 // --- Backend selection model (data-model.md §6) ------------------------------

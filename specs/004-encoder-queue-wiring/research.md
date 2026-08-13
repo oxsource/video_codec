@@ -9,10 +9,10 @@ consumer transport already exist; this feature only adds the encoder-side push p
 
 ## R1 — Where `OutputSink` is referenced vs. module dependencies
 
-- **Decision**: Add `virtual StatusCode SetOutputSink(OutputSink* sink)` to the abstract
+- **Decision**: Add `virtual Status SetOutputSink(OutputSink* sink)` to the abstract
   `VideoEncoder` and `AudioEncoder` in `api`, **forward-declaring** `OutputSink` in the api
   headers (no `#include`). The default implementation returns
-  `StatusCode::kUnsupportedOperation`. Only the FFmpeg backends include
+  `Status::kUnsupportedOperation`. Only the FFmpeg backends include
   `queue/queue_iface.h` and override the hook; the `backend/ffmpeg` BUILD gains a
   dependency on `//src/framework/queue`.
 - **Rationale**: The module-dependency rule (`module-dependencies.md` in spec 002) keeps
@@ -44,7 +44,7 @@ consumer transport already exist; this feature only adds the encoder-side push p
 ## R3 — Back-pressure ownership
 
 - **Decision**: The sink (`OutputSink::Submit`) applies the queue's configured back-pressure
-  policy; the encoder simply calls `Submit(Packet&&)` and propagates its `StatusCode`.
+  policy; the encoder simply calls `Submit(Packet&&)` and propagates its `Status`.
   No new pacing logic in the encoder; blocking (`kBlock`) naturally paces the producer.
 - **Rationale**: Back-pressure already lives in the queue (frozen contract,
   `output-queue-contract.md`). The encoder must honor whatever the sink returns (including

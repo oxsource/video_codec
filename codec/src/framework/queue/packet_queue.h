@@ -13,8 +13,8 @@ namespace video {
 namespace codec {
 
 // A single-producer / single-consumer bounded ring buffer. One producer (the
-// encoder) pushes via OutputSink; one consumer (the PacketPump) pops via
-// PacketSource. Packets are MOVED in and out of pre-allocated slots, so
+// encoder) pushes via OutputSink; one consumer drains via PacketSource (Pop /
+// Await). Packets are MOVED in and out of pre-allocated slots, so
 // there is no per-packet heap allocation on the hot path.
 //
 // Note on "lock-free": the move-in / move-out and the full/empty checks are
@@ -59,23 +59,24 @@ class Ring {
 
   // Returns kOk (packet in `out`), kEmpty (timed out / non-blocking empty), or
   // kEos (end-of-stream and fully drained).
-  PopResult Pop(Pkt& out, int64_t deadline_us) {
+  PacketSource::PopResult Pop(Pkt& out, int64_t deadline_us) {
     std::unique_lock<std::mutex> lk(mu_);
     if (deadline_us > 0) {
       bool signaled =
           not_empty_.wait_for(lk, std::chrono::microseconds(deadline_us),
                               [this] { return count_ > 0 || eos_; });
-      if (!signaled && count_ == 0) return PopResult::kEmpty;
+      if (!signaled && count_ == 0) return PacketSource::PopResult::kEmpty;
     } else if (count_ == 0) {
-      return eos_ ? PopResult::kEos : PopResult::kEmpty;
+      return eos_ ? PacketSource::PopResult::kEos
+                  : PacketSource::PopResult::kEmpty;
     }
-    if (count_ == 0) return PopResult::kEos;
+    if (count_ == 0) return PacketSource::PopResult::kEos;
     out = std::move(slots_[head_]);
     slots_[head_] = Pkt{};
     head_ = (head_ + 1) & mask_;
     --count_;
     not_full_.notify_one();
-    return PopResult::kOk;
+    return PacketSource::PopResult::kOk;
   }
 
   void MarkEos() {
@@ -120,13 +121,18 @@ class PacketQueue : public OutputSink, public PacketSource {
   PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
 
   // OutputSink (producer). Routes to the video or audio ring by pkt.type.
-  StatusCode Submit(Packet&& pkt) override;
-  StatusCode Flush() override { return StatusCode::kOk; }
+  Status Submit(Packet&& pkt) override;
+  Status Flush() override { return Status::kOk; }
 
   // PacketSource (consumer). Pops whichever ring has data, alternating
   // round-robin so neither media starves; blocks up to `deadline_us` when
   // both are empty, and returns kEos only once BOTH rings are drained.
-  PopResult Pop(Packet& out, int64_t deadline_us) override;
+  PacketSource::PopResult Pop(Packet& out, int64_t deadline_us) override;
+
+  // Await mechanism: block on the calling thread, delivering each packet to
+  // `sink` until EOS (then sink.Finish()). A failing Consume stops the loop.
+  Status Await(PacketSink& sink, int64_t deadline_us = 100'000) override;
+
   void MarkEos() override;
 
   size_t capacity() const { return video_.capacity(); }
@@ -135,7 +141,7 @@ class PacketQueue : public OutputSink, public PacketSource {
  private:
   // Pop one packet from a non-empty ring (round-robin); kEos only when both
   // rings are finished. Caller must hold qmu_.
-  PopResult TryPop(Packet& out);
+  PacketSource::PopResult TryPop(Packet& out);
 
   Ring<Packet> video_;
   Ring<Packet> audio_;

@@ -89,7 +89,7 @@ specs/002-architecture-engineering-design/
 codec/doc/architecture/
 ├── README.md                    # Architecture overview, key decisions index
 ├── module-dependencies.md       # Formal module dependency graph + visibility rules
-├── error-handling.md            # StatusCode / Result<T> propagation strategy
+├── error-handling.md            # Status / Result<T> propagation strategy
 ├── lifecycle-model.md           # Encoder lifecycle state machine
 ├── backend-selection.md         # Factory + select() + force_backend model
 ├── logging-slot.md              # LogSlot abstract interface, plug-in by consumer
@@ -141,7 +141,7 @@ graph TD
             UTILS["utils<br/>YUV420P↔NV12, stride, PCM convert"]
             BFF["backend/*<br/>android / ffmpeg / darwin(reserved)"]
             QUEUE["queue<br/>PacketQueue (ring buffer)"]
-            CONSUMER["consumer<br/>PacketConsumer, PacketPump,<br/>FileSinkConsumer / StreamConsumer"]
+            CONSUMER["consumer<br/>PacketConsumer, PacketSource::Await,<br/>FileSinkConsumer / StreamConsumer"]
             PUBLIC["public<br/>Umbrella header, VIDEO_CODEC_API export"]
         end
 
@@ -201,7 +201,7 @@ stateDiagram-v2
     Initialized --> [*]: Release()
 ```
 
-Invalid transitions (e.g. `Encode` before `Init`) return a `StatusCode` error and do
+Invalid transitions (e.g. `Encode` before `Init`) return a `Status` error and do
 not mutate state. Full model in `codec/doc/architecture/lifecycle-model.md`.
 
 ### Backend Selection
@@ -252,7 +252,7 @@ flowchart LR
 
 Encoded output is handed off through a **bounded SPSC ring buffer**
 (`PacketQueue`): the encoder (producer) calls `OutputSink::Submit(...)`; a
-`PacketPump` drain loop on the consumer thread calls `PacketSource::Pop(...)` and
+`PacketSource::Await` drain loop on the consumer thread calls `PacketSource::Pop(...)` and
 forwards each packet to a `PacketConsumer`. The consumer is **transport-agnostic** — both
 target consumers implement `PacketConsumer`: `FileSinkConsumer` (save `.h264`/`.aac` or
 mux to `.mp4`) and `StreamConsumer` (推流: RTMP / SRT / WebRTC). Swapping file output for

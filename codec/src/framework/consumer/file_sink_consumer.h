@@ -20,8 +20,8 @@ class FileSinkConsumer : public PacketConsumer {
   explicit FileSinkConsumer(std::string video_path,
                             std::string audio_path = "");
 
-  StatusCode Consume(Packet&& pkt) override;
-  StatusCode Finish() override;  // flush + close
+  Status Consume(Packet&& pkt) override;
+  Status Finish() override;  // flush + close
 
  private:
   std::string video_path_;

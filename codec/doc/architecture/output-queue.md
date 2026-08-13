@@ -11,14 +11,14 @@ can both be implemented later against the same contract without touching the enc
 flowchart LR
     ENC["Encoder instance<br/>(backend thread, producer)"]
     Q["PacketQueue<br/>(bounded SPSC ring buffer)"]
-    PUMP["PacketPump / drain loop<br/>(consumer thread)"]
+    AW["PacketSource::Await<br/>(consumer thread)"]
     FC["FileSinkConsumer<br/>(write .h264 / mux)"]
     SC["StreamConsumer<br/>(RTMP / SRT / WebRTC)"]
 
     ENC -->|OutputSink::Submit| Q
-    Q -->|PacketSource::Pop| PUMP
-    PUMP -->|PacketConsumer::Consume| FC
-    PUMP -->|PacketConsumer::Consume| SC
+    Q -->|PacketSource::Pop| AW
+    AW -->|PacketSink::Consume| FC
+    AW -->|PacketSink::Consume| SC
 ```
 
 The encoder never knows who consumes its packets. It pushes to an `OutputSink`; a drain
@@ -47,7 +47,7 @@ into pre-allocated slots — no per-packet heap allocation on the encode hot pat
   - `kBlock` (default): `Submit` waits — natural flow control; a slow consumer slows the
     encoder instead of dropping frames.
   - `kDropOldest`: overwrites the oldest unconsumed slot (lossy, for real-time).
-  - `kError`: returns a back-pressure `StatusCode` (strict pipelines).
+  - `kError`: returns a back-pressure `Status` (strict pipelines).
 
 Design note: SPSC is the correct shape because there is exactly one encoder thread and
 one drain thread. An MPMC queue would be more general but harder to make wait-free and
@@ -58,13 +58,13 @@ unnecessary here. See ADR-005.
 ```mermaid
 sequenceDiagram
     participant Q as PacketQueue
-    participant P as PacketPump (consumer thread)
+    participant P as PacketSource::Await (consumer thread)
     participant C as PacketConsumer (File / Stream)
     loop while not EOS
         P->>Q: Pop(deadline)
         Q-->>P: Packet (or timeout/empty)
         P->>C: Consume(Packet&&)
-        C-->>P: StatusCode
+        C-->>P: Status
     end
     P->>C: Finish()
 ```
@@ -78,31 +78,33 @@ class PacketConsumer {
     // One Consume for both media; the packet's PacketType tells the consumer
     // which media it is. Media-specific consumers return kUnsupportedOperation
     // for the other.
-    virtual StatusCode Consume(Packet&& pkt) = 0;
-    virtual StatusCode Flush() { return StatusCode::kOk; }
-    virtual StatusCode Finish() { return StatusCode::kOk; } // EOS / cleanup
+    virtual Status Consume(Packet&& pkt) = 0;
+    virtual Status Flush() { return Status::kOk; }
+    virtual Status Finish() { return Status::kOk; } // EOS / cleanup
 };
 ```
 
-### PacketPump (drain loop)
+### PacketSource::Await (drain loop)
 
-Runs on the consumer thread; bridges `PacketSource` → `PacketConsumer`. It is the
-pump that moves encoded packets out of the ring buffer and into a transport consumer
-(file / stream). Reference: `codec/src/framework/consumer/packet_pump.cc`.
+The former `PacketSource::Await` class is gone: the drain loop now lives on the source as
+`PacketSource::Await(PacketSink&)`, which the consumer thread simply calls
+(`source.Await(*consumer)`). It pops from the source and forwards each packet to the
+sink until EOS. Reference: `codec/src/framework/queue/packet_queue.cc`.
 
 ```cpp
-void PacketPump::Run(PacketSource& src, PacketConsumer& c,
-                     int64_t deadline_us = 100'000) {
+Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us = 100'000) {
   Packet pkt;
-  while (true) {
-    switch (src.Pop(pkt, deadline_us)) {
-      case PopResult::kOk:
-        if (c.Consume(std::move(pkt)) != StatusCode::kOk) { c.Finish(); return; }
+  for (;;) {
+    switch (Pop(pkt, deadline_us)) {
+      case PacketSource::PopResult::kOk:
+        if (sink.Consume(std::move(pkt)) != Status::kOk) {
+          sink.Finish();
+          return Status::kEncodeFailed;
+        }
         break;
-      case PopResult::kEos:
-        c.Finish();  // queue drained -> flush + close the consumer
-        return;
-      case PopResult::kEmpty:
+      case PacketSource::PopResult::kEos:
+        return sink.Finish();  // queue drained -> flush + close the consumer
+      case PacketSource::PopResult::kEmpty:
         break;  // retry (deadline expired, not yet EOS)
     }
   }
@@ -117,13 +119,14 @@ Behavior:
   from the two internal rings, so neither media starves and a video-only or audio-only
   queue still ends in a clean `Finish()`.
 - **EOS handling**: `Pop` returns `kEos` once the queue is marked end-of-stream and both
-  rings are fully drained; the pump then calls `PacketConsumer::Finish()` (e.g.
+  rings are fully drained; `Await` then calls `PacketSink::Finish()` (e.g.
   `FileSinkConsumer` flushes and closes the file).
-- **Failure safety**: a failing `Consume` is logged, `Finish()` is called once, and the pump
+- **Failure safety**: a failing `Consume` is logged, `Finish()` is called once, and `Await`
   stops — it must NOT swallow errors and spin.
-- **Decoupling**: the pump runs on the consumer thread while the encoder pushes on its own
+- **Decoupling**: `Await` runs on the consumer thread while the encoder pushes on its own
   thread; a slow consumer back-pressures the queue (`kBlock`), which naturally slows the
-  encoder (end-to-end flow control).
+  encoder (end-to-end flow control). The source depends only on the `queue`-defined
+  `PacketSink` contract — never on the `consumer` module.
 
 ## 4. Concrete consumers (implement later, design now)
 
@@ -167,7 +170,7 @@ contract stay SPSC-clean.
 
 ## 6. Error & lifecycle
 
-- `Consume` returns `StatusCode`; the pump logs and may back-off or stop on failure.
+- `Consume` returns `Status`; the pump logs and may back-off or stop on failure.
 - `Finish()` is called at EOS (encoder `Flush`/`Release`) so the consumer flushes the
   file / sends the RTMP stop and closes the connection.
 - The encoder's `OutputSink::Flush()` (if implemented) signals "no more packets until

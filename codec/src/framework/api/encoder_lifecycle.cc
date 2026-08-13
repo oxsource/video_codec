@@ -4,43 +4,43 @@
 namespace video {
 namespace codec {
 
-StatusCode EncoderLifecycle::Init() {
+Status EncoderLifecycle::Init() {
   // Allowed from Created (first init) or Flushed (reuse). Anything else is an
   // invalid transition.
   if (state_ == State::kCreated || state_ == State::kFlushed) {
     state_ = State::kInitialized;
-    return StatusCode::kOk;
+    return Status::kOk;
   }
-  return StatusCode::kInvalidArgument;
+  return Status::kInvalidArgument;
 }
 
-StatusCode EncoderLifecycle::Encode() {
+Status EncoderLifecycle::Encode() {
   switch (state_) {
     case State::kInitialized:
       state_ = State::kEncoding;
-      return StatusCode::kOk;
+      return Status::kOk;
     case State::kEncoding:
-      return StatusCode::kOk;
+      return Status::kOk;
     default:
-      return StatusCode::kNotInitialized;  // Created / Flushed / Released
+      return Status::kNotInitialized;  // Created / Flushed / Released
   }
 }
 
-StatusCode EncoderLifecycle::Flush() {
+Status EncoderLifecycle::Flush() {
   switch (state_) {
     case State::kInitialized:
     case State::kEncoding:
     case State::kFlushed:
       state_ = State::kFlushed;
-      return StatusCode::kOk;
+      return Status::kOk;
     default:
-      return StatusCode::kNotInitialized;  // Created / Released
+      return Status::kNotInitialized;  // Created / Released
   }
 }
 
-StatusCode EncoderLifecycle::Release() {
+Status EncoderLifecycle::Release() {
   state_ = State::kReleased;  // idempotent
-  return StatusCode::kOk;
+  return Status::kOk;
 }
 
 }  // namespace codec

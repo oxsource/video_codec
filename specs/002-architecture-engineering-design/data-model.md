@@ -8,7 +8,7 @@ yet); it defines the shapes the implementation phase must honor.
 
 | Module | Responsibility | Depends on | Visibility |
 |--------|---------------|-----------|------------|
-| `core` | Frame/packet/config types, `NativeBuffer`, enums, `StatusCode`, `LogSlot` | — | `__subpackages__` + `tests` |
+| `core` | Frame/packet/config types, `NativeBuffer`, enums, `Status`, `LogSlot` | — | `__subpackages__` + `tests` |
 | `api` | `VideoEncoder`/`AudioEncoder` abstract, `InputSurface`, factory | `core` | `__subpackages__` + `tests` |
 | `utils` | Pixel/sample format conversion, stride | `core` | `__subpackages__` + `tests` |
 | `backend/android` | MediaCodec video+audio | `core`,`api`,`utils`,`@androidndk` | `__subpackages__` + `tests` |
@@ -87,22 +87,22 @@ struct AudioEncoderConfig {
 ## 4. Error Model (core)
 
 ```cpp
-enum class StatusCode {
+enum class Status {
     kOk = 0,
     kInvalidArgument, kNotInitialized, kEncodeFailed,
     kUnsupportedFormat, kBackendUnavailable, kPlatformUnsupported,
     kUnsupportedOperation,
 };
 
-template <typename T> class Result {  // holds StatusCode | T
+template <typename T> class Result {  // holds Status | T
   public:
     static Result Ok(T v);
-    static Result Error(StatusCode c);
-    bool ok() const; StatusCode status() const; const T& value() const;
+    static Result Error(Status c);
+    bool ok() const; Status status() const; const T& value() const;
 };
 ```
 
-All fallible public APIs return `StatusCode` or `Result<T>`; **no exceptions cross the
+All fallible public APIs return `Status` or `Result<T>`; **no exceptions cross the
 public API** (see `research.md` R7, `codec/doc/architecture/error-handling.md`).
 
 ## 5. Encoder Lifecycle State Machine
@@ -117,7 +117,7 @@ States: `Created → Initialized → Encoding → Flushed → Released`.
 | Flushed | →Initialized (reuse) | err kNotInitialized | →Flushed | →Released |
 | Released | err | err | err | err |
 
-Transitions not listed return `StatusCode` (no state mutation, no crash). Diagram in
+Transitions not listed return `Status` (no state mutation, no crash). Diagram in
 `codec/doc/architecture/lifecycle-model.md`.
 
 ## 6. Backend Selection Model
@@ -150,15 +150,15 @@ class OutputSink {                       // producer endpoint (encoder writes he
   public:
     virtual ~OutputSink() = default;
     // Unified packet; PacketType routes it to the video/audio ring.
-    virtual StatusCode Submit(Packet&& pkt) = 0;
-    virtual StatusCode Flush() { return StatusCode::kOk; }
+    virtual Status Submit(Packet&& pkt) = 0;
+    virtual Status Flush() { return Status::kOk; }
 };
 
 class PacketSource {              // consumer endpoint (pops here)
   public:
     virtual ~PacketSource() = default;
     // Non-blocking: returns false if empty. Blocking variant takes a deadline.
-    virtual PopResult Pop(Packet& out, int64_t deadline_us) = 0;
+    virtual PacketSource::PopResult Pop(Packet& out, int64_t deadline_us) = 0;
 };
 ```
 
@@ -194,7 +194,7 @@ consumer side exposes `PacketSource`.
 ### Consumer side (`PacketConsumer`)
 
 The consumer is decoupled from the encoder by a `PacketConsumer` interface; a
-`PacketPump` drain loop on the consumer thread bridges `PacketSource` →
+`PacketSource::Await` drain loop on the consumer thread bridges `PacketSource` →
 `PacketConsumer`.
 
 ```cpp
@@ -202,9 +202,9 @@ class PacketConsumer {
   public:
     virtual ~PacketConsumer() = default;
     // One Consume for both media; PacketType tells the consumer which media.
-    virtual StatusCode Consume(Packet&& pkt) = 0;
-    virtual StatusCode Flush() { return StatusCode::kOk; }
-    virtual StatusCode Finish() { return StatusCode::kOk; } // EOS / teardown
+    virtual Status Consume(Packet&& pkt) = 0;
+    virtual Status Flush() { return Status::kOk; }
+    virtual Status Finish() { return Status::kOk; } // EOS / teardown
 };
 ```
 
@@ -215,7 +215,7 @@ Two target consumers implement this (both deferred to implementation, designed n
 | `FileSinkConsumer` | Save `.h264`/`.aac` or mux to `.mp4`/`.mkv` | preserve order + keyframe/SPS-PPS; flush on `Finish()` |
 | `StreamConsumer` | 推流: RTMP / SRT / WebRTC | frame Annex-B → protocol units; connection lifecycle + reconnect; pace by `pts_us`; propagate back-pressure (slow socket → slow `Consume` → ring fills → encoder slows) |
 
-`PacketPump::Run(src, consumer)` loops `Pop` → `Consume`; calls `Finish()` at EOS. A
+`src.Await(consumer)` loops `Pop` → `Consume`; calls `Finish()` at EOS. A
 blocking `Pop(deadline)` avoids busy-spin.
 
 ### Multiple consumers (record + stream)

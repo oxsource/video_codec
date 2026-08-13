@@ -4,7 +4,7 @@
 (`plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/push-mode-contract.md`, `quickstart.md`)
 
 **Prerequisites**: spec 002 implementation (encoder framework, `PacketQueue`,
-`PacketPump`, `FileSinkConsumer` shipped) and spec 003 (`utils`, public umbrella). The queue
+`PacketSource::Await`, `FileSinkConsumer` shipped) and spec 003 (`utils`, public umbrella). The queue
 producer endpoint is `OutputSink`; consumer endpoint is `PacketSource` — both exist.
 
 **Tests**: Included — the spec's acceptance criteria (zero-loss push, pull unchanged, flush +
@@ -44,10 +44,10 @@ the build dependency the push implementation needs.
 **Purpose**: The `SetOutputSink` hook that all backends and tests build on. `api` stays
 `queue`-free (forward-declared `OutputSink`).
 
-- [x] T003 [P] Add `virtual StatusCode SetOutputSink(OutputSink* sink)` to
+- [x] T003 [P] Add `virtual Status SetOutputSink(OutputSink* sink)` to
       `codec/src/framework/api/video_encoder.h` and
       `codec/src/framework/api/audio_encoder.h`, with `class OutputSink;` forward declaration
-      and a default `return StatusCode::kUnsupportedOperation;`. No `queue` include in `api`.
+      and a default `return Status::kUnsupportedOperation;`. No `queue` include in `api`.
 
 **Checkpoint**: `api` compiles; a non-overriding subclass sees `kUnsupportedOperation`.
 
@@ -65,7 +65,7 @@ produces all N packets in order with zero loss; with no sink, pull still returns
 
 - [x] T004 [P] [US1] Add api contract test in
       `codec/tests/api/encoder_push_contract_test.cc`: a stub `VideoEncoder` subclass that
-      does NOT override `SetOutputSink` returns `StatusCode::kUnsupportedOperation` (default
+      does NOT override `SetOutputSink` returns `Status::kUnsupportedOperation` (default
       contract, per push-mode-contract A4).
 - [x] T005 [P] [US1] Add real-encoder push test in
       `codec/tests/backend/ffmpeg/encode_push_test.cc`: attach `PacketQueue(kBlock)`

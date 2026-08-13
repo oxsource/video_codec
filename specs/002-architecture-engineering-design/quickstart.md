@@ -78,7 +78,7 @@ codec/
 2. Create `src/framework/backend/<name>/` with its `BUILD.bazel` (visibility
    `__subpackages__` + `tests`; depends on `api`/`core`/`utils` + its external dep).
 3. Subclass `VideoEncoder`/`AudioEncoder`; implement `Init` / `Encode`×2 / `Flush` /
-   `Release`; map errors to `StatusCode` (no exceptions).
+   `Release`; map errors to `Status` (no exceptions).
 4. Wire it into the `select()` list in `src/framework/public/BUILD.bazel` and the
    factory in `api/encoder_factory.cc` (see `codec/doc/architecture/backend-selection.md`).
 5. Add an integration test under `tests/`; run `make verify` + `bazel test //...`.

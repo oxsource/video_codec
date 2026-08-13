@@ -8,7 +8,7 @@ namespace codec {
 
 // Unified status code returned by every fallible public API. No exceptions
 // cross the public boundary; callers inspect this instead.
-enum class StatusCode {
+enum class Status {
   kOk = 0,
   kInvalidArgument,       // bad config / null handle / invalid argument
   kNotInitialized,        // operation requires Init() first
@@ -19,23 +19,26 @@ enum class StatusCode {
   kUnsupportedOperation,  // e.g. Encode(NativeBuffer) on a software-only path
 };
 
-inline const char* StatusCodeToString(StatusCode c) {
+// Human-readable name of a status, e.g. StatusToString(Status::kEncodeFailed)
+// == "kEncodeFailed". Returns "kUnknown" for an out-of-range value. A free
+// function (not a member): C++ enum classes cannot declare member functions.
+inline const char* StatusToString(Status c) {
   switch (c) {
-    case StatusCode::kOk:
+    case Status::kOk:
       return "kOk";
-    case StatusCode::kInvalidArgument:
+    case Status::kInvalidArgument:
       return "kInvalidArgument";
-    case StatusCode::kNotInitialized:
+    case Status::kNotInitialized:
       return "kNotInitialized";
-    case StatusCode::kEncodeFailed:
+    case Status::kEncodeFailed:
       return "kEncodeFailed";
-    case StatusCode::kUnsupportedFormat:
+    case Status::kUnsupportedFormat:
       return "kUnsupportedFormat";
-    case StatusCode::kBackendUnavailable:
+    case Status::kBackendUnavailable:
       return "kBackendUnavailable";
-    case StatusCode::kPlatformUnsupported:
+    case Status::kPlatformUnsupported:
       return "kPlatformUnsupported";
-    case StatusCode::kUnsupportedOperation:
+    case Status::kUnsupportedOperation:
       return "kUnsupportedOperation";
   }
   return "kUnknown";

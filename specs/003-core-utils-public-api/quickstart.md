@@ -23,7 +23,7 @@ int main() {
     std::unique_ptr<video_codec::VideoEncoder> encoder =
         video_codec::CreateVideoEncoder(cfg);
     if (!encoder) return 1;
-    if (encoder->Init() != video_codec::StatusCode::kOk) return 1;
+    if (encoder->Init() != video_codec::Status::kOk) return 1;
     // ... feed frames via encoder->Encode(frame) ...
 }
 ```

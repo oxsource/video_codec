@@ -23,11 +23,11 @@ class FFmpegAudioEncoder : public AudioEncoder {
   explicit FFmpegAudioEncoder(const AudioEncoderConfig& config);
   ~FFmpegAudioEncoder() override;
 
-  StatusCode Init() override;
+  Status Init() override;
   Result<Packet> Encode(const AudioFrame& frame) override;
   Result<Packet> Flush() override;
   void Release() override;
-  StatusCode SetOutputSink(OutputSink* sink) override;
+  Status SetOutputSink(OutputSink* sink) override;
 
  private:
   Result<Packet> Drain(bool drain_eof);

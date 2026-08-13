@@ -16,7 +16,7 @@ class VideoEncoder {
     // Resolve backend + allocate, but do NOT open the external encoder yet.
     static std::unique_ptr<VideoEncoder> Create(const VideoEncoderConfig& config);
 
-    virtual StatusCode Init() = 0;                 // → Initialized
+    virtual Status Init() = 0;                 // → Initialized
 
     // CPU path. enc->Init() must have succeeded. Returns kNotInitialized otherwise.
     virtual Result<Packet> Encode(const VideoFrame& frame) = 0;
@@ -41,7 +41,7 @@ class AudioEncoder {
   public:
     virtual ~AudioEncoder() = default;
     static std::unique_ptr<AudioEncoder> Create(const AudioEncoderConfig& config);
-    virtual StatusCode Init() = 0;
+    virtual Status Init() = 0;
     virtual Result<Packet> Encode(const AudioFrame& frame) = 0;
     virtual Result<Packet> Flush() = 0;
     virtual void Release() = 0;
@@ -52,10 +52,10 @@ class AudioEncoder {
 ## Behavioral guarantees
 
 1. **Lifecycle**: only the transitions in `data-model.md` §5 are valid. Invalid calls
-   return the documented `StatusCode` and leave state unchanged. `Release()` is
+   return the documented `Status` and leave state unchanged. `Release()` is
    idempotent.
-2. **No exceptions**: every method returns `StatusCode` / `Result<T>`; internal failures
-   are converted to `StatusCode` before returning.
+2. **No exceptions**: every method returns `Status` / `Result<T>`; internal failures
+   are converted to `Status` before returning.
 3. **Thread safety**: a single `Encoder` instance is **not** thread-safe. The caller
    serializes calls or owns one instance per thread (see `threading.md`).
 4. **Output**: video `Packet::data` is **Annex-B** (SPS/PPS emitted at the first
@@ -69,7 +69,7 @@ class AudioEncoder {
 
 ## Error mapping (minimum)
 
-| Condition | StatusCode |
+| Condition | Status |
 |-----------|------------|
 | Called before `Init` | `kNotInitialized` |
 | `Encode(NativeBuffer)` on unsupported handle | `kUnsupportedOperation` |

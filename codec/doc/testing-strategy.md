@@ -6,7 +6,7 @@ Framework: **googletest 1.14.0** (pinned in `video_codec_deps.bzl`). Three tiers
 
 ### 1. Unit (`tests/`, `core` + `utils`)
 Pure-logic, fast, platform-independent.
-- `core_test.cc`: frame/packet/config construction, `StatusCode`/`Result<T>` behavior.
+- `core_test.cc`: frame/packet/config construction, `Status`/`Result<T>` behavior.
 - `utils_test.cc`: pixel format round-trips (YUV420P ↔ NV12, stride alignment), sample
   format round-trips (interleaved ↔ planar, s16 ↔ f32). Assert lossless round-trip.
 
