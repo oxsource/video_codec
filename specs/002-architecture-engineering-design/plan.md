@@ -141,7 +141,7 @@ graph TD
             UTILS["utils<br/>YUV420P↔NV12, stride, PCM convert"]
             BFF["backend/*<br/>android / ffmpeg / darwin(reserved)"]
             QUEUE["queue<br/>PacketQueue (ring buffer)"]
-            CONSUMER["consumer<br/>PacketConsumer, PacketSource::Await,<br/>FileSinkConsumer / StreamConsumer"]
+            CONSUMER["consumer<br/>PacketConsumer, PacketSource::Await,<br/>FileConsumer / StreamConsumer"]
             PUBLIC["public<br/>Umbrella header, VIDEO_CODEC_API export"]
         end
 
@@ -254,7 +254,7 @@ Encoded output is handed off through a **bounded SPSC ring buffer**
 (`PacketQueue`): the encoder (producer) calls `PacketSink::Push(...)`; a
 `PacketSource::Await` drain loop on the consumer thread calls `PacketSource::Pull(...)` and
 forwards each packet to a `PacketConsumer`. The consumer is **transport-agnostic** — both
-target consumers implement `PacketConsumer`: `FileSinkConsumer` (save `.h264`/`.aac` or
+target consumers implement `PacketConsumer`: `FileConsumer` (save `.h264`/`.aac` or
 mux to `.mp4`) and `StreamConsumer` (推流: RTMP / SRT / WebRTC). Swapping file output for
 streaming is a one-line `PacketConsumer` change; the encoder is untouched. This decouples
 encode rate from consume rate and is the inter-thread hand-off that lets the encoder run

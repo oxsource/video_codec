@@ -1,5 +1,5 @@
-// file_sink_consumer_test.cc
-#include "consumer/file_sink_consumer.h"
+// file_consumer_test.cc
+#include "consumer/file_consumer.h"
 
 #include <cstdio>
 #include <fstream>
@@ -17,7 +17,7 @@ namespace {
 std::string TempPath(const std::string& name) { return std::string("/tmp/") + name; }
 
 // A stand-in for a future StreamConsumer, proving the encoder is transport
-// agnostic: swapping FileSinkConsumer for this requires no encoder change.
+// agnostic: swapping FileConsumer for this requires no encoder change.
 class StubConsumer : public PacketConsumer {
  public:
   Status Push(VideoPacket&& pkt) override {
@@ -56,9 +56,9 @@ std::vector<uint8_t> ReadFile(const std::string& path) {
                               std::istreambuf_iterator<char>());
 }
 
-// --- End-to-end: encoder thread -> ring -> PacketPump -> FileSinkConsumer
+// --- End-to-end: encoder thread -> ring -> PacketPump -> FileConsumer
 // -----
-TEST(FileSinkConsumerTest, EncoderToRingToFile) {
+TEST(FileConsumerTest, EncoderToRingToFile) {
   const std::string path = TempPath("vc_filesink_test.h264");
   std::remove(path.c_str());
 
@@ -66,7 +66,7 @@ TEST(FileSinkConsumerTest, EncoderToRingToFile) {
   std::thread producer;
   auto expected = RunProducer(q, 50, producer);
 
-  FileSinkConsumer sink(path);
+  FileConsumer sink(path);
   q.Await(sink);  // consumer thread (this thread) drains until EOS
   producer.join();
 
@@ -79,9 +79,9 @@ TEST(FileSinkConsumerTest, EncoderToRingToFile) {
   std::remove(path.c_str());
 }
 
-// --- Transport-agnostic: swap FileSinkConsumer for a stub StreamConsumer
+// --- Transport-agnostic: swap FileConsumer for a stub StreamConsumer
 // ------
-TEST(FileSinkConsumerTest, SwapConsumerNeedsNoEncoderChange) {
+TEST(FileConsumerTest, SwapConsumerNeedsNoEncoderChange) {
   PacketQueue q(16, Backpressure::kBlock);
   std::thread producer;
   auto expected = RunProducer(q, 30, producer);

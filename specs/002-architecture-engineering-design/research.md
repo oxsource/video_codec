@@ -197,7 +197,7 @@ dropping frames — and is the safe default for both recording and streaming; `k
 ## R10. Consumer abstraction: file writer vs streamer
 
 **Decision**: Define a `PacketConsumer` interface (`Push` / `Flush` / `Finish`) that
-both `FileSinkConsumer` (save `.h264`/`.aac` or mux to `.mp4`) and `StreamConsumer`
+both `FileConsumer` (save `.h264`/`.aac` or mux to `.mp4`) and `StreamConsumer`
 (RTMP / SRT / WebRTC 推流) implement. A `PacketSource::Await` drain loop on the consumer thread
 pops from `PacketSource` and forwards to the `PacketConsumer`. The encoder is
 never aware of which consumer is attached. Back-pressure propagates end-to-end: a slow

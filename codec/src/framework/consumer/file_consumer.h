@@ -1,4 +1,4 @@
-// file_sink_consumer.h
+// file_consumer.h
 #pragma once
 
 #include <memory>
@@ -18,10 +18,10 @@ namespace codec {
 //
 // Byte-level output is delegated to io::FileByteSink, so this class only
 // adapts packets to a file: no FILE*/fstream handling of its own.
-class FileSinkConsumer : public PacketConsumer {
+class FileConsumer : public PacketConsumer {
  public:
   // `video_path` is required; `audio_path` is optional.
-  explicit FileSinkConsumer(std::string video_path, std::string audio_path = "");
+  explicit FileConsumer(std::string video_path, std::string audio_path = "");
 
   Status Push(VideoPacket&& pkt) override;
   Status Push(AudioPacket&& pkt) override;

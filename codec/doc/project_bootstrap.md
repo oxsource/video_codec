@@ -211,7 +211,7 @@ codec/src/framework/
 │                # + FFmpegMuxer（MP4 封装，libavformat）
 ├── queue/       # PacketQueue（双 ring：视频/音频），PacketSource
 ├── io/          # ByteSink 输出契约 + FileByteSink/StreamByteSink/TeeByteSink
-├── consumer/    # PacketConsumer, FileSinkConsumer（裸流 Annex-B / ADTS）
+├── consumer/    # PacketConsumer, FileConsumer（裸流 Annex-B / ADTS）
 ├── convert/     # libyuv 像素格式转换（PixelConverter）
 ├── utils/       # 布局/测试图案工具：Stride, SmpteBars, MediaFormat
 └── public/      # 公开 API 汇总入口

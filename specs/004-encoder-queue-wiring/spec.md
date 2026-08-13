@@ -142,7 +142,7 @@ delivered in order with zero loss.
   caller; the encoder holds a non-owning reference and must not use it after release.
 - Back-pressure default is blocking (`kBlock`), per the frozen contract
   (`contracts/output-queue-contract.md`).
-- The consumer drain loop (`PacketSource::Await`) and `FileSinkConsumer` already exist and are
+- The consumer drain loop (`PacketSource::Await`) and `FileConsumer` already exist and are
   unchanged by this feature; this feature only wires the encoder side.
 - Encoders are not internally thread-safe (one encoder per thread, per the threading model);
   push wiring preserves this contract — no new internal threads are introduced.

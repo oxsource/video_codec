@@ -4,7 +4,7 @@
 (`plan.md`, `spec.md`, `research.md`, `data-model.md`, `contracts/push-mode-contract.md`, `quickstart.md`)
 
 **Prerequisites**: spec 002 implementation (encoder framework, `PacketQueue`,
-`PacketSource::Await`, `FileSinkConsumer` shipped) and spec 003 (`utils`, public umbrella). The queue
+`PacketSource::Await`, `FileConsumer` shipped) and spec 003 (`utils`, public umbrella). The queue
 producer endpoint is `PacketSink`; consumer endpoint is `PacketSource` — both exist.
 
 **Tests**: Included — the spec's acceptance criteria (zero-loss push, pull unchanged, flush +

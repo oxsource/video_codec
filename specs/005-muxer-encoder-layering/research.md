@@ -103,7 +103,7 @@ encode_push_test 分层）。集成测试沿用 encode_push_test 的 force_load 
 
 **Decision**: `ffmpeg_encode_file.cc`：默认（非 --raw）路径改为
 `CreateMuxer(cfg)` → `muxer->SetOutput(file_byte_sink)` →
-`queue.Await(*muxer)`；`--raw` 分支保留 `FileSinkConsumer`。删除 Mp4Consumer/FileByteSink
+`queue.Await(*muxer)`；`--raw` 分支保留 `FileConsumer`。删除 Mp4Consumer/FileByteSink
 组合构造。
 
 **Rationale**: Muxer 继承 PacketSink，Await 直接衔接，无需消费者包装；example 展示

@@ -8,7 +8,7 @@
 namespace video {
 namespace codec {
 
-// Transport-agnostic consumer of encoded packets. Both FileSinkConsumer and
+// Transport-agnostic consumer of encoded packets. Both FileConsumer and
 // StreamConsumer implement this; swapping one for the other is a one-line
 // change and the encoder never knows which is attached.
 //

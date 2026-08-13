@@ -12,7 +12,7 @@ flowchart LR
     ENC["Encoder instance<br/>(backend thread, producer)"]
     Q["PacketQueue<br/>(bounded SPSC ring buffer)"]
     AW["PacketSource::Await<br/>(consumer thread)"]
-    FC["FileSinkConsumer<br/>(write .h264)"]
+    FC["FileConsumer<br/>(write .h264)"]
     MX["Muxer<br/>(api interface, write .mp4)"]
     SC["StreamConsumer<br/>(RTMP / SRT / WebRTC)"]
 
@@ -142,7 +142,7 @@ Behavior:
   a video-only or audio-only queue still ends in a clean `Finish()`.
 - **EOS handling**: each ring reaches `kEos` once the queue is marked end-of-stream and that
   ring is drained; when both are done `Await` calls `PacketSink::Finish()` (e.g.
-  `FileSinkConsumer` flushes and closes the file).
+  `FileConsumer` flushes and closes the file).
 - **Failure safety**: a failing `Push` is logged, `Finish()` is called once, and `Await`
   stops — it must NOT swallow errors and spin.
 - **Decoupling**: `Await` runs on the consumer thread while the encoder pushes on its own
@@ -154,7 +154,7 @@ Behavior:
 
 The architecture fixes the `PacketConsumer` contract; the two target consumers are:
 
-### 4.1 FileSinkConsumer
+### 4.1 FileConsumer
 
 - Writes the raw Annex-B bitstream to a file (`.h264` / `.aac`).
 - MP4 output is NOT a consumer: it is the api `Muxer` interface (peer of

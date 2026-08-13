@@ -58,7 +58,7 @@ worker.join();   // Await 内部已调用 muxer->Finish()（写 MP4 尾部）
 
 ## 说明
 
-- `--raw`（裸码流）场景：不建 muxer，`queue.Await(file_sink_consumer)` 即可，与旧版
+- `--raw`（裸码流）场景：不建 muxer，`queue.Await(file_consumer)` 即可，与旧版
   一致。
 - Muxer 在**首个关键帧**懒打开容器并一次性产出"头部 + 首分片"；先到的非关键帧丢弃。
 - 输出目标可换任意 `io::ByteSink`（文件 / 网络流 / tee），`SetOutput` 一处切换。

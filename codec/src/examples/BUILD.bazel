@@ -2,7 +2,7 @@ package(default_visibility = ["//visibility:public"])
 
 # Runnable example: SMPTE color bars -> FFmpeg encoder (push) -> queue ->
 # Await -> Muxer (.mp4 via FFmpeg backend muxer), or raw .h264 via
-# FileSinkConsumer. The FFmpeg static archive is force-loaded (ADR-001) exactly
+# FileConsumer. The FFmpeg static archive is force-loaded (ADR-001) exactly
 # like the backend tests and ffmpeg_spike.
 cc_binary(
     name = "ffmpeg_encode_file",
@@ -19,7 +19,7 @@ cc_binary(
     deps = [
         "//src/framework/public:video_codec",  # encoder API + FFmpeg backend
         "//src/framework/queue",              # PacketQueue
-        "//src/framework/consumer",           # FileSinkConsumer (raw mode)
+        "//src/framework/consumer",           # FileConsumer (raw mode)
         "//src/framework/io",                 # FileByteSink (mp4 output)
         "//src/framework/utils",              # SMPTE color-bars generator
     ],

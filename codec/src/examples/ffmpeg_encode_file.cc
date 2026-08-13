@@ -3,19 +3,19 @@
 // A complete, runnable example of the video_codec pipeline:
 //
 //   SMPTE color-bars generator -> VideoEncoder (push mode)
-//     -> PacketQueue -> Muxer (or FileSinkConsumer) -> file
+//     -> PacketQueue -> Muxer (or FileConsumer) -> file
 //
 // Generates a synthetic SMPTE-style color-bars clip (with a moving white line
 // for motion), encodes it as H.264 at ~fps, paces itself to wall-clock time so
 // the default run takes about `seconds` (default 5) seconds, and writes the
 // output. By default the output is muxed into an MP4 container by a Muxer
 // (FFmpeg backend, implements PacketSink so Await hands packets to it);
-// "--raw" writes a raw Annex-B H.264 elementary stream (FileSinkConsumer).
+// "--raw" writes a raw Annex-B H.264 elementary stream (FileConsumer).
 //
 // Usage:
 //   ffmpeg_encode_file [--raw] [output] [seconds]
 //
-//   --raw  write a raw Annex-B H.264 elementary stream (FileSinkConsumer);
+//   --raw  write a raw Annex-B H.264 elementary stream (FileConsumer);
 //          appends ".h264" to the output path. Otherwise the output is muxed
 //          into an MP4 container (Muxer), appending ".mp4".
 //
@@ -35,7 +35,7 @@
 #include "api/codec_factory.h"
 #include "api/muxer.h"
 #include "api/video_encoder.h"
-#include "consumer/file_sink_consumer.h"
+#include "consumer/file_consumer.h"
 #include "consumer/packet_consumer.h"
 #include "io/file_byte_sink.h"
 #include "queue/packet_queue.h"
@@ -86,12 +86,12 @@ int main(int argc, char** argv) {
   // is shared and protocol-agnostic (it never mentions a container):
   //   default -> Muxer (implements PacketSink; Await hands packets straight
   //              to it, writing a fragmented MP4 through the ByteSink)
-  //   --raw   -> FileSinkConsumer writing a raw Annex-B file
+  //   --raw   -> FileConsumer writing a raw Annex-B file
   std::unique_ptr<vc::FileByteSink> mp4_sink;  // must outlive the muxer
   std::unique_ptr<vc::Muxer> muxer;
   std::unique_ptr<vc::PacketConsumer> consumer;
   if (raw) {
-    consumer = std::make_unique<vc::FileSinkConsumer>(out_path);
+    consumer = std::make_unique<vc::FileConsumer>(out_path);
   } else {
     vc::MuxerConfig mux_cfg;
     mux_cfg.format = vc::MuxFormat::kMp4;

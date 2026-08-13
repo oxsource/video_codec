@@ -29,7 +29,7 @@
 
 - [x] CHK016 **US1**: unified Muxer layer muxes encoded output to a playable MP4 without container-domain knowledge — `muxer_test` end-to-end (encoder→queue→Await(muxer)→MemorySink)
 - [x] CHK017 **US2**: replaceable backend implementations with consistent surface — FFmpeg registered; contract test proves registration/selection and nullptr for unregistered backend
-- [x] CHK018 **US3**: encoder and muxer decoupled (same encoder yields raw stream or muxed container by wiring only) — example `--raw` (FileSinkConsumer, JVT NAL) vs default (Muxer, MP4); shared encoder config
+- [x] CHK018 **US3**: encoder and muxer decoupled (same encoder yields raw stream or muxed container by wiring only) — example `--raw` (FileConsumer, JVT NAL) vs default (Muxer, MP4); shared encoder config
 
 ## Success Criteria (spec.md)
 

@@ -190,12 +190,12 @@ with no loss under `kBlock`. ⚠️ push path pending T020.
 ## Phase 6: User Story 4 — Consumer (PacketConsumer / PacketSource::Await / FileSink) (Priority: P2)
 
 **Goal**: The consumer side of the ring buffer: a `PacketSource::Await` drain loop pops from
-`PacketSource` and forwards to a `PacketConsumer`. Ship `FileSinkConsumer`
+`PacketSource` and forwards to a `PacketConsumer`. Ship `FileConsumer`
 (write `.h264`/`.aac` or mux `.mp4`); define `StreamConsumer` contract (RTMP/SRT/WebRTC)
 as deferred-but-designed.
 
 **Independent Test**: End-to-end — encoder → `PacketQueue` → `PacketSource::Await` →
-`FileSinkConsumer` writes a valid `.h264` with correct order and no packet loss under
+`FileConsumer` writes a valid `.h264` with correct order and no packet loss under
 `kBlock`; swapping in a stub `StreamConsumer` requires no encoder change.
 
 ### Implementation for User Story 4
@@ -204,13 +204,13 @@ as deferred-but-designed.
       `Push(VideoPacket&&)`, `Flush`, `Finish`) and `PacketSource::Await::Run` helper in
       `codec/src/framework/consumer/packet_consumer.h` / `queue/queue_iface.h` per
       `contracts/output-queue-contract.md` + `output-queue.md` §3.
-- [x] T023 [US4] Implement `FileSinkConsumer` (Annex-B → `.h264` / `.aac`; preserve
+- [x] T023 [US4] Implement `FileConsumer` (Annex-B → `.h264` / `.aac`; preserve
       order + keyframe/SPS-PPS at segment start; flush/close on `Finish()`) in
-      `codec/src/framework/consumer/file_sink_consumer.cc` / `.h`.
+      `codec/src/framework/consumer/file_consumer.cc` / `.h`.
 - [x] T024 [US4] Add the end-to-end drain test in
-      `codec/tests/consumer/file_sink_consumer_test.cc`: `PacketSource::Await` → `FileSinkConsumer`
+      `codec/tests/consumer/file_consumer_test.cc`: `PacketSource::Await` → `FileConsumer`
       produces a valid file, in order, zero loss (contract *Acceptance*). Asserts swapping
-      `FileSinkConsumer` for a stub `StreamConsumer` needs no encoder change. **Note**:
+      `FileConsumer` for a stub `StreamConsumer` needs no encoder change. **Note**:
       the producer is synthetic (fake `Packet`s), not a real encoder — it proves
       the transport/consumer, not the encoder→queue wiring (that needs T020).
 - [ ] T025 [US4] Add `StreamConsumer` abstract contract header (RTMP/SRT/WebRTC
@@ -229,7 +229,7 @@ transport-agnostic (file ↔ stream is a one-line `PacketConsumer` swap). ⚠️
 and wire the `make`-based validation + CI matrix.
 
 **Independent Test**: `make verify` (or the CI job) builds + runs the example that
-encodes a clip to `.h264` via `queue` + `FileSinkConsumer` and asserts the file is valid.
+encodes a clip to `.h264` via `queue` + `FileConsumer` and asserts the file is valid.
 
 ### Implementation for User Story 5
 
@@ -238,7 +238,7 @@ encodes a clip to `.h264` via `queue` + `FileSinkConsumer` and asserts the file 
       `contracts/public-api.md`; only `video_codec_export.h` exists today. Keep `public`
       as the only `//visibility:public` module.
 - [ ] T027 [US5] Add example `codec/src/examples/ffmpeg_encode_file.cc` that wires
-      `FFmpegVideoEncoder` → `PacketQueue` → `PacketSource::Await` → `FileSinkConsumer`.
+      `FFmpegVideoEncoder` → `PacketQueue` → `PacketSource::Await` → `FileConsumer`.
 - [ ] T028 [US5] Register the example + a smoke target in `codec/src/examples/BUILD.bazel`
       and add it to `codec/mk/` + `scripts/verify/` categorized validation (per spec 001
       mechanism).
@@ -264,7 +264,7 @@ buffer; CI is green on the target matrix.
 - [ ] T032 Run `codec/doc/quickstart.md` validation end-to-end and fix any drift between
       docs and the implemented BUILD/test layout.
 - [ ] T033 Optional: author `StreamConsumer` network clients (RTMP/SRT/WebRTC) as a
-      follow-on spec once `FileSinkConsumer` + `PacketSource::Await` are proven.
+      follow-on spec once `FileConsumer` + `PacketSource::Await` are proven.
 
 ---
 
@@ -337,7 +337,7 @@ Task: "Implement lifecycle state machine in api/encoder_lifecycle.{h,cc}"
 1. Setup + Foundational → foundation ready. ✅ (T008 utils still pending)
 2. Add US1 + US2 → MVP (encode to packets). **Demo.** ⚠️ T017 test pending.
 3. Add US3 (ring buffer) → encoder can push into a bounded SPSC queue. **Demo needs T020.** ✅ queue, ⚠️ wiring.
-4. Add US4 (consumer) → encoder → queue → `FileSinkConsumer` writes a valid file,
+4. Add US4 (consumer) → encoder → queue → `FileConsumer` writes a valid file,
    transport-agnostic. **Demo** (T024 tests the consumer; real encoder→queue needs T020).
 5. Add US5 (public + example + CI) → `ffmpeg_encode_file` example + green CI matrix. ⚠️ all pending.
 6. Polish (Phase N) → consistency audit, CHANGELOG, quickstart validation. ⚠️ pending.

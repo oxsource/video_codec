@@ -72,7 +72,7 @@
 - [x] T021 [US1] 更新 `codec/src/framework/backend/ffmpeg/BUILD.bazel`：新增 `muxer` target（srcs/hdrs=ffmpeg_muxer.{h,cc}，deps: api:muxer、core:types、io:byte_sink、@ffmpeg//:ffmpeg_codec、@ffmpeg//:ffmpeg_codec_impl），`register` target 增加对 `:muxer` 的依赖，聚合 `ffmpeg` 纳入
 - [x] T022 [US1] 删除 `codec/src/framework/mux/` 整目录（mp4_muxer.{h,cc}、BUILD.bazel）——逻辑已迁入 backend（`research.md` R6）
 - [x] T023 [US1] 删除 `codec/src/framework/consumer/mp4_consumer.{h,cc}`；更新 `codec/src/framework/consumer/BUILD.bazel` 移除 `mp4_consumer` target 与 `//src/framework/mux:mp4_muxer` 依赖（FR-009）
-- [x] T024 [US1] 更新 `codec/src/examples/ffmpeg_encode_file.cc`：默认路径改为 `CreateMuxer(mux_cfg)` → `muxer->SetOutput(file_byte_sink)` → `queue.Await(*muxer)`；`--raw` 分支保留 `FileSinkConsumer`；删除 Mp4Consumer/FileByteSink 组合构造（`quickstart.md` 走法）
+- [x] T024 [US1] 更新 `codec/src/examples/ffmpeg_encode_file.cc`：默认路径改为 `CreateMuxer(mux_cfg)` → `muxer->SetOutput(file_byte_sink)` → `queue.Await(*muxer)`；`--raw` 分支保留 `FileConsumer`；删除 Mp4Consumer/FileByteSink 组合构造（`quickstart.md` 走法）
 - [x] T025 [US1] 更新 `codec/src/examples/BUILD.bazel`：deps 调整（去掉对已删 target 的引用，确认保留 `//src/framework/consumer`、`//src/framework/api`、`//src/framework/io`）
 - [x] T026 运行 `bazel test //tests/...`：T014/T015 由红转绿，其余 13 测试保持绿（TDD 绿灯）
 
@@ -100,7 +100,7 @@
 
 **Goal**: 验证编码器协议无关——`VideoConfig` 不引用 `MuxerConfig`，编码器代码不含容器逻辑；同一编码器裸流/封装两种走法均成立
 
-**Independent Test**: example `--raw`（裸流，FileSinkConsumer）与默认（封装，Muxer）两分支共用同一 `encoder` 配置路径；`encode_push_test` 等既有测试证明裸流模式不变
+**Independent Test**: example `--raw`（裸流，FileConsumer）与默认（封装，Muxer）两分支共用同一 `encoder` 配置路径；`encode_push_test` 等既有测试证明裸流模式不变
 
 ### Implementation for User Story 3
 

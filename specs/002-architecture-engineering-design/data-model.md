@@ -219,7 +219,7 @@ Two target consumers implement this (both deferred to implementation, designed n
 
 | Consumer | Role | Key obligations |
 |----------|------|-----------------|
-| `FileSinkConsumer` | Save `.h264`/`.aac` or mux to `.mp4`/`.mkv` | preserve order + keyframe/SPS-PPS; flush on `Finish()` |
+| `FileConsumer` | Save `.h264`/`.aac` or mux to `.mp4`/`.mkv` | preserve order + keyframe/SPS-PPS; flush on `Finish()` |
 | `StreamConsumer` | 推流: RTMP / SRT / WebRTC | frame Annex-B → protocol units; connection lifecycle + reconnect; pace by `pts_us`; propagate back-pressure (slow socket → slow `Push` → ring fills → encoder slows) |
 
 `src.Await(consumer)` loops `Pull` → `Push`; calls `Finish()` at EOS. A

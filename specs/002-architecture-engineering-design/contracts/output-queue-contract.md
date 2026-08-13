@@ -119,7 +119,7 @@ Not an interface; a reusable helper that bridges source → consumer on the cons
 thread (see `output-queue.md` §3). Calls `Push` for each popped packet; `Finish()` at
 EOS; propagates `Push` failures to logging/back-off.
 
-## Concrete consumer: `FileSinkConsumer` (implement later)
+## Concrete consumer: `FileConsumer` (implement later)
 
 Implements `PacketConsumer`. Contract obligations:
 1. Preserve packet order; write `keyframe` packets (and SPS/PPS) at segment starts.
@@ -150,4 +150,4 @@ A transport is contract-complete when:
 - encoder pushes via `PacketSink` (the queue's producer side) and an independent
   `PacketSource::Await`+`PacketConsumer` drains it with no packet loss (under
   `kBlock`) and correct order, AND
-- swapping `FileSinkConsumer` for `StreamConsumer` requires no encoder change.
+- swapping `FileConsumer` for `StreamConsumer` requires no encoder change.
