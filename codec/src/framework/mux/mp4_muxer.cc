@@ -8,6 +8,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#include <libavutil/dict.h>
 #include <libavutil/mem.h>
 }
 
@@ -69,8 +70,13 @@ constexpr int kIoBufferSize = 64 * 1024;
 
 }  // namespace
 
-Mp4Muxer::Mp4Muxer(ByteSink* sink, int width, int height, int fps)
-    : sink_(sink), width_(width), height_(height), fps_(fps > 0 ? fps : 30) {}
+Mp4Muxer::Mp4Muxer(ByteSink* sink, int width, int height, int fps,
+                   const MuxOptions& options)
+    : sink_(sink),
+      width_(width),
+      height_(height),
+      fps_(fps > 0 ? fps : 30),
+      fragmented_(options.fragmented) {}
 
 Mp4Muxer::~Mp4Muxer() {
   // Safety net: write the trailer if the caller never called Finish().
@@ -83,6 +89,7 @@ Mp4Muxer::~Mp4Muxer() {
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     opened_ = false;
+    sink_->Flush();
   }
 }
 
@@ -191,15 +198,22 @@ Status Mp4Muxer::OpenMuxer(const VideoPacket& first_keyframe) {
     fmt_ = nullptr;
     return Status::kEncodeFailed;
   }
-  fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, sink_, nullptr,
-                                SinkWrite, SinkSeek);
+  fmt_->pb = avio_alloc_context(iobuf, kIoBufferSize, 1, sink_, nullptr, SinkWrite, SinkSeek);
   if (!fmt_->pb) {
     av_free(iobuf);
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     return Status::kEncodeFailed;
   }
-  if (avformat_write_header(fmt_, nullptr) < 0) {
+  // Fragmented mode writes the header (ftyp + moov) upfront and emits one
+  // fragment per keyframe — sequential, no seeking needed.
+  AVDictionary* opts = nullptr;
+  if (fragmented_) {
+    av_dict_set(&opts, "movflags", "frag_keyframe", 0);
+  }
+  const int hdr_ret = avformat_write_header(fmt_, &opts);
+  av_dict_free(&opts);
+  if (hdr_ret < 0) {
     avio_context_free(&fmt_->pb);
     avformat_free_context(fmt_);
     fmt_ = nullptr;
@@ -237,10 +251,20 @@ Status Mp4Muxer::Consume(const VideoPacket& pkt) {
   avpkt->dts = pts;  // encode order == display order (max_b_frames = 0)
   avpkt->flags = pkt.keyframe ? AV_PKT_FLAG_KEY : 0;
 
-  // Use av_interleaved_write_frame (not av_write_frame): the mov/mp4 muxer
-  // buffers/interleaves samples, and the interleaved API keeps the sample
-  // tables (stsz/stco) consistent with the data written to mdat.
-  const int ret = av_interleaved_write_frame(fmt_, avpkt);
+  // Fragmented mode: write each sample immediately (single stream, no
+  // interleaving needed); on a keyframe boundary the mov muxer completes a
+  // fragment, so flush it to the sink — the commit point for unstable/streaming
+  // sinks. Non-fragmented keeps the interleaved path (moov at end).
+  int ret;
+  if (fragmented_) {
+    ret = av_write_frame(fmt_, avpkt);
+    if (ret >= 0 && pkt.keyframe) {
+      avio_flush(fmt_->pb);  // push the completed fragment bytes to the sink
+      sink_->Flush();        // commit point (file fsync / cloud upload)
+    }
+  } else {
+    ret = av_interleaved_write_frame(fmt_, avpkt);
+  }
   av_packet_free(&avpkt);
   return ret < 0 ? Status::kEncodeFailed : Status::kOk;
 }
@@ -255,6 +279,7 @@ Status Mp4Muxer::Finish() {
     avformat_free_context(fmt_);
     fmt_ = nullptr;
     opened_ = false;
+    sink_->Flush();  // final commit (trailer + last fragment)
   }
   return Status::kOk;
 }

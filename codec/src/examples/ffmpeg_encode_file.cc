@@ -16,7 +16,7 @@
 //
 //   --raw  write a raw Annex-B H.264 elementary stream (FileSinkConsumer).
 //          Otherwise the output is muxed into an MP4 container
-//          (Mp4FileConsumer), regardless of the file extension.
+//          (Mp4Consumer), regardless of the file extension.
 //
 // Examples:
 //   bazel run //src/examples:ffmpeg_encode_file -- out.mp4 5
@@ -32,8 +32,9 @@
 
 #include "api/encoder_factory.h"
 #include "api/video_encoder.h"
+#include "consumer/file_byte_sink.h"
 #include "consumer/file_sink_consumer.h"
-#include "consumer/mp4_file_consumer.h"
+#include "consumer/mp4_consumer.h"
 #include "consumer/packet_consumer.h"
 #include "queue/packet_queue.h"
 #include "utils/smpte_bars.h"
@@ -79,14 +80,17 @@ int main(int argc, char** argv) {
   // Transport: encoder (push) -> bounded ring buffer -> consumer.
   vc::PacketQueue queue(64, vc::Backpressure::kBlock);
 
-  // A consumer is transport-agnostic: ".mp4" -> MP4 muxer, otherwise raw
-  // Annex-B file. Swapping is a one-line change.
+  // A consumer is transport-agnostic: ".mp4" -> MP4 muxer (fragmented by
+  // default) over a FileByteSink, otherwise a raw Annex-B file. Swapping the
+  // ByteSink (file / cloud stream / tee) is a one-line change.
+  std::unique_ptr<vc::FileByteSink> mp4_sink;  // must outlive the consumer
   std::unique_ptr<vc::PacketConsumer> consumer;
   const bool is_mp4 = out_path.size() >= 4 &&
                       out_path.compare(out_path.size() - 4, 4, ".mp4") == 0;
   if (is_mp4) {
+    mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
     consumer =
-        std::make_unique<vc::Mp4FileConsumer>(out_path, width, height, fps);
+        std::make_unique<vc::Mp4Consumer>(mp4_sink.get(), width, height, fps);
   } else {
     consumer = std::make_unique<vc::FileSinkConsumer>(out_path);
   }

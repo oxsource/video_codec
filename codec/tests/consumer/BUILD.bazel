@@ -10,3 +10,13 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "byte_sink_test",
+    srcs = ["byte_sink_test.cc"],
+    deps = [
+        "//src/framework/consumer",
+        "//src/framework/mux",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
