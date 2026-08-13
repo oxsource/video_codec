@@ -8,8 +8,8 @@
 // Generates a synthetic SMPTE-style color-bars clip (with a moving white line
 // for motion), encodes it as H.264 at ~fps, paces itself to wall-clock time so
 // the default run takes about `seconds` (default 5) seconds, and writes the
-// output. ".mp4" selects the MP4 muxer consumer; any other extension writes a
-// raw Annex-B H.264 elementary stream.
+// output. By default the output is muxed into an MP4 container (Mp4Consumer);
+// "--raw" writes a raw Annex-B H.264 elementary stream (FileSinkConsumer).
 //
 // Usage:
 //   ffmpeg_encode_file [--raw] output [seconds]
@@ -37,7 +37,6 @@
 #include "consumer/packet_consumer.h"
 #include "io/file_byte_sink.h"
 #include "queue/packet_queue.h"
-#include "utils/media_file_format.h"
 #include "utils/smpte_bars.h"
 
 namespace vc = video::codec;
@@ -81,19 +80,17 @@ int main(int argc, char** argv) {
   // Transport: encoder (push) -> bounded ring buffer -> consumer.
   vc::PacketQueue queue(64, vc::Backpressure::kBlock);
 
-  // A consumer is transport-agnostic: ".mp4" -> MP4 muxer (fragmented by
-  // default) over a FileByteSink, otherwise a raw Annex-B file. Swapping the
+  // A consumer is transport-agnostic: default -> MP4 muxer (fragmented by
+  // default) over a FileByteSink; "--raw" -> a raw Annex-B file. Swapping the
   // ByteSink (file / cloud stream / tee) is a one-line change.
   std::unique_ptr<vc::FileByteSink> mp4_sink;  // must outlive the consumer
   std::unique_ptr<vc::PacketConsumer> consumer;
-  const bool is_mp4 =
-      vcu::MediaFileFormat::HasExtension(out_path, vcu::MediaFileFormat::kMp4);
-  if (is_mp4) {
+  if (raw) {
+    consumer = std::make_unique<vc::FileSinkConsumer>(out_path);
+  } else {
     mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
     consumer =
         std::make_unique<vc::Mp4Consumer>(mp4_sink.get(), width, height, fps);
-  } else {
-    consumer = std::make_unique<vc::FileSinkConsumer>(out_path);
   }
 
   std::unique_ptr<vc::VideoEncoder> encoder = vc::CreateVideoEncoder(cfg);
