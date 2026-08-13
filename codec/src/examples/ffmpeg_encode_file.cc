@@ -41,9 +41,6 @@
 #include "utils/media_file_format.h"
 #include "utils/smpte_bars.h"
 
-namespace vc = video::codec;
-namespace vcu = video::codec::utils;
-
 int main(int argc, char** argv) {
   bool raw = false;
   std::string out_path = "out";  // extension is appended below from `raw`
@@ -62,48 +59,51 @@ int main(int argc, char** argv) {
   if (seconds <= 0) seconds = 5;
 
   // The mode owns the extension: --raw -> .h264, otherwise MP4 -> .mp4.
-  out_path += raw ? vcu::MediaFileFormat::kH264 : vcu::MediaFileFormat::kMp4;
+  out_path += raw ? video::codec::utils::MediaFileFormat::kH264
+                  : video::codec::utils::MediaFileFormat::kMp4;
 
   const int width = 640;
   const int height = 480;
   const int fps = 30;
   const int frame_count = seconds * fps;
 
-  vc::VideoEncoderConfig cfg;
-  cfg.codec = vc::VideoCodecType::kH264;
+  video::codec::VideoEncoderConfig cfg;
+  cfg.codec = video::codec::VideoCodecType::kH264;
   cfg.width = width;
   cfg.height = height;
   cfg.fps = fps;
   cfg.bitrate = 2'000'000;
-  cfg.input_format = vc::PixelFormat::kI420;
-  cfg.force_backend = vc::Backend::kFFmpeg;
+  cfg.input_format = video::codec::PixelFormat::kI420;
+  cfg.force_backend = video::codec::Backend::kFFmpeg;
 
   // Transport: encoder (push) -> bounded ring buffer -> consumer.
-  vc::PacketQueue queue(64, vc::Backpressure::kBlock);
+  video::codec::PacketQueue queue(64, video::codec::Backpressure::kBlock);
 
   // A consumer is transport-agnostic: default -> MP4 muxer (fragmented by
   // default) over a FileByteSink; "--raw" -> a raw Annex-B file. Swapping the
   // ByteSink (file / cloud stream / tee) is a one-line change.
-  std::unique_ptr<vc::FileByteSink> mp4_sink;  // must outlive the consumer
-  std::unique_ptr<vc::PacketConsumer> consumer;
+  std::unique_ptr<video::codec::FileByteSink>
+      mp4_sink;  // must outlive the consumer
+  std::unique_ptr<video::codec::PacketConsumer> consumer;
   if (raw) {
-    consumer = std::make_unique<vc::FileSinkConsumer>(out_path);
+    consumer = std::make_unique<video::codec::FileSinkConsumer>(out_path);
   } else {
-    mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
-    consumer =
-        std::make_unique<vc::Mp4Consumer>(mp4_sink.get(), width, height, fps);
+    mp4_sink = std::make_unique<video::codec::FileByteSink>(out_path);
+    consumer = std::make_unique<video::codec::Mp4Consumer>(mp4_sink.get(),
+                                                           width, height, fps);
   }
 
-  std::unique_ptr<vc::VideoEncoder> encoder = vc::CreateVideoEncoder(cfg);
+  std::unique_ptr<video::codec::VideoEncoder> encoder =
+      video::codec::CreateVideoEncoder(cfg);
   if (!encoder) {
     std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg backend available\n");
     return 1;
   }
-  if (encoder->Init() != vc::Status::kOk) {
+  if (encoder->Init() != video::codec::Status::kOk) {
     std::fprintf(stderr, "ffmpeg_encode_file: encoder Init failed\n");
     return 1;
   }
-  if (encoder->SetOutputSink(&queue) != vc::Status::kOk) {
+  if (encoder->SetOutputSink(&queue) != video::codec::Status::kOk) {
     std::fprintf(stderr, "ffmpeg_encode_file: push mode unavailable\n");
     return 1;
   }
@@ -114,7 +114,8 @@ int main(int argc, char** argv) {
   const auto start = std::chrono::steady_clock::now();
   int64_t produced = 0;
   for (int i = 0; i < frame_count; ++i) {
-    vc::VideoFrame frame = vcu::SmpteBars::MakeFrame(width, height, fps, i);
+    video::codec::VideoFrame frame =
+        video::codec::utils::SmpteBars::MakeFrame(width, height, fps, i);
     const auto r = encoder->Encode(frame);
     if (!r.ok()) {
       std::fprintf(stderr, "ffmpeg_encode_file: Encode error %d at frame %d\n",
