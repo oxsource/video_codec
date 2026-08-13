@@ -104,9 +104,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] 审查 `codec/src/framework/backend/ffmpeg/video_encoder.{h,cc}` 确认无任何容器/muxer 逻辑（bsf 输出仍为 Annex-B），`VideoEncoderConfig` 无容器字段（FR-005）
-- [ ] T031 [US3] 更新 `codec/src/examples/ffmpeg_encode_file.cc`：显式展示两分支共享 encoder（裸流分支与封装分支仅接线不同，encoder 配置一致），补充注释说明解耦
-- [ ] T032 [US3] 运行 `bazel test //tests/...` 全绿，确认裸流路径（encode_push_test、example --raw）不受 US1 改动影响
+- [x] T030 [US3] 审查 `codec/src/framework/backend/ffmpeg/video_encoder.{h,cc}` 确认无任何容器/muxer 逻辑（bsf 输出仍为 Annex-B），`VideoEncoderConfig` 无容器字段（FR-005）
+- [x] T031 [US3] 更新 `codec/src/examples/ffmpeg_encode_file.cc`：显式展示两分支共享 encoder（裸流分支与封装分支仅接线不同，encoder 配置一致），补充注释说明解耦
+- [x] T032 [US3] 运行 `bazel test //tests/...` 全绿，确认裸流路径（encode_push_test、example --raw）不受 US1 改动影响
 
 **Checkpoint**: US3 完成——编码器与封装层职责边界验证，两分支独立成立
 
@@ -116,13 +116,13 @@
 
 **Purpose**: 文档同步、example 端到端验证、质量收尾
 
-- [ ] T033 [P] 更新 `codec/doc/architecture/module-dependencies.md`：依赖图移除 `mux` 线，`core` 增 `packet_sink`，新增 `backend/ffmpeg → {api:muxer, io:byte_sink, @ffmpeg}` 边，注明 mux→@ffmpeg 违规已消除（`research.md` R6）
-- [ ] T034 [P] 更新 `codec/doc/project_bootstrap.md`：移除/改写 mux 模块描述（L212-213 区域），consumer 描述移除 Mp4Consumer
-- [ ] T035 [P] 更新 `codec/doc/architecture/output-queue.md`：consumer 列表移除 Mp4Consumer，改为"muxer 实现 PacketSink 经 Await 直接衔接"
-- [ ] T036 更新既有 specs 中 mux 相关引用（`specs/002/contracts/output-queue-contract.md`、`specs/002/research.md`、`specs/004/` 若提及 mux）为"Muxer 接口 + backend 实现"表述
-- [ ] T037 运行 `bazel run //src/examples:ffmpeg_encode_file --` 端到端：生成 `out.mp4` 且 `ffprobe -v error -show_entries format=format_name` 返回 mov/mp4；`--raw` 生成裸流
-- [ ] T038 全量 `bazel test //tests/...` 确认 15+ 测试全绿（原 13 + 新增 2）；`clang-format` 检查新增/修改文件
-- [ ] T039 全仓 grep 确认 `Mp4Muxer`/`Mp4Consumer`/`mp4_muxer`/`mp4_consumer`/`mux/` 无残留引用
+- [x] T033 [P] 更新 `codec/doc/architecture/module-dependencies.md`：依赖图移除 `mux` 线，`core` 增 `packet_sink`，新增 `backend/ffmpeg → {api:muxer, io:byte_sink, @ffmpeg}` 边，注明 mux→@ffmpeg 违规已消除（`research.md` R6）
+- [x] T034 [P] 更新 `codec/doc/project_bootstrap.md`：移除/改写 mux 模块描述（L212-213 区域），consumer 描述移除 Mp4Consumer
+- [x] T035 [P] 更新 `codec/doc/architecture/output-queue.md`：consumer 列表移除 Mp4Consumer，改为"muxer 实现 PacketSink 经 Await 直接衔接"
+- [x] T036 更新既有 specs 中 mux 相关引用（`specs/002/contracts/output-queue-contract.md`、`specs/002/research.md`、`specs/004/` 若提及 mux）为"Muxer 接口 + backend 实现"表述
+- [x] T037 运行 `bazel run //src/examples:ffmpeg_encode_file --` 端到端：生成 `out.mp4` 且 `ffprobe -v error -show_entries format=format_name` 返回 mov/mp4；`--raw` 生成裸流
+- [x] T038 全量 `bazel test //tests/...` 确认 15+ 测试全绿（原 13 + 新增 2）；`clang-format` 检查新增/修改文件
+- [x] T039 全仓 grep 确认 `Mp4Muxer`/`Mp4Consumer`/`mp4_muxer`/`mp4_consumer`/`mux/` 无残留引用
 
 ---
 

@@ -7,26 +7,28 @@ public ──▶ api ──▶ core
    ├──▶ utils ──▶ core
    ├──▶ queue ──▶ core
    ├──▶ io ──▶ core
-   ├──▶ mux ──▶ core, io, (external dep: @ffmpeg)
    ├──▶ convert/libyuv ──▶ core, utils, (external dep: @libyuv)
-   ├──▶ consumer ──▶ api, core, queue, io, mux
-   └──▶ backend/* ──▶ api, core, utils, (external dep)
+   ├──▶ consumer ──▶ core, queue, io
+   └──▶ backend/* ──▶ api, core, utils, io, (external dep)
 ```
 
-- `core` depends on **nothing** (leaf).
-- `api` → `core` only.
+- `core` depends on **nothing** (leaf; owns `PacketSink`, shared by the queue,
+  consumers, and the api Muxer interface).
+- `api` → `core` only (`Muxer` interface inherits `core::PacketSink`; `ByteSink`
+  is forward-declared so api stays free of an `io` dependency).
 - `utils` → `core` only.
 - `queue` → `core` only (ring buffer over `VideoPacket`/`AudioPacket` on two
   independent rings).
 - `io` → **nothing** (leaf; the single `ByteSink` contract + file/stream/tee
   sinks — a network output is just a non-seekable ByteSink).
-- `mux` → `core`, `io`, `@ffmpeg` (pure MP4 format conversion; writes through an
-  `io::ByteSink`).
 - `convert/libyuv` → `core`, `utils`, `@libyuv` (neutral pixel conversion).
-- `consumer` → `api`, `core`, `queue`, `io`, `mux` (implements `PacketConsumer`:
-  file sink, MP4 consumer over any `io::ByteSink`).
-- Each `backend/<x>` → `api`, `core`, `utils`, **and exactly one** external dependency
-  (`@ffmpeg` / `@androidndk` / `VideoToolbox.framework`).
+- `consumer` → `core`, `queue`, `io` (implements `core::PacketSink`: raw
+  Annex-B / ADTS file sink).
+- Each `backend/<x>` → `api`, `core`, `utils`, `io`, **and exactly one** external
+  dependency (`@ffmpeg` / `@androidndk` / `VideoToolbox.framework`).
+- `backend/ffmpeg` additionally implements the api `Muxer` interface (MP4 via
+  libavformat) writing through `io::ByteSink` — muxing is a backend capability,
+  not a standalone module.
 - `backends` NEVER depend on each other.
 - `public` → all of the above; it is the **only** externally-visible package.
 
@@ -34,7 +36,7 @@ public ──▶ api ──▶ core
 
 | Package | `visibility` |
 |---------|--------------|
-| `core`, `api`, `utils`, `backend/*`, `queue`, `io`, `mux`, `consumer` | `["//src/framework:__subpackages__", "//tests:__subpackages__"]` |
+| `core`, `api`, `utils`, `backend/*`, `queue`, `io`, `consumer` | `["//src/framework:__subpackages__", "//tests:__subpackages__"]` |
 | `public` | `["//visibility:public"]` |
 | `third_party/ffmpeg`, `third_party/android_ndk` | `["//visibility:public"]` (only `backend/*` may consume) |
 

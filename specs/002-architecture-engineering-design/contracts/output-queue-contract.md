@@ -123,8 +123,11 @@ EOS; propagates `Push` failures to logging/back-off.
 
 Implements `PacketConsumer`. Contract obligations:
 1. Preserve packet order; write `keyframe` packets (and SPS/PPS) at segment starts.
-2. Raw bitstream: write Annex-B to `.h264`/`.aac`; **or** feed a muxer for
-   `.mp4`/`.mkv` (muxing deferred — muxer is itself a `PacketConsumer`).
+2. Raw bitstream: write Annex-B to `.h264`/`.aac`.
+   MP4 output is NOT a consumer: it is the api `Muxer` interface (peer of
+   `VideoEncoder`/`AudioEncoder`), implemented by the backends; a Muxer
+   implements `PacketSink` so `PacketSource::Await(*muxer)` hands packets to it
+   directly and it writes a fragmented MP4 through an `io::ByteSink`.
 3. On `Finish()`: flush and close the file.
 4. Must not block the pump indefinitely; file I/O errors return a `Status`.
 

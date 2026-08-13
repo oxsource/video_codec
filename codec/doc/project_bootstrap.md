@@ -62,7 +62,7 @@ Apple `VideoToolbox`（macOS / iOS）**不在一期实现范围，后续（Phase
 
 - **Apple `VideoToolbox` 后端**：架构预留 `backend/darwin/`，一期不实现，**后续（Phase 2+）支持**
 - 视频**解码**（仅做编码；解码可在后续以同构方式扩展）
-- 容器封装 / 复用（MP4 / MKV muxing，后续；一期只产出裸码流或交由调用方 mux）
+- 更多容器格式（MKV / TS / WebM muxing，后续；v1 经 api `Muxer` 接口支持 MP4，由 FFmpeg 后端实现）
 - 网络推流 / 传输（RTMP / SRT / WebRTC，后续）
 - 滤镜 / 前处理（缩放、裁剪、颜色空间转换流水线，后续）
 - 音视频合流复用为单一容器（一期视频、音频各自独立产出码流）
@@ -201,18 +201,19 @@ Packet (kVideo / kAudio) → caller (mux / transmit / store)
 codec/src/framework/
 │
 ├── core/        # 基础类型：VideoFrame, AudioFrame, VideoPacket, AudioPacket,
-│               #           VideoEncoderConfig, AudioEncoderConfig, NativeBuffer, enums
-├── api/         # 抽象接口：VideoEncoder, AudioEncoder, InputSurface, 工厂
+│               #           VideoEncoderConfig, AudioEncoderConfig, MuxerConfig,
+│               #           NativeBuffer, enums, PacketSink
+├── api/         # 抽象接口：VideoEncoder, AudioEncoder, Muxer, InputSurface, 工厂
 ├── backend/     # 平台后端实现（每个后端独立子目录，自带 BUILD.bazel）
 │   ├── android/ # MediaCodecVideoEncoder / MediaCodecAudioEncoder (NDK AMediaCodec)
 │   ├── darwin/  # VideoToolboxVideoEncoder (Phase 2+, reserved)
 │   └── ffmpeg/  # FFmpegVideoEncoder / FFmpegAudioEncoder (libx264/5, AAC, Opus)
-├── queue/       # PacketQueue（双 ring：视频/音频），PacketSink / PacketSource
+│                # + FFmpegMuxer（MP4 封装，libavformat）
+├── queue/       # PacketQueue（双 ring：视频/音频），PacketSource
 ├── io/          # ByteSink 输出契约 + FileByteSink/StreamByteSink/TeeByteSink
-├── consumer/    # PacketConsumer, FileSinkConsumer, Mp4Consumer（io::ByteSink + Mp4Muxer）
-├── mux/         # Mp4Muxer 纯格式封装（libavformat），输出到 io::ByteSink
+├── consumer/    # PacketConsumer, FileSinkConsumer（裸流 Annex-B / ADTS）
 ├── convert/     # libyuv 像素格式转换（PixelConverter）
-├── utils/       # 布局/测试图案工具：Stride, SmpteBars
+├── utils/       # 布局/测试图案工具：Stride, SmpteBars, MediaFileFormat
 └── public/      # 公开 API 汇总入口
 ```
 

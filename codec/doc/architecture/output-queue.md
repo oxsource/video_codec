@@ -12,12 +12,14 @@ flowchart LR
     ENC["Encoder instance<br/>(backend thread, producer)"]
     Q["PacketQueue<br/>(bounded SPSC ring buffer)"]
     AW["PacketSource::Await<br/>(consumer thread)"]
-    FC["FileSinkConsumer<br/>(write .h264 / mux)"]
+    FC["FileSinkConsumer<br/>(write .h264)"]
+    MX["Muxer<br/>(api interface, write .mp4)"]
     SC["StreamConsumer<br/>(RTMP / SRT / WebRTC)"]
 
     ENC -->|PacketSink::Push| Q
     Q -->|PacketSource::Pull| AW
     AW -->|PacketSink::Push| FC
+    AW -->|PacketSink::Push| MX
     AW -->|PacketSink::Push| SC
 ```
 
@@ -154,9 +156,11 @@ The architecture fixes the `PacketConsumer` contract; the two target consumers a
 
 ### 4.1 FileSinkConsumer
 
-- Writes the raw Annex-B bitstream to a file (`.h264` / `.aac`), **or** feeds a muxer to
-  produce `.mp4` / `.mkv` (container muxing is deferred per `project_bootstrap.md`, but
-  the muxer is just another `PacketConsumer` implementation behind the same interface).
+- Writes the raw Annex-B bitstream to a file (`.h264` / `.aac`).
+- MP4 output is NOT a consumer: it is the api `Muxer` interface (peer of
+  `VideoEncoder`/`AudioEncoder`), implemented by the backends. A Muxer
+  implements `PacketSink`, so `PacketSource::Await(*muxer)` hands packets to it
+  directly and it writes a fragmented MP4 through an `io::ByteSink`.
 - Must preserve packet order and `keyframe` boundaries; emit SPS/PPS at the start and on
   config change (the encoder already tags these).
 - Uses `pts_us` for optional interleaving when both video + audio consumers write one
