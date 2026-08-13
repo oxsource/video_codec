@@ -12,15 +12,16 @@
 // "--raw" writes a raw Annex-B H.264 elementary stream (FileSinkConsumer).
 //
 // Usage:
-//   ffmpeg_encode_file [--raw] output [seconds]
+//   ffmpeg_encode_file [--raw] [output] [seconds]
 //
-//   --raw  write a raw Annex-B H.264 elementary stream (FileSinkConsumer).
-//          Otherwise the output is muxed into an MP4 container
-//          (Mp4Consumer), regardless of the file extension.
+//   --raw  write a raw Annex-B H.264 elementary stream (FileSinkConsumer);
+//          appends ".h264" to the output path. Otherwise the output is muxed
+//          into an MP4 container (Mp4Consumer), appending ".mp4".
 //
 // Examples:
-//   bazel run //src/examples:ffmpeg_encode_file -- out.mp4 5
-//   bazel run //src/examples:ffmpeg_encode_file -- --raw out.h264 5
+//   bazel run //src/examples:ffmpeg_encode_file --          # -> out.mp4
+//   bazel run //src/examples:ffmpeg_encode_file -- clip 5   # -> clip.mp4
+//   bazel run //src/examples:ffmpeg_encode_file -- --raw    # -> out.h264
 
 #include <chrono>
 #include <cstdint>
@@ -37,6 +38,7 @@
 #include "consumer/packet_consumer.h"
 #include "io/file_byte_sink.h"
 #include "queue/packet_queue.h"
+#include "utils/media_file_format.h"
 #include "utils/smpte_bars.h"
 
 namespace vc = video::codec;
@@ -44,24 +46,23 @@ namespace vcu = video::codec::utils;
 
 int main(int argc, char** argv) {
   bool raw = false;
-  std::string out_path = "out.mp4";
+  std::string out_path = "out";  // extension is appended below from `raw`
   int seconds = 5;
 
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "--raw") {
       raw = true;
-    } else if (arg.rfind("--", 0) == 0) {
-      std::fprintf(stderr, "ffmpeg_encode_file: unknown option %s\n",
-                   arg.c_str());
-      return 1;
-    } else if (out_path == "out.mp4" && seconds == 5 && arg[0] != '-') {
+    } else if (out_path == "out" && seconds == 5 && arg[0] != '-') {
       out_path = arg;
     } else {
       seconds = std::atoi(arg.c_str());
     }
   }
   if (seconds <= 0) seconds = 5;
+
+  // The mode owns the extension: --raw -> .h264, otherwise MP4 -> .mp4.
+  out_path += raw ? vcu::MediaFileFormat::kH264 : vcu::MediaFileFormat::kMp4;
 
   const int width = 640;
   const int height = 480;
