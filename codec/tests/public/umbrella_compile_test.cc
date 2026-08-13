@@ -27,8 +27,8 @@ TEST(UmbrellaCompileTest, PublicSurfaceReachable) {
   (void)slot;
 
   // Factory entry points are declared through the umbrella.
-  video::codec::Backend b =
-      video::codec::ResolveBackend(video::codec::Backend::kFFmpeg);
+  video::codec::Backend b = video::codec::CodecFactory::ResolveBackend(
+      video::codec::Backend::kFFmpeg);
   EXPECT_EQ(b, video::codec::Backend::kFFmpeg);
 
   EXPECT_EQ(vcfg.width, 1280);

@@ -44,9 +44,9 @@ cc_library(
 )
 
 cc_library(
-    name = "encoder_factory",
-    srcs = ["encoder_factory.cc"],
-    hdrs = ["encoder_factory.h"],
+    name = "codec_factory",
+    srcs = ["codec_factory.cc"],
+    hdrs = ["codec_factory.h"],
     includes = [".."],
     deps = [
         ":audio_encoder",
@@ -69,7 +69,7 @@ cc_library(
         ":audio_encoder",
         ":encoder_lifecycle",
         ":muxer",
-        ":encoder_factory",
+        ":codec_factory",
         ":input_surface",
     ],
 )

@@ -122,7 +122,7 @@ exclusively public symbols (no internal header reachable).
       `codec/src/framework/public/include/video_codec/video_codec.h` that `#include`s the
       public contracts — `core/types.h`, `core/status.h`, `core/result.h`, `core/log_slot.h`,
       `api/video_encoder.h`, `api/audio_encoder.h`, `api/input_surface.h`,
-      `api/encoder_factory.h` — and decorates the surface with `VIDEO_CODEC_API` (from the
+      `api/codec_factory.h` — and decorates the surface with `VIDEO_CODEC_API` (from the
       existing `video_codec_export.h`). No new types; no `BUILD.bazel` change needed (already
       globs `*.h`, `//visibility:public`).
 

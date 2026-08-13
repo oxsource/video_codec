@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "api/audio_encoder.h"
-#include "api/encoder_factory.h"
+#include "api/codec_factory.h"
 #include "gtest/gtest.h"
 #include "queue/packet_queue.h"
 
@@ -36,7 +36,7 @@ TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
   cfg.bitrate = 128'000;
   cfg.backend = Backend::kFFmpeg;
 
-  std::unique_ptr<AudioEncoder> encoder = CreateAudioEncoder(cfg);
+  std::unique_ptr<AudioEncoder> encoder = CodecFactory::CreateAudioEncoder(cfg);
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);

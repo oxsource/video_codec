@@ -47,10 +47,10 @@ Mp4Muxer 的懒打开（首关键帧需 SPS/PPS）、VideoEncoder 的 SetOutput/
 
 ## R4 — 工厂机制扩展
 
-**Decision**: 扩展现有 `api/encoder_factory.{h,cc}`，不新建 MuxerFactory。新增
+**Decision**: 扩展现有 `api/codec_factory.{h,cc}`，不新建 MuxerFactory。新增
 `using MuxerCreator = std::function<std::unique_ptr<Muxer>(const MuxerConfig&)>;`
 `RegisterMuxer(Backend, MuxerCreator)`、`CreateMuxer(const MuxerConfig&)`，`Muxer::Create`
-在 encoder_factory.cc 中转发。Registry 增加 `unordered_map<Backend, MuxerCreator> mux`。
+在 codec_factory.cc 中转发。Registry 增加 `unordered_map<Backend, MuxerCreator> mux`。
 
 **Rationale**: 复用现有按 Backend 键的注册表与 `ResolveBackend` 平台选择，与
 Video/Audio 编码器完全对称，零新增抽象。

@@ -52,7 +52,7 @@ backend（`@ffmpeg//:ffmpeg_codec*`，含 libavformat）；googletest。`PacketS
 - 编码器默认行为不变（不启用封装时输出裸码流），现有测试保持通过。
 
 **Scale/Scope**: 新增 `core/packet_sink.h`、`api/muxer.h`、`backend/ffmpeg/ffmpeg_muxer.{h,cc}`
-及 2 个测试；修改 `core/types.h`、`api/encoder_factory.{h,cc}`、`queue/queue_iface.h`、
+及 2 个测试；修改 `core/types.h`、`api/codec_factory.{h,cc}`、`queue/queue_iface.h`、
 `consumer/packet_consumer.h`、`backend/ffmpeg/register.cc`、example；删除 `mux/` 目录、
 `consumer/mp4_consumer.{h,cc}`。
 
@@ -92,7 +92,7 @@ codec/src/framework/
 │   └── BUILD.bazel          # + packet_sink target
 ├── api/
 │   ├── muxer.h              # (new) 通用 Muxer 抽象（继承 PacketSink）
-│   ├── encoder_factory.h/.cc  # + RegisterMuxer / CreateMuxer / Muxer::Create
+│   ├── codec_factory.h/.cc  # + RegisterMuxer / CreateMuxer / Muxer::Create
 │   └── BUILD.bazel          # + muxer target
 ├── queue/
 │   ├── queue_iface.h        # include core/packet_sink.h；保留 PacketSource/Backpressure

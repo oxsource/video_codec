@@ -32,7 +32,7 @@
 #include <string>
 #include <thread>
 
-#include "api/encoder_factory.h"
+#include "api/codec_factory.h"
 #include "api/muxer.h"
 #include "api/video_encoder.h"
 #include "consumer/file_sink_consumer.h"
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     mux_cfg.height = height;
     mux_cfg.fps = fps;
     mux_cfg.backend = vc::Backend::kFFmpeg;
-    muxer = vc::CreateMuxer(mux_cfg);
+    muxer = vc::CodecFactory::CreateMuxer(mux_cfg);
     if (!muxer) {
       std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg muxer available\n");
       return 1;
@@ -109,7 +109,8 @@ int main(int argc, char** argv) {
     muxer->SetOutput(mp4_sink.get());
   }
 
-  std::unique_ptr<vc::VideoEncoder> encoder = vc::CreateVideoEncoder(cfg);
+  std::unique_ptr<vc::VideoEncoder> encoder =
+      vc::CodecFactory::CreateVideoEncoder(cfg);
   if (!encoder) {
     std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg backend available\n");
     return 1;

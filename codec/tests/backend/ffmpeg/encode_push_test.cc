@@ -10,7 +10,7 @@
 #include <thread>
 #include <vector>
 
-#include "api/encoder_factory.h"
+#include "api/codec_factory.h"
 #include "api/video_encoder.h"
 #include "gtest/gtest.h"
 #include "queue/packet_queue.h"
@@ -54,7 +54,8 @@ VideoEncoderConfig MakeConfig() {
 // US1/A1: push mode delivers all packets to the queue, in order, zero loss.
 TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
   PacketQueue q(64, Backpressure::kBlock);
-  std::unique_ptr<VideoEncoder> encoder = CreateVideoEncoder(MakeConfig());
+  std::unique_ptr<VideoEncoder> encoder =
+      CodecFactory::CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);
@@ -87,7 +88,8 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
 
 // US1/A2: without a sink, the pull API is unchanged and returns packets.
 TEST(EncodePushTest, PullModeUnchangedWithoutSink) {
-  std::unique_ptr<VideoEncoder> encoder = CreateVideoEncoder(MakeConfig());
+  std::unique_ptr<VideoEncoder> encoder =
+      CodecFactory::CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
 
@@ -107,7 +109,8 @@ TEST(EncodePushTest, PullModeUnchangedWithoutSink) {
 // (kBlock) instead of dropping, and every packet arrives in order afterwards.
 TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
   PacketQueue q(4, Backpressure::kBlock);
-  std::unique_ptr<VideoEncoder> encoder = CreateVideoEncoder(MakeConfig());
+  std::unique_ptr<VideoEncoder> encoder =
+      CodecFactory::CreateVideoEncoder(MakeConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);

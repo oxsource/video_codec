@@ -1,5 +1,5 @@
-// encoder_factory.cc
-#include "api/encoder_factory.h"
+// codec_factory.cc
+#include "api/codec_factory.h"
 
 #include <mutex>
 #include <unordered_map>
@@ -11,7 +11,7 @@
 namespace video {
 namespace codec {
 
-Backend ResolveBackend(Backend force) {
+Backend CodecFactory::ResolveBackend(Backend force) {
   if (force != Backend::kAuto) return force;
 #if defined(__ANDROID__)
   return Backend::kAndroid;
@@ -21,33 +21,22 @@ Backend ResolveBackend(Backend force) {
 #endif
 }
 
-namespace {
-
-struct Registry {
-  std::mutex mu;
-  std::unordered_map<Backend, VideoEncoderCreator> video;
-  std::unordered_map<Backend, AudioEncoderCreator> audio;
-  std::unordered_map<Backend, MuxerCreator> mux;
-};
-
-Registry& reg() {
+CodecFactory::Registry& CodecFactory::reg() {
   static Registry r;
   return r;
 }
 
-}  // namespace
-
-void RegisterVideoEncoder(Backend b, VideoEncoderCreator fn) {
+void CodecFactory::RegisterVideoEncoder(Backend b, VideoEncoderCreator fn) {
   std::lock_guard<std::mutex> lk(reg().mu);
   reg().video[b] = std::move(fn);
 }
 
-void RegisterAudioEncoder(Backend b, AudioEncoderCreator fn) {
+void CodecFactory::RegisterAudioEncoder(Backend b, AudioEncoderCreator fn) {
   std::lock_guard<std::mutex> lk(reg().mu);
   reg().audio[b] = std::move(fn);
 }
 
-std::unique_ptr<VideoEncoder> CreateVideoEncoder(
+std::unique_ptr<VideoEncoder> CodecFactory::CreateVideoEncoder(
     const VideoEncoderConfig& cfg) {
   Backend b = ResolveBackend(cfg.backend);
   std::lock_guard<std::mutex> lk(reg().mu);
@@ -56,7 +45,7 @@ std::unique_ptr<VideoEncoder> CreateVideoEncoder(
   return it->second(cfg);
 }
 
-std::unique_ptr<AudioEncoder> CreateAudioEncoder(
+std::unique_ptr<AudioEncoder> CodecFactory::CreateAudioEncoder(
     const AudioEncoderConfig& cfg) {
   Backend b = ResolveBackend(cfg.backend);
   std::lock_guard<std::mutex> lk(reg().mu);
@@ -65,12 +54,12 @@ std::unique_ptr<AudioEncoder> CreateAudioEncoder(
   return it->second(cfg);
 }
 
-void RegisterMuxer(Backend b, MuxerCreator fn) {
+void CodecFactory::RegisterMuxer(Backend b, MuxerCreator fn) {
   std::lock_guard<std::mutex> lk(reg().mu);
   reg().mux[b] = std::move(fn);
 }
 
-std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig& cfg) {
+std::unique_ptr<Muxer> CodecFactory::CreateMuxer(const MuxerConfig& cfg) {
   Backend b = ResolveBackend(cfg.backend);
   std::lock_guard<std::mutex> lk(reg().mu);
   auto it = reg().mux.find(b);
@@ -81,16 +70,16 @@ std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig& cfg) {
 // Static factory entry points declared on the abstract classes.
 std::unique_ptr<VideoEncoder> VideoEncoder::Create(
     const VideoEncoderConfig& c) {
-  return CreateVideoEncoder(c);
+  return CodecFactory::CreateVideoEncoder(c);
 }
 
 std::unique_ptr<AudioEncoder> AudioEncoder::Create(
     const AudioEncoderConfig& c) {
-  return CreateAudioEncoder(c);
+  return CodecFactory::CreateAudioEncoder(c);
 }
 
 std::unique_ptr<Muxer> Muxer::Create(const MuxerConfig& c) {
-  return CreateMuxer(c);
+  return CodecFactory::CreateMuxer(c);
 }
 
 }  // namespace codec

@@ -18,7 +18,7 @@
 - [x] CHK007 **FR-001**: independent muxer layer exists (api `Muxer`, no encoding duties) — `api/muxer.h`
 - [x] CHK008 **FR-002**: video stream muxed to MP4, validatable — `muxer_test` + ffprobe
 - [x] CHK009 **FR-003**: api defines generic `Muxer` interface; encoder & muxer are peer abstractions — `api/muxer.h` alongside `api/video_encoder.h`
-- [x] CHK010 **FR-004**: platform backends provide muxer implementations via registration — `RegisterMuxer`/`CreateMuxer` in `encoder_factory`; FFmpeg registers in `register.cc`
+- [x] CHK010 **FR-004**: platform backends provide muxer implementations via registration — `RegisterMuxer`/`CreateMuxer` in `codec_factory`; FFmpeg registers in `register.cc`
 - [x] CHK011 **FR-005**: encoder protocol-agnostic — `video_encoder.{h,cc}` has zero container/mux references; `VideoEncoderConfig` has no container field; bsf still emits Annex-B
 - [x] CHK012 **FR-006**: two byte-output targets (seekable file / non-seekable stream) supported — output is `io::ByteSink` (FileByteSink seekable; StreamByteSink/MemorySink non-seekable); muxer uses sequential avio (no seeking)
 - [x] CHK013 **FR-007**: header+first fragment delivered as one unit for both pull & push wiring — `ffmpeg_muxer.cc` writes header at first keyframe then sample; `queue.Await(*muxer)` push path verified

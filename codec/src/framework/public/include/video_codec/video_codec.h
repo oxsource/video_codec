@@ -29,7 +29,7 @@
 
 // Abstract encoder interfaces, surface input, and backend factory
 #include "api/audio_encoder.h"
-#include "api/encoder_factory.h"
+#include "api/codec_factory.h"
 #include "api/input_surface.h"
 #include "api/video_encoder.h"
 

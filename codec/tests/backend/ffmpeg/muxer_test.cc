@@ -13,7 +13,7 @@
 #include <thread>
 #include <vector>
 
-#include "api/encoder_factory.h"
+#include "api/codec_factory.h"
 #include "api/video_encoder.h"
 #include "gtest/gtest.h"
 #include "io/byte_sink.h"
@@ -108,12 +108,12 @@ bool HasFtypAtOffset4(const std::vector<uint8_t>& bytes) {
 TEST(MuxerTest, EncoderToQueueToMuxerProducesMp4) {
   PacketQueue q(64, Backpressure::kBlock);
   std::unique_ptr<VideoEncoder> encoder =
-      CreateVideoEncoder(MakeEncoderConfig());
+      CodecFactory::CreateVideoEncoder(MakeEncoderConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);
 
-  std::unique_ptr<Muxer> muxer = CreateMuxer(MakeMuxerConfig());
+  std::unique_ptr<Muxer> muxer = CodecFactory::CreateMuxer(MakeMuxerConfig());
   ASSERT_NE(muxer, nullptr);
   MemorySink sink;
   ASSERT_EQ(muxer->SetOutput(&sink), Status::kOk);

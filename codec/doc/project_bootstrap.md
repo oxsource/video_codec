@@ -292,7 +292,7 @@ codec/                              # Bazel workspace root
 │       │   ├── video_encoder.h / video_encoder.cc     # 抽象基类 + Create()
 │       │   ├── audio_encoder.h / audio_encoder.cc     # 抽象基类 + Create()
 │       │   ├── input_surface.h / input_surface.cc     # InputSurface 抽象
-│       │   └── encoder_factory.h / encoder_factory.cc # 平台选择
+│       │   └── codec_factory.h / codec_factory.cc # 平台选择
 │       ├── backend/
 │       │   ├── android/                # 独立子目录：MediaCodec 后端
 │       │   │   ├── BUILD.bazel

@@ -2,7 +2,7 @@
 #include "api/encoder_lifecycle.h"
 
 #include "api/audio_encoder.h"
-#include "api/encoder_factory.h"
+#include "api/codec_factory.h"
 #include "api/video_encoder.h"
 #include "gtest/gtest.h"
 
@@ -55,22 +55,22 @@ TEST(EncoderLifecycleTest, ReleasedIsTerminal) {
 }
 
 // --- Backend selection model (data-model.md §6) ------------------------------
-TEST(EncoderFactoryTest, ResolveBackend) {
+TEST(CodecFactoryTest, ResolveBackend) {
   // On a non-Android host, kAuto selects FFmpeg (Apple falls back, ADR-004).
-  EXPECT_EQ(ResolveBackend(Backend::kAuto), Backend::kFFmpeg);
+  EXPECT_EQ(CodecFactory::ResolveBackend(Backend::kAuto), Backend::kFFmpeg);
   // An explicit force is honored regardless of platform.
-  EXPECT_EQ(ResolveBackend(Backend::kAndroid), Backend::kAndroid);
-  EXPECT_EQ(ResolveBackend(Backend::kFFmpeg), Backend::kFFmpeg);
-  EXPECT_EQ(ResolveBackend(Backend::kDarwin), Backend::kDarwin);
+  EXPECT_EQ(CodecFactory::ResolveBackend(Backend::kAndroid), Backend::kAndroid);
+  EXPECT_EQ(CodecFactory::ResolveBackend(Backend::kFFmpeg), Backend::kFFmpeg);
+  EXPECT_EQ(CodecFactory::ResolveBackend(Backend::kDarwin), Backend::kDarwin);
 }
 
-TEST(EncoderFactoryTest, NoBackendLinkedReturnsNull) {
+TEST(CodecFactoryTest, NoBackendLinkedReturnsNull) {
   // This test does not link any backend, so the registry is empty: Create must
   // fail gracefully (nullptr) instead of throwing.
   VideoEncoderConfig vc;
-  EXPECT_EQ(CreateVideoEncoder(vc), nullptr);
+  EXPECT_EQ(CodecFactory::CreateVideoEncoder(vc), nullptr);
   AudioEncoderConfig ac;
-  EXPECT_EQ(CreateAudioEncoder(ac), nullptr);
+  EXPECT_EQ(CodecFactory::CreateAudioEncoder(ac), nullptr);
 }
 
 }  // namespace

@@ -42,7 +42,7 @@ struct MuxerConfig {
 
 ### MuxerBackend（封装后端）
 
-特定平台对 `Muxer` 的实现，通过 `encoder_factory` 注册表自注册。
+特定平台对 `Muxer` 的实现，通过 `codec_factory` 注册表自注册。
 
 | Attribute | Meaning |
 |-----------|---------|

@@ -50,7 +50,7 @@ class Muxer : public PacketSink {
 }  // namespace video
 ```
 
-## 2. 工厂契约（api/encoder_factory）
+## 2. 工厂契约（api/codec_factory）
 
 ```cpp
 using MuxerCreator =

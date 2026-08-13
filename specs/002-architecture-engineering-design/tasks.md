@@ -110,7 +110,7 @@ and `contracts/public-api.md`.
       Flushed → Released` returning errors on invalid transitions in
       `codec/src/framework/api/encoder_lifecycle.h` / `.cc` per `lifecycle-model.md`.
 - [x] T012 [US1] Implement factory + backend-selection (compile-time platform macro OR
-      `backend`) in `codec/src/framework/api/encoder_factory.h` / `.cc` per
+      `backend`) in `codec/src/framework/api/codec_factory.h` / `.cc` per
       `backend-selection.md` / ADR-002 (`select()`-per-platform backends).
 - [x] T013 [US1] Add lifecycle/selection unit tests in
       `codec/tests/api/encoder_lifecycle_test.cc` (invalid transition → error, not crash;

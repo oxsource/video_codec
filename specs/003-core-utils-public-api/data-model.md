@@ -44,7 +44,7 @@ no new types; it is a forwarding include surface.
 | `core/log_slot.h` | `LogSlot` (pluggable logging interface) |
 | `api/video_encoder.h`, `api/audio_encoder.h` | `VideoEncoder`, `AudioEncoder` (abstract) |
 | `api/input_surface.h` | `InputSurface` / `NativeBuffer` semantics |
-| `api/encoder_factory.h` | factory + backend selection |
+| `api/codec_factory.h` | factory + backend selection |
 
 The umbrella is decorated with `VIDEO_CODEC_API` (from `video_codec_export.h`) so public
 symbols export correctly for shared-library builds.

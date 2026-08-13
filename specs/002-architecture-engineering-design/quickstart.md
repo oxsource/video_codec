@@ -80,7 +80,7 @@ codec/
 3. Subclass `VideoEncoder`/`AudioEncoder`; implement `Init` / `Encode`×2 / `Flush` /
    `Release`; map errors to `Status` (no exceptions).
 4. Wire it into the `select()` list in `src/framework/public/BUILD.bazel` and the
-   factory in `api/encoder_factory.cc` (see `codec/doc/architecture/backend-selection.md`).
+   factory in `api/codec_factory.cc` (see `codec/doc/architecture/backend-selection.md`).
 5. Add an integration test under `tests/`; run `make verify` + `bazel test //...`.
 
 ## Reading the design
