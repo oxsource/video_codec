@@ -1,3 +1,1 @@
-{
-  "feature_directory": "specs/004-encoder-queue-wiring"
-}
+{"feature_directory": "specs/005-muxer-encoder-layering"}
