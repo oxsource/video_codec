@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "api/audio_encoder.h"
+#include "api/muxer.h"
 #include "api/video_encoder.h"
 
 namespace video {
@@ -26,6 +27,7 @@ struct Registry {
   std::mutex mu;
   std::unordered_map<Backend, VideoEncoderCreator> video;
   std::unordered_map<Backend, AudioEncoderCreator> audio;
+  std::unordered_map<Backend, MuxerCreator> mux;
 };
 
 Registry& reg() {
@@ -63,6 +65,19 @@ std::unique_ptr<AudioEncoder> CreateAudioEncoder(
   return it->second(cfg);
 }
 
+void RegisterMuxer(Backend b, MuxerCreator fn) {
+  std::lock_guard<std::mutex> lk(reg().mu);
+  reg().mux[b] = std::move(fn);
+}
+
+std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig& cfg) {
+  Backend b = ResolveBackend(cfg.force_backend);
+  std::lock_guard<std::mutex> lk(reg().mu);
+  auto it = reg().mux.find(b);
+  if (it == reg().mux.end()) return nullptr;
+  return it->second(cfg);
+}
+
 // Static factory entry points declared on the abstract classes.
 std::unique_ptr<VideoEncoder> VideoEncoder::Create(
     const VideoEncoderConfig& c) {
@@ -72,6 +87,10 @@ std::unique_ptr<VideoEncoder> VideoEncoder::Create(
 std::unique_ptr<AudioEncoder> AudioEncoder::Create(
     const AudioEncoderConfig& c) {
   return CreateAudioEncoder(c);
+}
+
+std::unique_ptr<Muxer> Muxer::Create(const MuxerConfig& c) {
+  return CreateMuxer(c);
 }
 
 }  // namespace codec

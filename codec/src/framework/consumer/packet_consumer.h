@@ -1,9 +1,9 @@
 // packet_consumer.h
 #pragma once
 
+#include "core/packet_sink.h"
 #include "core/status.h"
 #include "core/types.h"
-#include "queue/queue_iface.h"
 
 namespace video {
 namespace codec {
@@ -12,7 +12,7 @@ namespace codec {
 // StreamConsumer implement this; swapping one for the other is a one-line
 // change and the encoder never knows which is attached.
 //
-// Implements queue::PacketSink — the dispatch target the source's Await loop
+// Implements core::PacketSink — the dispatch target the source's Await loop
 // delivers to (Push) and the producer feeds (via the encoder's sink). A
 // PacketConsumer can be handed straight to PacketSource::Await(PacketSink&).
 class PacketConsumer : public PacketSink {

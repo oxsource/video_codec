@@ -1,6 +1,7 @@
 // queue_iface.h
 #pragma once
 
+#include "core/packet_sink.h"
 #include "core/status.h"
 #include "core/types.h"
 
@@ -15,23 +16,9 @@ namespace codec {
 //              pipelines).
 enum class Backpressure { kBlock, kLatest, kError };
 
-// Destination for encoded packets. One contract serves BOTH transport
-// directions:
-//   - producer -> queue : the encoder hands packets to the queue through
-//     Push(); PacketQueue implements PacketSink for this side.
-//   - queue -> consumer : PacketSource::Await() delivers packets to the
-//     consumer through the same Push(); consumer::PacketConsumer
-//     implements PacketSink for this side.
-// Flush() marks a segment boundary (producer flush); Finish() is EOS teardown
-// (consumer finish).
-class PacketSink {
- public:
-  virtual ~PacketSink() = default;
-  virtual Status Push(VideoPacket&& pkt) = 0;
-  virtual Status Push(AudioPacket&& pkt) = 0;
-  virtual Status Flush() { return Status::kOk; }   // segment boundary
-  virtual Status Finish() { return Status::kOk; }  // EOS / teardown
-};
+// NOTE: PacketSink now lives in core/packet_sink.h — it is shared by the
+// queue (producer side), consumers, and the api Muxer interface, so `api`
+// may inherit it without depending on `queue`.
 
 // Consumer endpoint. The drain loop pulls packets from here.
 class PacketSource {

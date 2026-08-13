@@ -24,8 +24,8 @@
 
 **Purpose**: 基线确认与纯重构（不影响任何用户故事，先保证现有测试绿）
 
-- [ ] T001 确认工作区在 feature 分支 `005-muxer-encoder-layering`，`bazel test //tests/...` 基线全绿（13 测试）
-- [ ] T002 [P] 阅读 `codec/src/framework/queue/queue_iface.h`、`codec/src/framework/consumer/packet_consumer.h`，确认 PacketSink 仅依赖 core 类型（无 queue 特有依赖）
+- [x] T001 确认工作区在 feature 分支 `005-muxer-encoder-layering`，`bazel test //tests/...` 基线全绿（13 测试）
+- [x] T002 [P] 阅读 `codec/src/framework/queue/queue_iface.h`、`codec/src/framework/consumer/packet_consumer.h`，确认 PacketSink 仅依赖 core 类型（无 queue 特有依赖）
 
 ---
 
@@ -35,17 +35,17 @@
 
 **⚠️ CRITICAL**: 本阶段完成前不能开始任何用户故事实现
 
-- [ ] T003 新建 `codec/src/framework/core/packet_sink.h`：将 `PacketSink`（Push(VideoPacket&&)/Push(AudioPacket&&)/Flush/Finish）从 `queue/queue_iface.h` 原样迁入（include `core/status.h` + `core/types.h`），更新注释说明其跨层契约（生产端 encoder 与消费端 muxer/consumer 共用）
-- [ ] T004 修改 `codec/src/framework/queue/queue_iface.h`：移除 PacketSink 定义，`#include "core/packet_sink.h"`，保留 `Backpressure`/`PacketSource`
-- [ ] T005 修改 `codec/src/framework/consumer/packet_consumer.h`：include 从 `queue/queue_iface.h` 改为 `core/packet_sink.h`（保持 `PacketConsumer : public PacketSink`）
-- [ ] T006 [P] 更新 `codec/src/framework/core/BUILD.bazel`：新增 `packet_sink` target（hdrs=["packet_sink.h"]），聚合 `core` target 加入依赖；更新 `queue/BUILD.bazel`、`consumer/BUILD.bazel` 中相关 target 依赖（如需要）
-- [ ] T007 运行 `bazel test //tests/...`，确认 PacketSink 迁移后 13 测试全绿（纯重构，无行为变化）
-- [ ] T008 修改 `codec/src/framework/core/types.h`：新增 `enum class MuxFormat { kMp4 };` 与 `struct MuxerConfig { MuxFormat format=kMp4; bool fragmented=true; int width=0; int height=0; int fps=30; Backend force_backend=kAuto; bool IsValid() const { return width>0 && height>0; } };`（`data-model.md` §MuxerConfig）
-- [ ] T009 新建 `codec/src/framework/api/muxer.h`：通用 `Muxer : public PacketSink` 抽象（`static Create(const MuxerConfig&)`、`virtual Status SetOutput(ByteSink*)`、`Push(VideoPacket&&) override=0`、`Push(AudioPacket&&) override` 默认 `kUnsupportedOperation`、`Flush()/Finish() override=0`、`virtual void Release()=0`），`class ByteSink;` 前向声明（`contracts/muxer-contract.md` §1）
-- [ ] T010 更新 `codec/src/framework/api/encoder_factory.h`：新增 `using MuxerCreator = std::function<std::unique_ptr<Muxer>(const MuxerConfig&)>;`、`void RegisterMuxer(Backend, MuxerCreator);`、`std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig&);`（`contracts/muxer-contract.md` §2）
-- [ ] T011 更新 `codec/src/framework/api/encoder_factory.cc`：Registry 增 `std::unordered_map<Backend, MuxerCreator> mux;`，实现 `RegisterMuxer`/`CreateMuxer`（经 `ResolveBackend` 选择，缺失返回 nullptr），并实现 `Muxer::Create` 转发
-- [ ] T012 更新 `codec/src/framework/api/BUILD.bazel`：新增 `muxer` target（deps: core:types/core:status/core:packet_sink），`encoder_factory` target 增加对 `muxer` 的依赖（若 split），聚合 `api` target 纳入
-- [ ] T013 运行 `bazel build //...`，确认 api/core 新 target 编译通过
+- [x] T003 新建 `codec/src/framework/core/packet_sink.h`：将 `PacketSink`（Push(VideoPacket&&)/Push(AudioPacket&&)/Flush/Finish）从 `queue/queue_iface.h` 原样迁入（include `core/status.h` + `core/types.h`），更新注释说明其跨层契约（生产端 encoder 与消费端 muxer/consumer 共用）
+- [x] T004 修改 `codec/src/framework/queue/queue_iface.h`：移除 PacketSink 定义，`#include "core/packet_sink.h"`，保留 `Backpressure`/`PacketSource`
+- [x] T005 修改 `codec/src/framework/consumer/packet_consumer.h`：include 从 `queue/queue_iface.h` 改为 `core/packet_sink.h`（保持 `PacketConsumer : public PacketSink`）
+- [x] T006 [P] 更新 `codec/src/framework/core/BUILD.bazel`：新增 `packet_sink` target（hdrs=["packet_sink.h"]），聚合 `core` target 加入依赖；更新 `queue/BUILD.bazel`、`consumer/BUILD.bazel` 中相关 target 依赖（如需要）
+- [x] T007 运行 `bazel test //tests/...`，确认 PacketSink 迁移后 13 测试全绿（纯重构，无行为变化）
+- [x] T008 修改 `codec/src/framework/core/types.h`：新增 `enum class MuxFormat { kMp4 };` 与 `struct MuxerConfig { MuxFormat format=kMp4; bool fragmented=true; int width=0; int height=0; int fps=30; Backend force_backend=kAuto; bool IsValid() const { return width>0 && height>0; } };`（`data-model.md` §MuxerConfig）
+- [x] T009 新建 `codec/src/framework/api/muxer.h`：通用 `Muxer : public PacketSink` 抽象（`static Create(const MuxerConfig&)`、`virtual Status SetOutput(ByteSink*)`、`Push(VideoPacket&&) override=0`、`Push(AudioPacket&&) override` 默认 `kUnsupportedOperation`、`Flush()/Finish() override=0`、`virtual void Release()=0`），`class ByteSink;` 前向声明（`contracts/muxer-contract.md` §1）
+- [x] T010 更新 `codec/src/framework/api/encoder_factory.h`：新增 `using MuxerCreator = std::function<std::unique_ptr<Muxer>(const MuxerConfig&)>;`、`void RegisterMuxer(Backend, MuxerCreator);`、`std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig&);`（`contracts/muxer-contract.md` §2）
+- [x] T011 更新 `codec/src/framework/api/encoder_factory.cc`：Registry 增 `std::unordered_map<Backend, MuxerCreator> mux;`，实现 `RegisterMuxer`/`CreateMuxer`（经 `ResolveBackend` 选择，缺失返回 nullptr），并实现 `Muxer::Create` 转发
+- [x] T012 更新 `codec/src/framework/api/BUILD.bazel`：新增 `muxer` target（deps: core:types/core:status/core:packet_sink），`encoder_factory` target 增加对 `muxer` 的依赖（若 split），聚合 `api` target 纳入
+- [x] T013 运行 `bazel build //...`，确认 api/core 新 target 编译通过
 
 **Checkpoint**: 基础就绪——PacketSink 在 core、Muxer 接口 + 配置 + 工厂已定义，可开始 US1
 

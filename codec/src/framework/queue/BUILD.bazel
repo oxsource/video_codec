@@ -8,6 +8,7 @@ cc_library(
     hdrs = ["queue_iface.h"],
     includes = [".."],
     deps = [
+        "//src/framework/core:packet_sink",
         "//src/framework/core:status",
         "//src/framework/core:types",
     ],

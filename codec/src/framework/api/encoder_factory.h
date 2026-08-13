@@ -11,6 +11,7 @@ namespace codec {
 
 class VideoEncoder;
 class AudioEncoder;
+class Muxer;
 
 // Resolve which backend to instantiate given a force_backend request and the
 // current platform. kAuto -> platform select (non-Android -> FFmpeg; Android ->
@@ -30,6 +31,11 @@ void RegisterAudioEncoder(Backend b, AudioEncoderCreator fn);
 
 std::unique_ptr<VideoEncoder> CreateVideoEncoder(const VideoEncoderConfig& cfg);
 std::unique_ptr<AudioEncoder> CreateAudioEncoder(const AudioEncoderConfig& cfg);
+
+using MuxerCreator = std::function<std::unique_ptr<Muxer>(const MuxerConfig&)>;
+void RegisterMuxer(Backend b, MuxerCreator fn);
+
+std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig& cfg);
 
 }  // namespace codec
 }  // namespace video

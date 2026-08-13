@@ -93,5 +93,22 @@ struct AudioEncoderConfig {
   bool IsValid() const { return sample_rate > 0 && channels > 0; }
 };
 
+// ---- Muxer configuration ------------------------------------------------
+
+enum class MuxFormat { kMp4 };  // v1; future: kMkv, kTs, kWebm
+
+struct MuxerConfig {
+  MuxFormat format = MuxFormat::kMp4;
+  bool fragmented = true;  // fMP4: header upfront + per-keyframe fragments
+  int width = 0;           // stream metadata; SPS-parse fallbacks
+  int height = 0;
+  int fps = 30;
+  Backend force_backend = Backend::kAuto;  // kAuto -> platform select
+
+  // True when the config describes a muxable stream (dimensions set).
+  // Backends call this to reject bad configs before doing any real work.
+  bool IsValid() const { return width > 0 && height > 0; }
+};
+
 }  // namespace codec
 }  // namespace video

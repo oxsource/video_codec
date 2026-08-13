@@ -32,12 +32,25 @@ cc_library(
 )
 
 cc_library(
+    name = "muxer",
+    hdrs = ["muxer.h"],
+    includes = [".."],
+    deps = [
+        "//src/framework/core:packet_sink",
+        "//src/framework/core:result",
+        "//src/framework/core:status",
+        "//src/framework/core:types",
+    ],
+)
+
+cc_library(
     name = "encoder_factory",
     srcs = ["encoder_factory.cc"],
     hdrs = ["encoder_factory.h"],
     includes = [".."],
     deps = [
         ":audio_encoder",
+        ":muxer",
         ":video_encoder",
         "//src/framework/core:types",
     ],
@@ -55,6 +68,7 @@ cc_library(
         ":video_encoder",
         ":audio_encoder",
         ":encoder_lifecycle",
+        ":muxer",
         ":encoder_factory",
         ":input_surface",
     ],
