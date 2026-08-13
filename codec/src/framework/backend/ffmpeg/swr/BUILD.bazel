@@ -1,0 +1,20 @@
+package(default_visibility = [
+    "//src/framework:__subpackages__",
+    "//tests:__subpackages__",
+])
+
+# libswresample-backed audio sample-format converter. FFmpeg-dependent: only
+# usable where the FFmpeg static archive is linked (non-Android host builds).
+# Consumers must apply the force_load data/linkopts like other FFmpeg-backed
+# targets (ADR-001), because the converter lives in the same merged archive.
+cc_library(
+    name = "swr_audio",
+    srcs = ["swr_audio_convert.cc"],
+    hdrs = ["swr_audio_convert.h"],
+    includes = ["../.."],
+    deps = [
+        "//src/framework/core",
+        "@ffmpeg//:ffmpeg_codec",
+        "@ffmpeg//:ffmpeg_codec_impl",
+    ],
+)

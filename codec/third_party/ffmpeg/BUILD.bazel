@@ -9,10 +9,12 @@ filegroup(
     srcs = glob(["**/*"]),
 )
 
-# Build a minimal FFmpeg (libavcodec + libavutil + libavformat) with the libx264
-# encoder enabled, using the NDK-free host toolchain. Output is a static lib +
-# headers that the ffmpeg_spike (and the real backend/ffmpeg) can consume.
-# libavformat is required for the MP4 muxer consumer (mux/mp4_mux_consumer).
+# Build a minimal FFmpeg (libavcodec + libavutil + libavformat + libswresample)
+# with the libx264 encoder enabled, using the NDK-free host toolchain. Output is
+# a static lib + headers that the ffmpeg_spike (and the real backend/ffmpeg) can
+# consume. libavformat is required for the MP4 muxer consumer
+# (mux/mp4_mux_consumer); libswresample powers the audio sample-format converter
+# (backend/ffmpeg/swr).
 #
 # Why static + BSD-merged (not shared, not GNU-ar):
 #  * A shared .dylib under rules_foreign_cc bakes the very long sandbox install
@@ -47,7 +49,7 @@ configure_make(
         "--disable-avdevice",
         "--disable-avfilter",
         "--disable-postproc",
-        "--disable-swresample",
+        "--enable-swresample",
         "--disable-swscale",
         "--enable-avformat",
         "--disable-network",  # only the file protocol + mp4 muxer; no sockets
@@ -83,14 +85,14 @@ configure_make(
     postfix_script = """
 set -e
 cd "$$INSTALLDIR$$/lib"
-# Merge the three archives directly. Do NOT extract with `ar -x` first: FFmpeg's
+# Merge the four archives directly. Do NOT extract with `ar -x` first: FFmpeg's
 # libavcodec.a contains two members that share the basename `videodsp.o` (one
 # from libavcodec/videodsp.c, one from libavcodec/aarch64/videodsp.S which
 # *defines* ff_prefetch_aarch64). `ar -x` flattens to basenames and silently
 # clobbers one, dropping that aarch64 definition. libtool -static flattens the
 # input archives while preserving every member (including duplicate names) and
 # writes BSD-format output that macOS ld64 accepts.
-/usr/bin/libtool -static -o libffmpeg.a libavcodec.a libavutil.a libavformat.a
+/usr/bin/libtool -static -o libffmpeg.a libavcodec.a libavutil.a libavformat.a libswresample.a
 /usr/bin/ranlib libffmpeg.a
 rm -f libavcodec.a libavutil.a libavformat.a
 """,
