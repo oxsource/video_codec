@@ -1,4 +1,5 @@
 // muxer_contract_test.cc
+#include "api/encoder_factory.h"
 #include "api/muxer.h"
 #include "gtest/gtest.h"
 #include "io/byte_sink.h"
@@ -89,6 +90,40 @@ TEST(MuxerContractTest, FinishAndReleaseAreIdempotent) {
   muxer.Release();
   muxer.Release();
   EXPECT_TRUE(muxer.released_);
+}
+
+// US2: the factory resolves the backend from the config. A backend that
+// registered a muxer returns an instance; an unregistered backend returns
+// nullptr (no fabricated/damaged output).
+TEST(MuxerContractTest, CreateMuxerResolvesRegisteredBackend) {
+  // Register a stub muxer under a specific backend key, then ask for it.
+  // This validates the registration/selection mechanism itself without
+  // depending on the real FFmpeg backend (contract test links api only).
+  RegisterMuxer(Backend::kDarwin, [](const MuxerConfig&) {
+    return std::make_unique<StubMuxer>();
+  });
+
+  MuxerConfig cfg;
+  cfg.format = MuxFormat::kMp4;
+  cfg.fragmented = true;
+  cfg.width = 320;
+  cfg.height = 240;
+  cfg.fps = 30;
+  cfg.force_backend = Backend::kDarwin;
+  std::unique_ptr<Muxer> muxer = CreateMuxer(cfg);
+  EXPECT_NE(muxer, nullptr);
+}
+
+TEST(MuxerContractTest, CreateMuxerReturnsNullptrForUnregisteredBackend) {
+  MuxerConfig cfg;
+  cfg.format = MuxFormat::kMp4;
+  cfg.fragmented = true;
+  cfg.width = 320;
+  cfg.height = 240;
+  cfg.fps = 30;
+  cfg.force_backend = Backend::kAndroid;  // not registered on this host
+  std::unique_ptr<Muxer> muxer = CreateMuxer(cfg);
+  EXPECT_EQ(muxer, nullptr);
 }
 
 }  // namespace

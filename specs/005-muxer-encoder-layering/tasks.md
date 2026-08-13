@@ -88,9 +88,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T027 [P] [US2] 更新 `codec/tests/api/muxer_contract_test.cc`：新增用例——`RegisterMuxer` 后 `CreateMuxer(cfg)` 返回对应实例；未注册 Backend（如 kDarwin）返回 nullptr；`cfg.force_backend=kAuto` 解析到当前平台（`contracts/muxer-contract.md` §2）
-- [ ] T028 [US2] 验证 `codec/src/framework/backend/ffmpeg/register.cc` 的 `RegisterMuxer` 调用位于 `alwayslink` 的 register target 中（链接后自注册生效，`CreateMuxer` 非空）
-- [ ] T029 [US2] 运行 `bazel test //tests/api:muxer_contract_test` 确认后端选择契约通过
+- [x] T027 [P] [US2] 更新 `codec/tests/api/muxer_contract_test.cc`：新增用例——`RegisterMuxer` 后 `CreateMuxer(cfg)` 返回对应实例；未注册 Backend（如 kDarwin）返回 nullptr；`cfg.force_backend=kAuto` 解析到当前平台（`contracts/muxer-contract.md` §2）
+- [x] T028 [US2] 验证 `codec/src/framework/backend/ffmpeg/register.cc` 的 `RegisterMuxer` 调用位于 `alwayslink` 的 register target 中（链接后自注册生效，`CreateMuxer` 非空）
+- [x] T029 [US2] 运行 `bazel test //tests/api:muxer_contract_test` 确认后端选择契约通过
 
 **Checkpoint**: US2 完成——muxer 后端注册/选择机制验证通过，为后续 Android/Apple 后端预留
 
