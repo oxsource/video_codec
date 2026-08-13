@@ -29,7 +29,7 @@ class Ring {
   Ring(size_t capacity, Backpressure policy);
 
   // Returns true if the packet was accepted. Under kError, a full ring rejects
-  // (returns false); under kDropOldest the oldest slot is overwritten; under
+  // (returns false); under kLatest the oldest slot is overwritten; under
   // kBlock it waits. Pushing after MarkEos() is rejected.
   bool Push(Pkt&& pkt);
 

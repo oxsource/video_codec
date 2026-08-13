@@ -20,7 +20,7 @@ Use a **bounded SPSC ring buffer** (`PacketQueue`) between encoder and consumer:
   slot array; lock-free SPSC.
 - A `PacketConsumer` interface (`Consume` / `Flush` / `Finish`) is implemented by both
   `FileSinkConsumer` and `StreamConsumer`; the pump forwards popped packets to it.
-- Back-pressure when full is configurable: `kBlock` (default) / `kDropOldest` / `kError`.
+- Back-pressure when full is configurable: `kBlock` (default) / `kLatest` / `kError`.
 
 ## Consequences
 

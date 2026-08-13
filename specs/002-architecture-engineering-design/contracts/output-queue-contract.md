@@ -12,7 +12,7 @@ interchangeable.
 ## Enums
 
 ```cpp
-enum class Backpressure { kBlock, kDropOldest, kError };
+enum class Backpressure { kBlock, kLatest, kError };
 // Next outcomes reuse the global Status: kOk (packet), kEmpty (timeout/empty),
 // kEos (end-of-stream and drained).
 ```
@@ -33,7 +33,7 @@ class OutputSink {
 
 - `Submit` **moves** ownership of the packet into the queue.
 - On a full queue, behavior follows the queue's `Backpressure` policy
-  (`kBlock` waits, `kDropOldest` overwrites, `kError` returns a back-pressure code).
+  (`kBlock` waits, `kLatest` overwrites, `kError` returns a back-pressure code).
 - `Flush()` signals "end of current segment" — distinct from stream end.
 
 ## Consumer endpoint — `PacketSource`

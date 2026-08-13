@@ -94,10 +94,10 @@ TEST(PacketQueueTest, BlockWaitsForConsumer) {
   ASSERT_EQ(got, 2 + 5);
 }
 
-// --- kDropOldest: full ring overwrites the oldest slot
+// --- kLatest: full ring overwrites the oldest slot
 // ------------------------
 TEST(PacketQueueTest, DropOldestKeepsNewest) {
-  PacketQueue q(4, Backpressure::kDropOldest);
+  PacketQueue q(4, Backpressure::kLatest);
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(q.Submit(MakePkt(static_cast<uint8_t>(i))), Status::kOk);
   }

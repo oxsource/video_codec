@@ -17,7 +17,7 @@ Ring<Pkt>::Ring(size_t capacity, Backpressure policy)
       policy_(policy),
       slots_(capacity) {
   // A non-power-of-two capacity corrupts index masking (data loss); capacity 0
-  // deadlocks under kBlock and is UB under kDropOldest (empty slots_).
+  // deadlocks under kBlock and is UB under kLatest (empty slots_).
   assert(capacity > 0 && (capacity & (capacity - 1)) == 0);
 }
 
@@ -27,7 +27,7 @@ bool Ring<Pkt>::Push(Pkt&& pkt) {
   if (eos_) return false;
   if (count_ == capacity_) {
     if (policy_ == Backpressure::kError) return false;
-    if (policy_ == Backpressure::kDropOldest) {
+    if (policy_ == Backpressure::kLatest) {
       slots_[head_] = Pkt{};
       head_ = (head_ + 1) & mask_;
       --count_;
@@ -132,7 +132,7 @@ PacketQueue::PacketQueue(size_t capacity, Backpressure policy)
 Status PacketQueue::Submit(VideoPacket&& pkt) {
   if (video_.Push(std::move(pkt))) return Status::kOk;
   // Rejected: full under kError (kBackendUnavailable), or push-after-EOS
-  // (kInvalidArgument). Under kBlock/kDropOldest Push only fails at EOS.
+  // (kInvalidArgument). Under kBlock/kLatest Push only fails at EOS.
   return video_.policy() == Backpressure::kError ? Status::kBackendUnavailable
                                                  : Status::kInvalidArgument;
 }

@@ -179,7 +179,7 @@ capacity + blocking back-pressure in unit tests.
       `kUnsupportedOperation`), FFmpeg video/audio backends push produced packets to the
       sink, caller owns `MarkEos`. Validated end-to-end with a real encoder.
 - [x] T021 [US3] Add ring-buffer unit tests in `codec/tests/queue/packet_queue_test.cc`:
-      SPSC correctness, power-of-two masking, `kBlock` blocks, `kDropOldest` overwrites,
+      SPSC correctness, power-of-two masking, `kBlock` blocks, `kLatest` overwrites,
       `kError` returns back-pressure code (contract *Acceptance*).
 
 **Checkpoint**: Ring buffer is independently testable; encoder can push packets into it

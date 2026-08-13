@@ -46,7 +46,7 @@ into pre-allocated slots — no per-packet heap allocation on the encode hot pat
 - Back-pressure when full (configurable):
   - `kBlock` (default): `Submit` waits — natural flow control; a slow consumer slows the
     encoder instead of dropping frames.
-  - `kDropOldest`: overwrites the oldest unconsumed slot (lossy, for real-time).
+  - `kLatest`: overwrites the oldest unconsumed slot (lossy, for real-time).
   - `kError`: returns a back-pressure `Status` (strict pipelines).
 
 Design note: SPSC is the correct shape because there is exactly one encoder thread and

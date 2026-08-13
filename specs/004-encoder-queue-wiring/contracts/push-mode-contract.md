@@ -42,7 +42,7 @@ virtual Status SetOutputSink(OutputSink* sink);
 
 ## 4. Back-pressure
 
-- The sink (queue) applies its configured policy (`kBlock` default, `kDropOldest`, `kError`).
+- The sink (queue) applies its configured policy (`kBlock` default, `kLatest`, `kError`).
 - The encoder makes no independent pacing decisions; it honors the `Status` returned by
   `Submit`. Under `kBlock` a full queue naturally blocks the producer.
 

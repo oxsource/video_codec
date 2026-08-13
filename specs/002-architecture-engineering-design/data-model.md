@@ -190,7 +190,7 @@ consumer side exposes `PacketSource`.
 ### Validation rules
 
 - `capacity > 0` and a power of two (fast index masking).
-- `Submit` on a full queue honors `policy`: `kBlock` waits, `kDropOldest` overwrites the
+- `Submit` on a full queue honors `policy`: `kBlock` waits, `kLatest` overwrites the
   oldest unconsumed slot, `kError` returns `kBackendUnavailable` (or a dedicated
   back-pressure code).
 - `Next(deadline)` on an empty queue returns `Status::kEmpty` (non-blocking when

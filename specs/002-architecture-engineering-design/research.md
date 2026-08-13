@@ -168,9 +168,9 @@ buffer** (`PacketQueue`), exposed as two interfaces — `OutputSink` (producer /
 encoder writes via `Submit`) and `PacketSource` (consumer pops via `TryPop`/`Next`).
 Implementation is lock-free via atomic `head_`/`tail_` indices over a fixed power-of-two
 slot array; packets are **moved** in and out (no per-packet allocation on the hot path).
-Back-pressure when full is configurable: `kBlock` (default), `kDropOldest`, or `kError`.
+Back-pressure when full is configurable: `kBlock` (default), `kLatest`, or `kError`.
 `kBlock` provides natural flow control — a slow consumer slows the encoder rather than
-dropping frames — and is the safe default for both recording and streaming; `kDropOldest`
+dropping frames — and is the safe default for both recording and streaming; `kLatest`
 (lossy, for real-time) and `kError` (strict pipelines) are opt-in.
 
 **Rationale**:
@@ -183,7 +183,7 @@ dropping frames — and is the safe default for both recording and streaming; `k
 - Move semantics keep allocation off the critical path; fixed slots avoid runtime
   `new`/`delete` per packet.
 - Configurable back-pressure makes the same queue usable for live streaming (`kBlock`),
-  lossy real-time (`kDropOldest`), and strict pipelines (`kError`).
+  lossy real-time (`kLatest`), and strict pipelines (`kError`).
 
 **Alternatives considered**:
 - *Return packet to caller, let app manage a queue*: shifts the (non-trivial) MPMC/SPSC

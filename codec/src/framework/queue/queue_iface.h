@@ -8,12 +8,12 @@ namespace video {
 namespace codec {
 
 // Back-pressure policy applied when the ring is full.
-//   kBlock      : Submit() blocks until space is available (natural flow
-//   control). kDropOldest : the oldest unconsumed packet is overwritten (lossy,
-//   real-time). kError      : Submit() returns kBackendUnavailable immediately
-//   (strict
-//                 pipelines).
-enum class Backpressure { kBlock, kDropOldest, kError };
+//   kBlock   : Submit() blocks until space is available (natural flow control).
+//   kLatest  : the oldest unconsumed packet is overwritten, keeping the newest
+//              (lossy, real-time).
+//   kError   : Submit() returns kBackendUnavailable immediately (strict
+//              pipelines).
+enum class Backpressure { kBlock, kLatest, kError };
 
 // Producer endpoint. The encoder (or any producer) pushes encoded packets here.
 // Video and audio are distinct types, each with its own Submit.
