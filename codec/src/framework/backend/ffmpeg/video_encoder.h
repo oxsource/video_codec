@@ -39,10 +39,10 @@ class FFmpegVideoEncoder : public VideoEncoder {
 
   VideoEncoderConfig config_;
   EncoderLifecycle lifecycle_;
-  ffmpeg::Ptr<AVCodecContext, avcodec_free_context> ctx_;
-  ffmpeg::Ptr<AVFrame, av_frame_free> frame_;
-  ffmpeg::Ptr<AVBSFContext, av_bsf_free> bsf_;
-  ffmpeg::Ptr<AVPacket, av_packet_free> pkt_;
+  ffmpeg::AvCodecContextPtr ctx_;
+  ffmpeg::AvFramePtr frame_;
+  ffmpeg::AvBsfPtr bsf_;
+  ffmpeg::AvPacketPtr pkt_;
   OutputSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
   int64_t pts_ = 0;
 };

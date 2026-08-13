@@ -34,6 +34,12 @@ struct Deleter {
 template <typename T, void (*Free)(T**)>
 using Ptr = std::unique_ptr<T, Deleter<T, Free>>;
 
+// Concrete aliases for the FFmpeg objects the backend owns.
+using AvCodecContextPtr = Ptr<AVCodecContext, avcodec_free_context>;
+using AvFramePtr = Ptr<AVFrame, av_frame_free>;
+using AvBsfPtr = Ptr<AVBSFContext, av_bsf_free>;
+using AvPacketPtr = Ptr<AVPacket, av_packet_free>;
+
 }  // namespace ffmpeg
 }  // namespace codec
 }  // namespace video
