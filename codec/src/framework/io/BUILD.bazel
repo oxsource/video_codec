@@ -4,57 +4,46 @@ package(default_visibility = [
     "//tests:__subpackages__",
 ])
 
-# Byte-level I/O: the ByteSink output contract (used by muxers), the ByteStream
-# transport abstraction (cloud/network push), and their concrete sinks
-# (file / stream / tee). One cc_library per module; the aggregate `io` target
-# deps on all for backward compatibility.
-# Depends on core only (Status in byte_stream).
+# Byte-level output: the single ByteWriter contract (used by muxers) and its
+# concrete writers (file / stream / tee). A network/cloud output is just a
+# ByteWriter whose Seek/Tell are unsupported — no separate transport interface.
+# One cc_library per module; the aggregate `io` target deps on all for backward
+# compatibility. Depends on nothing (a leaf).
 
 cc_library(
-    name = "byte_sink",
-    hdrs = ["byte_sink.h"],
+    name = "byte_writer",
+    hdrs = ["byte_writer.h"],
     includes = [".."],
 )
 
 cc_library(
-    name = "byte_stream",
-    hdrs = ["byte_stream.h"],
+    name = "file_writer",
+    srcs = ["file_writer.cc"],
+    hdrs = ["file_writer.h"],
     includes = [".."],
-    deps = ["//src/framework/core:status"],
+    deps = [":byte_writer"],
 )
 
 cc_library(
-    name = "file_byte_sink",
-    srcs = ["file_byte_sink.cc"],
-    hdrs = ["file_byte_sink.h"],
+    name = "stream_writer",
+    hdrs = ["stream_writer.h"],
     includes = [".."],
-    deps = [":byte_sink"],
+    deps = [":byte_writer"],
 )
 
 cc_library(
-    name = "stream_byte_sink",
-    hdrs = ["stream_byte_sink.h"],
+    name = "tee_writer",
+    hdrs = ["tee_writer.h"],
     includes = [".."],
-    deps = [
-        ":byte_stream",
-        ":byte_sink",
-    ],
-)
-
-cc_library(
-    name = "tee_byte_sink",
-    hdrs = ["tee_byte_sink.h"],
-    includes = [".."],
-    deps = [":byte_sink"],
+    deps = [":byte_writer"],
 )
 
 cc_library(
     name = "io",
     deps = [
-        ":byte_sink",
-        ":byte_stream",
-        ":file_byte_sink",
-        ":stream_byte_sink",
-        ":tee_byte_sink",
+        ":byte_writer",
+        ":file_writer",
+        ":stream_writer",
+        ":tee_writer",
     ],
 )

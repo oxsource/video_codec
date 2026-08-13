@@ -35,7 +35,7 @@
 #include "consumer/file_sink_consumer.h"
 #include "consumer/mp4_consumer.h"
 #include "consumer/packet_consumer.h"
-#include "io/file_byte_sink.h"
+#include "io/file_writer.h"
 #include "queue/packet_queue.h"
 #include "utils/smpte_bars.h"
 
@@ -81,14 +81,14 @@ int main(int argc, char** argv) {
   vc::PacketQueue queue(64, vc::Backpressure::kBlock);
 
   // A consumer is transport-agnostic: ".mp4" -> MP4 muxer (fragmented by
-  // default) over a FileByteSink, otherwise a raw Annex-B file. Swapping the
-  // ByteSink (file / cloud stream / tee) is a one-line change.
-  std::unique_ptr<vc::FileByteSink> mp4_sink;  // must outlive the consumer
+  // default) over a FileWriter, otherwise a raw Annex-B file. Swapping the
+  // ByteWriter (file / cloud stream / tee) is a one-line change.
+  std::unique_ptr<vc::FileWriter> mp4_sink;  // must outlive the consumer
   std::unique_ptr<vc::PacketConsumer> consumer;
   const bool is_mp4 = out_path.size() >= 4 &&
                       out_path.compare(out_path.size() - 4, 4, ".mp4") == 0;
   if (is_mp4) {
-    mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
+    mp4_sink = std::make_unique<vc::FileWriter>(out_path);
     consumer =
         std::make_unique<vc::Mp4Consumer>(mp4_sink.get(), width, height, fps);
   } else {

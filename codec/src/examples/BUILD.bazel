@@ -20,7 +20,7 @@ cc_binary(
         "//src/framework/public:video_codec",  # encoder API + FFmpeg backend
         "//src/framework/queue",              # PacketQueue
         "//src/framework/consumer",           # FileSinkConsumer + Mp4Consumer
-        "//src/framework/io",                 # FileByteSink (mp4 output)
+        "//src/framework/io",                 # FileByteWriter (mp4 output)
         "//src/framework/utils",              # SMPTE color-bars generator
     ],
 )

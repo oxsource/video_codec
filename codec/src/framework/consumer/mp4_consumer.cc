@@ -4,7 +4,7 @@
 namespace video {
 namespace codec {
 
-Mp4Consumer::Mp4Consumer(ByteSink* sink, int width, int height, int fps,
+Mp4Consumer::Mp4Consumer(ByteWriter* sink, int width, int height, int fps,
                          const MuxOptions& options)
     : sink_(sink), muxer_(sink_, width, height, fps, options) {}
 

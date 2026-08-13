@@ -12,10 +12,9 @@ cc_test(
 )
 
 cc_test(
-    name = "byte_sink_test",
-    srcs = ["byte_sink_test.cc"],
+    name = "byte_writer_test",
+    srcs = ["byte_writer_test.cc"],
     deps = [
-        "//src/framework/core",
         "//src/framework/io",
         "@com_google_googletest//:gtest_main",
     ],

@@ -208,8 +208,9 @@ codec/src/framework/
 │   ├── darwin/  # VideoToolboxVideoEncoder (Phase 2+, reserved)
 │   └── ffmpeg/  # FFmpegVideoEncoder / FFmpegAudioEncoder (libx264/5, AAC, Opus)
 ├── queue/       # PacketQueue（双 ring：视频/音频），OutputSink / PacketSource
-├── consumer/    # PacketConsumer, PacketSource::Await, FileSinkConsumer, 字节/文件输出
-├── mux/         # Mp4Muxer 纯格式封装（libavformat），输出到 ByteSink
+├── io/          # ByteWriter 输出契约 + FileWriter/StreamWriter/TeeWriter
+├── consumer/    # PacketConsumer, FileSinkConsumer, Mp4Consumer（io::ByteWriter + Mp4Muxer）
+├── mux/         # Mp4Muxer 纯格式封装（libavformat），输出到 io::ByteWriter
 ├── convert/     # libyuv 像素格式转换（PixelConverter）
 ├── utils/       # 布局/测试图案工具：Stride, SmpteBars
 └── public/      # 公开 API 汇总入口

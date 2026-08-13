@@ -18,12 +18,13 @@ public ──▶ api ──▶ core
 - `utils` → `core` only.
 - `queue` → `core` only (ring buffer over `VideoPacket`/`AudioPacket` on two
   independent rings).
-- `io` → `core` only (ByteSink/ByteStream contracts + file/stream/tee sinks).
+- `io` → **nothing** (leaf; the single `ByteWriter` contract + file/stream/tee
+  writers — a network output is just a non-seekable ByteWriter).
 - `mux` → `core`, `io`, `@ffmpeg` (pure MP4 format conversion; writes through an
-  `io::ByteSink`).
+  `io::ByteWriter`).
 - `convert/libyuv` → `core`, `utils`, `@libyuv` (neutral pixel conversion).
 - `consumer` → `api`, `core`, `queue`, `io`, `mux` (implements `PacketConsumer`:
-  file sink, MP4 consumer over any `io::ByteSink`).
+  file sink, MP4 consumer over any `io::ByteWriter`).
 - Each `backend/<x>` → `api`, `core`, `utils`, **and exactly one** external dependency
   (`@ffmpeg` / `@androidndk` / `VideoToolbox.framework`).
 - `backends` NEVER depend on each other.
