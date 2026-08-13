@@ -13,17 +13,17 @@ namespace codec {
 // change and the encoder never knows which is attached.
 //
 // Implements queue::PacketSink — the dispatch target the source's Await loop
-// delivers to (Consume) and the producer feeds (via the encoder's sink). A
+// delivers to (Push) and the producer feeds (via the encoder's sink). A
 // PacketConsumer can be handed straight to PacketSource::Await(PacketSink&).
 class PacketConsumer : public PacketSink {
  public:
   ~PacketConsumer() override = default;
 
-  // Video and audio arrive as distinct types with their own Consume overloads;
+  // Video and audio arrive as distinct types with their own Push overloads;
   // a consumer that only handles one media returns kUnsupportedOperation for
   // the other.
-  Status Consume(VideoPacket&& pkt) override = 0;
-  Status Consume(AudioPacket&& pkt) override = 0;
+  Status Push(VideoPacket&& pkt) override = 0;
+  Status Push(AudioPacket&& pkt) override = 0;
 
   Status Flush() override { return Status::kOk; }   // segment boundary
   Status Finish() override { return Status::kOk; }  // EOS / teardown

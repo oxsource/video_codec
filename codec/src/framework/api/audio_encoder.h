@@ -25,7 +25,7 @@ class AudioEncoder {
 
   // Attach a packet sink to enable push mode (see
   // VideoEncoder::SetOutputSink). Audio packets are handed to the sink via
-  // PacketSink::Consume(AudioPacket&&).
+  // PacketSink::Push(AudioPacket&&).
   virtual Status SetOutputSink(PacketSink* sink) {
     (void)sink;
     return Status::kUnsupportedOperation;

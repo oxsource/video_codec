@@ -15,7 +15,7 @@ and a **mode flag** (push vs pull) to the existing encoder entities.
 - Owns the pointer non-owningly; must clear it on `Release()`.
 
 ### PacketSink (existing, `queue/queue_iface.h`)
-- Producer endpoint of the queue. `Consume(VideoPacket&&)`, `Consume(VideoPacket&&) / Consume(AudioPacket&&)`,
+- Producer endpoint of the queue. `Push(VideoPacket&&)`, `Push(VideoPacket&&) / Push(AudioPacket&&)`,
   `Flush()`.
 - Applies the queue's back-pressure policy; returns `Status`.
 
@@ -32,7 +32,7 @@ and a **mode flag** (push vs pull) to the existing encoder entities.
 ```text
 Encoder --SetOutputSink--> PacketSink (queue producer end)
    Encode() produces Packet
-      push: Consume(VideoPacket&&)  -> queue (single destination)
+      push: Push(VideoPacket&&)  -> queue (single destination)
       pull: return Packet     -> caller (default, unchanged)
    Flush(): drain final packet -> sink, then sink->Flush()
 Caller (owns queue): after all encoders done -> queue.MarkEos()
@@ -45,7 +45,7 @@ Caller (owns queue): after all encoders done -> queue.MarkEos()
   `kUnsupportedOperation` and leaves the encoder in pull mode.
 - Push mode active ⇒ each produced packet goes to exactly ONE destination (the sink);
   `Encode()` returns `kOk` with an empty packet.
-- Sink `Consume` errors (e.g., `kBackendUnavailable` under `kError` policy) propagate to the
+- Sink `Push` errors (e.g., `kBackendUnavailable` under `kError` policy) propagate to the
   caller as the `Encode()` result.
 - Lifecycle transitions are unchanged (encode before init still `kNotInitialized`).
 - `Release()` detaches the sink and nulls the stored pointer.

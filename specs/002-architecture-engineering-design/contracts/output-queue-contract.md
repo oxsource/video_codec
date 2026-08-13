@@ -13,7 +13,7 @@ interchangeable.
 
 ```cpp
 enum class Backpressure { kBlock, kLatest, kError };
-// Next outcomes reuse the global Status: kOk (packet), kEmpty (timeout/empty),
+// Pull outcomes reuse the global Status: kOk (packet), kEmpty (timeout/empty),
 // kEos (end-of-stream and drained).
 ```
 
@@ -22,23 +22,23 @@ enum class Backpressure { kBlock, kLatest, kError };
 `PacketSink` is the single destination contract for encoded packets, serving
 BOTH transport directions:
 
-- **producer → queue**: the encoder hands packets to the queue via `Consume`
+- **producer → queue**: the encoder hands packets to the queue via `Push`
   (the ring buffer's producer side implements `PacketSink` for this side);
 - **queue → consumer**: `PacketSource::Await` delivers packets to the consumer
-  via the same `Consume` (`consumer::PacketConsumer` implements `PacketSink`).
+  via the same `Push` (`consumer::PacketConsumer` implements `PacketSink`).
 
 ```cpp
 class PacketSink {
   public:
     virtual ~PacketSink() = default;
-    virtual Status Consume(VideoPacket&& pkt) = 0;
-    virtual Status Consume(AudioPacket&& pkt) = 0;
+    virtual Status Push(VideoPacket&& pkt) = 0;
+    virtual Status Push(AudioPacket&& pkt) = 0;
     virtual Status Flush() { return Status::kOk; }   // segment boundary
     virtual Status Finish() { return Status::kOk; }  // EOS / teardown
 };
 ```
 
-- `Consume` **moves** ownership of the packet into the sink.
+- `Push` **moves** ownership of the packet into the sink.
 - On a full queue, behavior follows the queue's `Backpressure` policy
   (`kBlock` waits, `kLatest` overwrites, `kError` returns a back-pressure code).
 - `Flush()` signals "end of current segment" — distinct from stream end.
@@ -56,19 +56,19 @@ class PacketSource {
     virtual ~PacketSource() = default;
     // Returns Status::kOk (packet), Status::kEmpty (timeout/empty), or
     // Status::kEos (after MarkEos() and drained).
-    virtual Status Next(VideoPacket& out, int64_t deadline_us) = 0;  // blocking
-    virtual Status Next(AudioPacket& out, int64_t deadline_us) = 0;
+    virtual Status Pull(VideoPacket& out, int64_t deadline_us) = 0;  // blocking
+    virtual Status Pull(AudioPacket& out, int64_t deadline_us) = 0;
 
     // Await mechanism (replaces the former PacketPump): blocks on the calling
     // thread, delivering every packet to `sink` until EOS (then sink.Finish());
-    // a failing Consume stops the loop.
+    // a failing Push stops the loop.
     virtual Status Await(PacketSink& sink, int64_t deadline_us = 100'000) = 0;
 
     virtual void MarkEos() = 0;   // encoder signals end of stream
 };
 ```
 
-- `Next(deadline_us)` blocks up to `deadline_us` (negative/0 = non-blocking
+- `Pull(deadline_us)` blocks up to `deadline_us` (negative/0 = non-blocking
   `TryPop` semantics); returns `Status::kEmpty` on timeout, `Status::kEos` after
   `MarkEos()` and drained.
 - The consumer never allocates; packets are moved out of slots.
@@ -82,12 +82,12 @@ class PacketQueue : public PacketSink, public PacketSource {
   public:
     // capacity MUST be > 0 and a power of two (index masking).
     PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
-    // PacketSink (producer side: encoder Consumes into the queue)
-    Status Consume(VideoPacket&&) override;
-    Status Consume(AudioPacket&&) override;
+    // PacketSink (producer side: encoder Pushes into the queue)
+    Status Push(VideoPacket&&) override;
+    Status Push(AudioPacket&&) override;
     // PacketSource
-    Status Next(VideoPacket&, int64_t) override;
-    Status Next(AudioPacket&, int64_t) override;
+    Status Pull(VideoPacket&, int64_t) override;
+    Status Pull(AudioPacket&, int64_t) override;
     void MarkEos() override;
 };
 ```
@@ -104,10 +104,10 @@ Implemented by file sink and streamer. The drain loop (`PacketSource::Await`) ca
 class PacketConsumer {
   public:
     virtual ~PacketConsumer() = default;
-    // Video and audio are distinct types with their own Consume overloads;
+    // Video and audio are distinct types with their own Push overloads;
     // media-specific consumers return kUnsupportedOperation for the other.
-    virtual Status Consume(VideoPacket&& pkt) = 0;
-    virtual Status Consume(AudioPacket&& pkt) = 0;
+    virtual Status Push(VideoPacket&& pkt) = 0;
+    virtual Status Push(AudioPacket&& pkt) = 0;
     virtual Status Flush() { return Status::kOk; }
     virtual Status Finish() { return Status::kOk; } // EOS / teardown
 };
@@ -116,8 +116,8 @@ class PacketConsumer {
 ## Drain loop — `PacketSource::Await`
 
 Not an interface; a reusable helper that bridges source → consumer on the consumer
-thread (see `output-queue.md` §3). Calls `Consume` for each popped packet; `Finish()` at
-EOS; propagates `Consume` failures to logging/back-off.
+thread (see `output-queue.md` §3). Calls `Push` for each popped packet; `Finish()` at
+EOS; propagates `Push` failures to logging/back-off.
 
 ## Concrete consumer: `FileSinkConsumer` (implement later)
 
@@ -133,11 +133,11 @@ Implements `PacketConsumer`. Contract obligations:
 Implements `PacketConsumer`. Contract obligations:
 1. **Framing**: chunk Annex-B into protocol units (FLV tags for RTMP, RTP for
    SRT/WebRTC); the encoder stays protocol-agnostic.
-2. **Connection lifecycle**: connect on first `Consume` (or `Flush`), reconnect on drop,
+2. **Connection lifecycle**: connect on first `Push` (or `Flush`), reconnect on drop,
    teardown on `Finish()`.
 3. **Pacing**: send at `pts_us` cadence; never dump the whole backlog at once.
-4. **Back-pressure**: a slow/blocked socket makes `Consume` slow → pump slows → ring
-   fills → encoder slows. `Consume` must NOT swallow errors and spin; return the error.
+4. **Back-pressure**: a slow/blocked socket makes `Push` slow → pump slows → ring
+   fills → encoder slows. `Push` must NOT swallow errors and spin; return the error.
 5. **Audio+video**: either one `StreamConsumer` muxes both, or two are fed by a muxing
    pump. The contract is per-stream; combining is a wiring concern.
 

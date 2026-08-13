@@ -14,7 +14,7 @@ FileSinkConsumer::FileSinkConsumer(std::string video_path,
   }
 }
 
-Status FileSinkConsumer::Consume(VideoPacket&& pkt) {
+Status FileSinkConsumer::Push(VideoPacket&& pkt) {
   if (!video_sink_ || !video_sink_->IsOpen()) return Status::kInvalidArgument;
   if (!pkt.data.empty() &&
       !video_sink_->Write(pkt.data.data(), pkt.data.size())) {
@@ -23,7 +23,7 @@ Status FileSinkConsumer::Consume(VideoPacket&& pkt) {
   return Status::kOk;
 }
 
-Status FileSinkConsumer::Consume(AudioPacket&& pkt) {
+Status FileSinkConsumer::Push(AudioPacket&& pkt) {
   if (!audio_sink_ || !audio_sink_->IsOpen()) {
     return Status::kOk;  // no audio sink configured: no-op success
   }

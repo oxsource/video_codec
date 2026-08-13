@@ -43,8 +43,8 @@ consumer transport already exist; this feature only adds the encoder-side push p
 
 ## R3 — Back-pressure ownership
 
-- **Decision**: The sink (`PacketSink::Consume`) applies the queue's configured back-pressure
-  policy; the encoder simply calls `Consume(VideoPacket&&)` and propagates its `Status`.
+- **Decision**: The sink (`PacketSink::Push`) applies the queue's configured back-pressure
+  policy; the encoder simply calls `Push(VideoPacket&&)` and propagates its `Status`.
   No new pacing logic in the encoder; blocking (`kBlock`) naturally paces the producer.
 - **Rationale**: Back-pressure already lives in the queue (frozen contract,
   `output-queue-contract.md`). The encoder must honor whatever the sink returns (including

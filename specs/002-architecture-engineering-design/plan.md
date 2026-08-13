@@ -245,21 +245,21 @@ flowchart LR
     ENC["Encoder instance<br/>(backend thread)"]
     Q["PacketQueue<br/>(bounded SPSC ring buffer)"]
     CON["Consumer<br/>(muxer / network / file)"]
-    ENC -->|Consume(VideoPacket)| Q
-    Q -->|Next()| CON
+    ENC -->|Push(VideoPacket)| Q
+    Q -->|Pull()| CON
     CON -->|back-pressure / drain| ENC
 ```
 
 Encoded output is handed off through a **bounded SPSC ring buffer**
-(`PacketQueue`): the encoder (producer) calls `PacketSink::Consume(...)`; a
-`PacketSource::Await` drain loop on the consumer thread calls `PacketSource::Next(...)` and
+(`PacketQueue`): the encoder (producer) calls `PacketSink::Push(...)`; a
+`PacketSource::Await` drain loop on the consumer thread calls `PacketSource::Pull(...)` and
 forwards each packet to a `PacketConsumer`. The consumer is **transport-agnostic** — both
 target consumers implement `PacketConsumer`: `FileSinkConsumer` (save `.h264`/`.aac` or
 mux to `.mp4`) and `StreamConsumer` (推流: RTMP / SRT / WebRTC). Swapping file output for
 streaming is a one-line `PacketConsumer` change; the encoder is untouched. This decouples
 encode rate from consume rate and is the inter-thread hand-off that lets the encoder run
 synchronously on its own thread while the consumer drains on another. Back-pressure
-propagates end-to-end (slow socket → slow `Consume` → ring fills → encoder slows).
+propagates end-to-end (slow socket → slow `Push` → ring fills → encoder slows).
 Full design in `codec/doc/architecture/output-queue.md`; contract in
 `contracts/output-queue-contract.md`; decision in `codec/doc/adrs/ADR-005-ringbuffer-transport.md`.
 

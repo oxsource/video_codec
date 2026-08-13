@@ -40,7 +40,7 @@ class VideoEncoder {
   virtual void Release() = 0;  // free external resources -> Released
 
   // Attach a packet sink to enable push mode: every produced packet is handed
-  // to the sink (Consume) instead of returned (single destination). Pass
+  // to the sink (Push) instead of returned (single destination). Pass
   // nullptr to detach (back to pull mode). Backends without push support
   // return Status::kUnsupportedOperation and stay in pull mode.
   virtual Status SetOutputSink(PacketSink* sink) {

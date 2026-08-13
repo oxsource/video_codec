@@ -66,14 +66,14 @@ class PacketQueue : public PacketSink, public PacketSource {
   // `capacity` MUST be > 0 and a power of two (index masking).
   PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock);
 
-  // PacketSink (producer side: the encoder submits into the queue).
-  Status Consume(VideoPacket&& pkt) override;
-  Status Consume(AudioPacket&& pkt) override;
+  // PacketSink (producer side: the encoder pushes into the queue).
+  Status Push(VideoPacket&& pkt) override;
+  Status Push(AudioPacket&& pkt) override;
   Status Flush() override { return Status::kOk; }
 
   // PacketSource (consumer). Each ring blocks/drains independently.
-  Status Next(VideoPacket& out, int64_t deadline_us) override;
-  Status Next(AudioPacket& out, int64_t deadline_us) override;
+  Status Pull(VideoPacket& out, int64_t deadline_us) override;
+  Status Pull(AudioPacket& out, int64_t deadline_us) override;
 
   // Await mechanism: block on the calling thread, delivering every packet
   // (video and audio, drained alternately) to `sink` until EOS.

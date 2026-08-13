@@ -14,11 +14,11 @@ on another. We need a decoupled, rate-decoupled hand-off with configurable back-
 ## Decision
 
 Use a **bounded SPSC ring buffer** (`PacketQueue`) between encoder and consumer:
-- Producer endpoint: `PacketSink::Consume(VideoPacket&&)` — the encoder pushes.
-- Consumer endpoint: `PacketSource::Next(...)` — a `PacketSource::Await` drain loop pops.
+- Producer endpoint: `PacketSink::Push(VideoPacket&&)` — the encoder pushes.
+- Consumer endpoint: `PacketSource::Pull(...)` — a `PacketSource::Await` drain loop pops.
 - Packets moved (no per-packet allocation); atomic `head_`/`tail_` over a power-of-two
   slot array; lock-free SPSC.
-- A `PacketConsumer` interface (`Consume` / `Flush` / `Finish`) is implemented by both
+- A `PacketConsumer` interface (`Push` / `Flush` / `Finish`) is implemented by both
   `FileSinkConsumer` and `StreamConsumer`; the pump forwards popped packets to it.
 - Back-pressure when full is configurable: `kBlock` (default) / `kLatest` / `kError`.
 
@@ -26,7 +26,7 @@ Use a **bounded SPSC ring buffer** (`PacketQueue`) between encoder and consumer:
 
 - The encoder is **transport-agnostic**: swapping file output for streaming is a
   one-line `PacketConsumer` change; no encoder edits.
-- Natural end-to-end back-pressure: a slow stream socket → slow `Consume` → filled ring →
+- Natural end-to-end back-pressure: a slow stream socket → slow `Push` → filled ring →
   encoder slows (under `kBlock`). No unbounded memory, no silent frame loss.
 - SPSC lock-free avoids mutex contention on the encode hot path.
 - Multiple simultaneous consumers (record + stream) use two queues or a tee — the SPSC

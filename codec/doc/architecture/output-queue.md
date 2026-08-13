@@ -15,10 +15,10 @@ flowchart LR
     FC["FileSinkConsumer<br/>(write .h264 / mux)"]
     SC["StreamConsumer<br/>(RTMP / SRT / WebRTC)"]
 
-    ENC -->|PacketSink::Consume| Q
-    Q -->|PacketSource::Next| AW
-    AW -->|PacketSink::Consume| FC
-    AW -->|PacketSink::Consume| SC
+    ENC -->|PacketSink::Push| Q
+    Q -->|PacketSource::Pull| AW
+    AW -->|PacketSink::Push| FC
+    AW -->|PacketSink::Push| SC
 ```
 
 The encoder never knows who consumes its packets. It pushes to a `PacketSink`; a drain
@@ -40,11 +40,11 @@ into pre-allocated slots — no per-packet heap allocation on the encode hot pat
 - Bounded, fixed `capacity` (power of two) chosen at construction.
 - Single producer (encoder), single consumer (drain loop) → **SPSC** over a slot array.
 - Video and audio are **distinct types** (`VideoPacket` / `AudioPacket`), each with its own
-  `Consume`/`Next` overload, stored on **two independent rings** — one per media — so
+  `Push`/`Pull` overload, stored on **two independent rings** — one per media — so
   back-pressure and drain are per-media: a stall on video does not block audio and vice
   versa.
 - Back-pressure when full (configurable):
-  - `kBlock` (default): `Consume` waits — natural flow control; a slow consumer slows the
+  - `kBlock` (default): `Push` waits — natural flow control; a slow consumer slows the
     encoder instead of dropping frames.
   - `kLatest`: overwrites the oldest unconsumed slot (lossy, for real-time).
   - `kError`: returns a back-pressure `Status` (strict pipelines).
@@ -61,9 +61,9 @@ sequenceDiagram
     participant P as PacketSource::Await (consumer thread)
     participant C as PacketConsumer (File / Stream)
     loop while not EOS
-        P->>Q: Next(deadline)
+        P->>Q: Pull(deadline)
         Q-->>P: VideoPacket / AudioPacket (or timeout/empty)
-        P->>C: Consume(VideoPacket&&) / Consume(AudioPacket&&)
+        P->>C: Push(VideoPacket&&) / Push(AudioPacket&&)
         C-->>P: Status
     end
     P->>C: Finish()
@@ -75,10 +75,10 @@ sequenceDiagram
 class PacketConsumer {
   public:
     virtual ~PacketConsumer() = default;
-    // Video and audio are distinct types with their own Consume overloads.
+    // Video and audio are distinct types with their own Push overloads.
     // Media-specific consumers return kUnsupportedOperation for the other.
-    virtual Status Consume(VideoPacket&& pkt) = 0;
-    virtual Status Consume(AudioPacket&& pkt) = 0;
+    virtual Status Push(VideoPacket&& pkt) = 0;
+    virtual Status Push(AudioPacket&& pkt) = 0;
     virtual Status Flush() { return Status::kOk; }
     virtual Status Finish() { return Status::kOk; } // EOS / cleanup
 };
@@ -98,9 +98,9 @@ Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us = 100'000) {
   bool video_done = false, audio_done = false;
   while (!video_done || !audio_done) {
     if (!video_done) {
-      switch (Next(vp, deadline_us)) {
+      switch (Pull(vp, deadline_us)) {
         case Status::kOk:
-          if (sink.Consume(std::move(vp)) != Status::kOk) {
+          if (sink.Push(std::move(vp)) != Status::kOk) {
             sink.Finish();
             return Status::kEncodeFailed;
           }
@@ -113,9 +113,9 @@ Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us = 100'000) {
       }
     }
     if (!audio_done) {
-      switch (Next(ap, deadline_us)) {
+      switch (Pull(ap, deadline_us)) {
         case Status::kOk:
-          if (sink.Consume(std::move(ap)) != Status::kOk) {
+          if (sink.Push(std::move(ap)) != Status::kOk) {
             sink.Finish();
             return Status::kEncodeFailed;
           }
@@ -134,14 +134,14 @@ Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us = 100'000) {
 
 Behavior:
 
-- **Blocking drain**: `Next(deadline)` (default 100 ms) blocks instead of busy-spinning when
+- **Blocking drain**: `Pull(deadline)` (default 100 ms) blocks instead of busy-spinning when
   the queue is momentarily empty (`kEmpty` → try the other media / retry next iteration).
 - **Video + audio**: distinct types on two internal rings, drained alternately in `Await`;
   a video-only or audio-only queue still ends in a clean `Finish()`.
 - **EOS handling**: each ring reaches `kEos` once the queue is marked end-of-stream and that
   ring is drained; when both are done `Await` calls `PacketSink::Finish()` (e.g.
   `FileSinkConsumer` flushes and closes the file).
-- **Failure safety**: a failing `Consume` is logged, `Finish()` is called once, and `Await`
+- **Failure safety**: a failing `Push` is logged, `Finish()` is called once, and `Await`
   stops — it must NOT swallow errors and spin.
 - **Decoupling**: `Await` runs on the consumer thread while the encoder pushes on its own
   thread; a slow consumer back-pressures the queue (`kBlock`), which naturally slows the
@@ -171,10 +171,10 @@ The architecture fixes the `PacketConsumer` contract; the two target consumers a
     WebRTC/SRT). The consumer owns framing; the encoder stays protocol-agnostic.
   - **Connection lifecycle**: connect, (re)connect on drop, teardown on `Finish()`.
   - **Pacing**: use `pts_us` to pace sends; don't dump the whole buffer at once.
-  - **Network back-pressure**: a slow/blocked socket makes `Consume` slow → the drain loop
-    slows → the ring buffer fills → `Consume` blocks (or drops) → the **encoder** slows.
+  - **Network back-pressure**: a slow/blocked socket makes `Push` slow → the drain loop
+    slows → the ring buffer fills → `Push` blocks (or drops) → the **encoder** slows.
     This end-to-end back-pressure is a feature of the ring buffer and must be preserved
-    (do not swallow `Consume` errors and spin).
+    (do not swallow `Push` errors and spin).
   - **Audio + video**: a stream usually needs both; either one `StreamConsumer` muxes
     both streams, or two are fed by a muxing pump.
 
@@ -190,7 +190,7 @@ contract stay SPSC-clean.
 
 ## 6. Error & lifecycle
 
-- `Consume` returns `Status`; the pump logs and may back-off or stop on failure.
+- `Push` returns `Status`; the pump logs and may back-off or stop on failure.
 - `Finish()` is called at EOS (encoder `Flush`/`Release`) so the consumer flushes the
   file / sends the RTMP stop and closes the connection.
 - The encoder's `PacketSink::Flush()` (if implemented) signals "no more packets until

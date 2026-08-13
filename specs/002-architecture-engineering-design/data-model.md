@@ -151,9 +151,9 @@ network sender / file writer).
 class PacketSink {                       // packet destination (encoder + consumer)
   public:
     virtual ~PacketSink() = default;
-    // Video and audio are distinct types, each with its own Consume.
-    virtual Status Consume(VideoPacket&& pkt) = 0;
-    virtual Status Consume(AudioPacket&& pkt) = 0;
+    // Video and audio are distinct types, each with its own Push.
+    virtual Status Push(VideoPacket&& pkt) = 0;
+    virtual Status Push(AudioPacket&& pkt) = 0;
     virtual Status Flush() { return Status::kOk; }   // segment boundary
     virtual Status Finish() { return Status::kOk; }  // EOS / teardown
 };
@@ -162,13 +162,13 @@ class PacketSource {              // consumer endpoint (pops here)
   public:
     virtual ~PacketSource() = default;
     // Blocking variant takes a deadline; returns Status::kOk / kEmpty / kEos.
-    virtual Status Next(VideoPacket& out, int64_t deadline_us) = 0;
-    virtual Status Next(AudioPacket& out, int64_t deadline_us) = 0;
+    virtual Status Pull(VideoPacket& out, int64_t deadline_us) = 0;
+    virtual Status Pull(AudioPacket& out, int64_t deadline_us) = 0;
 };
 ```
 
 `PacketQueue` implements **both** interfaces: the producer side receives packets via
-`PacketSink::Consume`, the consumer side exposes `PacketSource`.
+`PacketSink::Push`, the consumer side exposes `PacketSource`.
 
 ### Entity: PacketQueue
 
@@ -186,15 +186,15 @@ class PacketSource {              // consumer endpoint (pops here)
   `Result<VideoPacket>` / `Result<AudioPacket>`) is unchanged; pushing is an **optional**
   sink mode.
 - Ownership transfers to the queue via move; the producer no longer references the packet
-  after `Consume()` returns.
+  after `Push()` returns.
 
 ### Validation rules
 
 - `capacity > 0` and a power of two (fast index masking).
-- `Consume` on a full queue honors `policy`: `kBlock` waits, `kLatest` overwrites the
+- `Push` on a full queue honors `policy`: `kBlock` waits, `kLatest` overwrites the
   oldest unconsumed slot, `kError` returns `kBackendUnavailable` (or a dedicated
   back-pressure code).
-- `Next(deadline)` on an empty queue returns `Status::kEmpty` (non-blocking when
+- `Pull(deadline)` on an empty queue returns `Status::kEmpty` (non-blocking when
   `deadline <= 0`); a blocking variant is provided for consumers that must wait.
 
 ### Consumer side (`PacketConsumer`)
@@ -207,9 +207,9 @@ The consumer is decoupled from the encoder by a `PacketConsumer` interface; a
 class PacketConsumer {
   public:
     virtual ~PacketConsumer() = default;
-    // Video and audio are distinct types with their own Consume overloads.
-    virtual Status Consume(VideoPacket&& pkt) = 0;
-    virtual Status Consume(AudioPacket&& pkt) = 0;
+    // Video and audio are distinct types with their own Push overloads.
+    virtual Status Push(VideoPacket&& pkt) = 0;
+    virtual Status Push(AudioPacket&& pkt) = 0;
     virtual Status Flush() { return Status::kOk; }
     virtual Status Finish() { return Status::kOk; } // EOS / teardown
 };
@@ -220,10 +220,10 @@ Two target consumers implement this (both deferred to implementation, designed n
 | Consumer | Role | Key obligations |
 |----------|------|-----------------|
 | `FileSinkConsumer` | Save `.h264`/`.aac` or mux to `.mp4`/`.mkv` | preserve order + keyframe/SPS-PPS; flush on `Finish()` |
-| `StreamConsumer` | 推流: RTMP / SRT / WebRTC | frame Annex-B → protocol units; connection lifecycle + reconnect; pace by `pts_us`; propagate back-pressure (slow socket → slow `Consume` → ring fills → encoder slows) |
+| `StreamConsumer` | 推流: RTMP / SRT / WebRTC | frame Annex-B → protocol units; connection lifecycle + reconnect; pace by `pts_us`; propagate back-pressure (slow socket → slow `Push` → ring fills → encoder slows) |
 
-`src.Await(consumer)` loops `Next` → `Consume`; calls `Finish()` at EOS. A
-blocking `Next(deadline)` avoids busy-spin.
+`src.Await(consumer)` loops `Pull` → `Push`; calls `Finish()` at EOS. A
+blocking `Pull(deadline)` avoids busy-spin.
 
 ### Multiple consumers (record + stream)
 

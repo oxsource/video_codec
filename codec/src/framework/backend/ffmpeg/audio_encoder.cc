@@ -119,7 +119,7 @@ Result<AudioPacket> FFmpegAudioEncoder::Drain(bool drain_eof) {
     av_packet_unref(pkt_.get());
     if (sink_) {
       // Push mode: single destination is the sink.
-      if (sink_->Consume(std::move(pkt)) != Status::kOk) {
+      if (sink_->Push(std::move(pkt)) != Status::kOk) {
         return Err<AudioPacket>(Status::kEncodeFailed);
       }
     } else {

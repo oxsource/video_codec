@@ -22,11 +22,11 @@ std::string TempPath(const std::string& name) {
 // agnostic: swapping FileSinkConsumer for this requires no encoder change.
 class StubConsumer : public PacketConsumer {
  public:
-  Status Consume(VideoPacket&& pkt) override {
+  Status Push(VideoPacket&& pkt) override {
     received_.insert(received_.end(), pkt.data.begin(), pkt.data.end());
     return Status::kOk;
   }
-  Status Consume(AudioPacket&&) override { return Status::kOk; }
+  Status Push(AudioPacket&&) override { return Status::kOk; }
   Status Finish() override {
     finished_ = true;
     return Status::kOk;
@@ -46,7 +46,7 @@ std::vector<std::vector<uint8_t>> RunProducer(PacketQueue& q, int n,
       p.data = {static_cast<uint8_t>('A' + (i % 26)), static_cast<uint8_t>(i)};
       p.keyframe = (i % 10 == 0);
       expected.push_back(p.data);
-      EXPECT_EQ(q.Consume(std::move(p)), Status::kOk);
+      EXPECT_EQ(q.Push(std::move(p)), Status::kOk);
     }
     q.MarkEos();
   });

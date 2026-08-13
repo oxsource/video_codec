@@ -27,7 +27,7 @@ TEST(PacketQueueTest, SpscInOrderNoLoss) {
 
   std::thread producer([&] {
     for (int i = 0; i < kN; ++i) {
-      ASSERT_EQ(q.Consume(MakePkt(static_cast<uint8_t>('a' + (i % 26)))),
+      ASSERT_EQ(q.Push(MakePkt(static_cast<uint8_t>('a' + (i % 26)))),
                 Status::kOk);
     }
   });
@@ -37,7 +37,7 @@ TEST(PacketQueueTest, SpscInOrderNoLoss) {
   std::thread consumer([&] {
     while (got < kN) {
       VideoPacket p;
-      Status r = q.Next(p, 2'000'000);
+      Status r = q.Pull(p, 2'000'000);
       if (r == Status::kOk) {
         seen.push_back(p.data[0]);
         ++got;
@@ -61,14 +61,14 @@ TEST(PacketQueueTest, SpscInOrderNoLoss) {
 TEST(PacketQueueTest, BlockWaitsForConsumer) {
   PacketQueue q(2, Backpressure::kBlock);
   // Fill the ring (capacity 2).
-  ASSERT_EQ(q.Consume(MakePkt(1)), Status::kOk);
-  ASSERT_EQ(q.Consume(MakePkt(2)), Status::kOk);
+  ASSERT_EQ(q.Push(MakePkt(1)), Status::kOk);
+  ASSERT_EQ(q.Push(MakePkt(2)), Status::kOk);
 
   std::atomic<bool> producer_blocked{true};
   std::atomic<int> produced{0};
   std::thread producer([&] {
     for (int i = 0; i < 5; ++i) {
-      ASSERT_EQ(q.Consume(MakePkt(static_cast<uint8_t>(3 + i))), Status::kOk);
+      ASSERT_EQ(q.Push(MakePkt(static_cast<uint8_t>(3 + i))), Status::kOk);
       produced.fetch_add(1);
     }
     producer_blocked = false;
@@ -83,7 +83,7 @@ TEST(PacketQueueTest, BlockWaitsForConsumer) {
   int got = 0;
   while (got < 2 + 5) {
     VideoPacket p;
-    Status r = q.Next(p, 2'000'000);
+    Status r = q.Pull(p, 2'000'000);
     if (r == Status::kOk)
       ++got;
     else if (r == Status::kEos)
@@ -99,13 +99,13 @@ TEST(PacketQueueTest, BlockWaitsForConsumer) {
 TEST(PacketQueueTest, DropOldestKeepsNewest) {
   PacketQueue q(4, Backpressure::kLatest);
   for (int i = 0; i < 10; ++i) {
-    ASSERT_EQ(q.Consume(MakePkt(static_cast<uint8_t>(i))), Status::kOk);
+    ASSERT_EQ(q.Push(MakePkt(static_cast<uint8_t>(i))), Status::kOk);
   }
   ASSERT_EQ(q.size(), 4u);
   // Remaining packets are the last 4 (6,7,8,9).
   for (int i = 6; i < 10; ++i) {
     VideoPacket p;
-    ASSERT_EQ(q.Next(p, 0), Status::kOk);
+    ASSERT_EQ(q.Pull(p, 0), Status::kOk);
     ASSERT_EQ(p.data[0], static_cast<uint8_t>(i));
   }
 }
@@ -114,21 +114,21 @@ TEST(PacketQueueTest, DropOldestKeepsNewest) {
 // -----------------------
 TEST(PacketQueueTest, ErrorReturnsBackpressureCode) {
   PacketQueue q(2, Backpressure::kError);
-  ASSERT_EQ(q.Consume(MakePkt(1)), Status::kOk);
-  ASSERT_EQ(q.Consume(MakePkt(2)), Status::kOk);
-  ASSERT_EQ(q.Consume(MakePkt(3)), Status::kBackendUnavailable);
+  ASSERT_EQ(q.Push(MakePkt(1)), Status::kOk);
+  ASSERT_EQ(q.Push(MakePkt(2)), Status::kOk);
+  ASSERT_EQ(q.Push(MakePkt(3)), Status::kBackendUnavailable);
 }
 
 // --- EOS: Pop returns kEos once drained --------------------------------------
 TEST(PacketQueueTest, EosReportedAfterDrain) {
   PacketQueue q(4, Backpressure::kBlock);
-  ASSERT_EQ(q.Consume(MakePkt(1)), Status::kOk);
+  ASSERT_EQ(q.Push(MakePkt(1)), Status::kOk);
   q.MarkEos();
 
   VideoPacket p;
-  ASSERT_EQ(q.Next(p, 0), Status::kOk);
+  ASSERT_EQ(q.Pull(p, 0), Status::kOk);
   ASSERT_EQ(p.data[0], 1);
-  ASSERT_EQ(q.Next(p, 0), Status::kEos);
+  ASSERT_EQ(q.Pull(p, 0), Status::kEos);
 }
 
 }  // namespace

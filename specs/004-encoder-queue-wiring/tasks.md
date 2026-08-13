@@ -83,10 +83,10 @@ produces all N packets in order with zero loss; with no sink, pull still returns
 - [x] T007 [US1] Implement push in `codec/src/framework/backend/ffmpeg/video_encoder.h` /
       `.cc`: override `SetOutputSink` to store a non-owning `PacketSink* sink_`; in `Drain()`
       and `Flush()`, when `sink_` is set, move the produced `Packet&&` into
-      `sink_->Consume(...)` and return an empty packet with `kOk`; on `Release()` set
+      `sink_->Push(...)` and return an empty packet with `kOk`; on `Release()` set
       `sink_ = nullptr`.
 - [x] T008 [US1] Implement push in `codec/src/framework/backend/ffmpeg/audio_encoder.h` /
-      `.cc`: same pattern for audio via `PacketSink::Consume(VideoPacket&&)`.
+      `.cc`: same pattern for audio via `PacketSink::Push(VideoPacket&&)`.
 
 **Checkpoint**: `bazel test //tests/backend/ffmpeg/...` passes — real encoder → queue → drain
 is order-preserving and lossless; pull mode is unchanged.

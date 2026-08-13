@@ -157,7 +157,7 @@ H.264 stream is produced through the public API. MVP achieved. ⚠️ pending T0
 buffer (`PacketQueue`) implementing `PacketSink` (producer) and
 `PacketSource` (consumer), with configurable back-pressure (default `kBlock`).
 
-**Independent Test**: Producer pushes N packets, consumer drains with `Next(deadline)`
+**Independent Test**: Producer pushes N packets, consumer drains with `Pull(deadline)`
 and receives all N in order with zero loss under `kBlock`; verify power-of-two
 capacity + blocking back-pressure in unit tests.
 
@@ -167,7 +167,7 @@ capacity + blocking back-pressure in unit tests.
       `PacketSource` interfaces in `codec/src/framework/queue/queue_iface.h`
       per `contracts/output-queue-contract.md`.
 - [x] T019 [US3] Implement `PacketQueue` (fixed power-of-two `slots[]`, atomic
-      `head_`/`tail_`, move-in/move-out, `Consume` honoring `Backpressure`) in
+      `head_`/`tail_`, move-in/move-out, `Push` honoring `Backpressure`) in
       `codec/src/framework/queue/packet_queue.h` / `.cc`; constructor
       `PacketQueue(size_t capacity, Backpressure policy = Backpressure::kBlock)`
       per ADR-005 / `output-queue.md`.
@@ -200,8 +200,8 @@ as deferred-but-designed.
 
 ### Implementation for User Story 4
 
-- [x] T022 [P] [US4] Declare `PacketConsumer` interface (`Consume(VideoPacket&&)`,
-      `Consume(VideoPacket&&)`, `Flush`, `Finish`) and `PacketSource::Await::Run` helper in
+- [x] T022 [P] [US4] Declare `PacketConsumer` interface (`Push(VideoPacket&&)`,
+      `Push(VideoPacket&&)`, `Flush`, `Finish`) and `PacketSource::Await::Run` helper in
       `codec/src/framework/consumer/packet_consumer.h` / `queue/queue_iface.h` per
       `contracts/output-queue-contract.md` + `output-queue.md` §3.
 - [x] T023 [US4] Implement `FileSinkConsumer` (Annex-B → `.h264` / `.aac`; preserve

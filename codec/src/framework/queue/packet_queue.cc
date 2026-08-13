@@ -106,11 +106,11 @@ template <typename Pkt>
 bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink,
               int64_t deadline_us, const char* what) {
   if (done) return true;
-  switch (src.Next(out, deadline_us)) {
+  switch (src.Pull(out, deadline_us)) {
     case Status::kOk:
-      if (sink.Consume(std::move(out)) != Status::kOk) {
+      if (sink.Push(std::move(out)) != Status::kOk) {
         VC_LOG(LogLevel::kError,
-               std::string("PacketQueue::Await: ") + what + " Consume failed");
+               std::string("PacketQueue::Await: ") + what + " Push failed");
         sink.Finish();
         return false;
       }
@@ -121,7 +121,7 @@ bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink,
     case Status::kEmpty:
       return true;  // try the other media (or retry next iteration)
   }
-  return true;  // Next only yields kOk/kEmpty/kEos; keep draining otherwise
+  return true;  // Pull only yields kOk/kEmpty/kEos; keep draining otherwise
 }
 
 }  // namespace
@@ -129,7 +129,7 @@ bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink,
 PacketQueue::PacketQueue(size_t capacity, Backpressure policy)
     : video_(capacity, policy), audio_(capacity, policy) {}
 
-Status PacketQueue::Consume(VideoPacket&& pkt) {
+Status PacketQueue::Push(VideoPacket&& pkt) {
   if (video_.Push(std::move(pkt))) return Status::kOk;
   // Rejected: full under kError (kBackendUnavailable), or push-after-EOS
   // (kInvalidArgument). Under kBlock/kLatest Push only fails at EOS.
@@ -137,17 +137,17 @@ Status PacketQueue::Consume(VideoPacket&& pkt) {
                                                  : Status::kInvalidArgument;
 }
 
-Status PacketQueue::Consume(AudioPacket&& pkt) {
+Status PacketQueue::Push(AudioPacket&& pkt) {
   if (audio_.Push(std::move(pkt))) return Status::kOk;
   return audio_.policy() == Backpressure::kError ? Status::kBackendUnavailable
                                                  : Status::kInvalidArgument;
 }
 
-Status PacketQueue::Next(VideoPacket& out, int64_t deadline_us) {
+Status PacketQueue::Pull(VideoPacket& out, int64_t deadline_us) {
   return video_.Pop(out, deadline_us);
 }
 
-Status PacketQueue::Next(AudioPacket& out, int64_t deadline_us) {
+Status PacketQueue::Pull(AudioPacket& out, int64_t deadline_us) {
   return audio_.Pop(out, deadline_us);
 }
 

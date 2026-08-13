@@ -26,8 +26,8 @@ class Mp4Consumer : public PacketConsumer {
                        int fps = 30, const MuxOptions& options = MuxOptions());
   ~Mp4Consumer() override = default;
 
-  Status Consume(VideoPacket&& pkt) override;
-  Status Consume(AudioPacket&& pkt) override {
+  Status Push(VideoPacket&& pkt) override;
+  Status Push(AudioPacket&& pkt) override {
     return Status::kUnsupportedOperation;  // video-only muxer
   }
   Status Finish() override;

@@ -165,7 +165,7 @@ overflows `cmdsize`; lazy static linking drops unreferenced internal members →
 
 **Decision**: Hand off encoded packets to consumers through a **bounded SPSC ring
 buffer** (`PacketQueue`), exposed as two interfaces — `PacketSink` (producer /
-encoder writes via `Consume`) and `PacketSource` (consumer pops via `TryPop`/`Next`).
+encoder writes via `Push`) and `PacketSource` (consumer pops via `TryPop`/`Pull`).
 Implementation is lock-free via atomic `head_`/`tail_` indices over a fixed power-of-two
 slot array; packets are **moved** in and out (no per-packet allocation on the hot path).
 Back-pressure when full is configurable: `kBlock` (default), `kLatest`, or `kError`.
@@ -196,12 +196,12 @@ dropping frames — and is the safe default for both recording and streaming; `k
 
 ## R10. Consumer abstraction: file writer vs streamer
 
-**Decision**: Define a `PacketConsumer` interface (`Consume` / `Flush` / `Finish`) that
+**Decision**: Define a `PacketConsumer` interface (`Push` / `Flush` / `Finish`) that
 both `FileSinkConsumer` (save `.h264`/`.aac` or mux to `.mp4`) and `StreamConsumer`
 (RTMP / SRT / WebRTC 推流) implement. A `PacketSource::Await` drain loop on the consumer thread
 pops from `PacketSource` and forwards to the `PacketConsumer`. The encoder is
 never aware of which consumer is attached. Back-pressure propagates end-to-end: a slow
-socket makes `Consume` slow → pump slows → ring fills → encoder slows (under `kBlock`).
+socket makes `Push` slow → pump slows → ring fills → encoder slows (under `kBlock`).
 
 **Rationale**:
 - The two consumers are implemented later (`project_bootstrap.md` defers container

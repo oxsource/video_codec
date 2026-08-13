@@ -29,7 +29,7 @@ virtual Status SetOutputSink(PacketSink* sink);
 | Push | non-null sink attached | packet **moved into the sink**; returns `kOk` with an empty (moved-from) packet |
 
 - A produced packet reaches **exactly one destination** (FR-006). No duplication.
-- Sink `Consume` errors propagate as the `Encode()`/`Flush()` result.
+- Sink `Push` errors propagate as the `Encode()`/`Flush()` result.
 
 ## 3. Flush & end-of-stream
 
@@ -44,12 +44,12 @@ virtual Status SetOutputSink(PacketSink* sink);
 
 - The sink (queue) applies its configured policy (`kBlock` default, `kLatest`, `kError`).
 - The encoder makes no independent pacing decisions; it honors the `Status` returned by
-  `Consume`. Under `kBlock` a full queue naturally blocks the producer.
+  `Push`. Under `kBlock` a full queue naturally blocks the producer.
 
 ## 5. Audio
 
 - `AudioEncoder` supports the same attachment and pushes audio `Packet`s via
-  `PacketSink::Consume(AudioPacket&&)`.
+  `PacketSink::Push(AudioPacket&&)`.
 
 ## 6. Acceptance
 
