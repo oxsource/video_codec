@@ -20,7 +20,7 @@ class VideoEncoder {
 
   // Resolve backend + allocate, but do NOT open the external encoder yet.
   // Returns nullptr if no matching backend is linked for this platform/config.
-  static std::unique_ptr<VideoEncoder> Create(const VideoEncoderConfig& config);
+  static std::unique_ptr<VideoEncoder> Create(const VideoConfig& config);
 
   virtual Status Init() = 0;  // -> Initialized
 

@@ -28,14 +28,14 @@ AudioFrame MakePcmFrame(int samples) {
 
 TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
   PacketQueue q(64, Backpressure::kBlock);
-  AudioEncoderConfig cfg;
+  AudioConfig cfg;
   cfg.codec = AudioCodecType::kAAC;
   cfg.sample_rate = 48000;
   cfg.channels = 2;
   cfg.bitrate = 128'000;
   cfg.backend = Backend::kFFmpeg;
 
-  std::unique_ptr<AudioEncoder> encoder = CodecFactory::CreateAudioEncoder(cfg);
+  std::unique_ptr<AudioEncoder> encoder = CodecFactory::CreateAudio(cfg);
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);

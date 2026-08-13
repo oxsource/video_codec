@@ -11,7 +11,7 @@ queue automatically (push mode), instead of the caller collecting them from the 
 ```cpp
 #include <video_codec/video_codec.h>
 
-auto encoder = video_codec::CreateVideoEncoder(cfg);
+auto encoder = video_codec::CreateVideo(cfg);
 encoder->Init();
 video_codec::Result<video_codec::Packet> r = encoder->Encode(frame);
 // r.value() carries the full packet; nothing is pushed anywhere.
@@ -26,7 +26,7 @@ video_codec::Result<video_codec::Packet> r = encoder->Encode(frame);
 
 video_codec::PacketQueue queue(64, video_codec::Backpressure::kBlock);
 
-auto encoder = video_codec::CreateVideoEncoder(cfg);
+auto encoder = video_codec::CreateVideo(cfg);
 if (encoder->Init() != video_codec::Status::kOk) return 1;
 if (encoder->SetOutputSink(&queue) != video_codec::Status::kOk) return 1;
 
@@ -50,7 +50,7 @@ pump.join();                      // consumer sees kEos and stops; file is compl
 
 ## 3. Audio
 
-Same pattern with `CreateAudioEncoder` / `AudioFrame`; audio packets are pushed via
+Same pattern with `CreateAudio` / `AudioFrame`; audio packets are pushed via
 `PacketSink::Push(VideoPacket&&) / Push(AudioPacket&&)`.
 
 ## 4. Rules to remember

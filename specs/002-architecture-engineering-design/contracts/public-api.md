@@ -28,7 +28,7 @@ shared-library build defines `VIDEO_CODEC_SHARED_LIBRARY`).
 - Enums: `VideoCodecType`, `AudioCodecType`, `PixelFormat`, `SampleFormat`,
   `BitrateMode`, `Backend`, `Status`.
 - Values: `VideoFrame`, `AudioFrame`, `Packet`, `NativeBuffer`,
-  `VideoEncoderConfig`, `AudioEncoderConfig`.
+  `VideoConfig`, `AudioConfig`.
 - Error: `Status`, `Result<T>`.
 - Interfaces: `VideoEncoder`, `AudioEncoder`, `InputSurface`.
 - Logging: `LogSlot`, `SetLogSlot(LogSlot*)`.
@@ -39,10 +39,10 @@ shared-library build defines `VIDEO_CODEC_SHARED_LIBRARY`).
 namespace video::codec {
   // Returns nullptr on unsupported platform/backend; never throws.
   VIDEO_CODEC_API std::unique_ptr<VideoEncoder>
-      VideoEncoder::Create(const VideoEncoderConfig& config);
+      VideoEncoder::Create(const VideoConfig& config);
 
   VIDEO_CODEC_API std::unique_ptr<AudioEncoder>
-      AudioEncoder::Create(const AudioEncoderConfig& config);
+      AudioEncoder::Create(const AudioConfig& config);
 }
 ```
 

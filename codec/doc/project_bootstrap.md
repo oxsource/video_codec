@@ -80,7 +80,7 @@ Apple `VideoToolbox`（macOS / iOS）**不在一期实现范围，后续（Phase
 
 ```cpp
 // Video
-auto enc = VideoEncoder::Create(VideoEncoderConfig{
+auto enc = VideoEncoder::Create(VideoConfig{
     .codec = VideoCodecType::kH264,
     .width = 1920, .height = 1080, .fps = 30,
     .bitrate = 4'000'000,
@@ -94,7 +94,7 @@ enc->Flush();
 enc->Release();
 
 // Audio (parallel API shape)
-auto aenc = AudioEncoder::Create(AudioEncoderConfig{
+auto aenc = AudioEncoder::Create(AudioConfig{
     .codec = AudioCodecType::kAAC,
     .sample_rate = 48000, .channels = 2, .bitrate = 128'000,
 });
@@ -201,7 +201,7 @@ Packet (kVideo / kAudio) → caller (mux / transmit / store)
 codec/src/framework/
 │
 ├── core/        # 基础类型：VideoFrame, AudioFrame, VideoPacket, AudioPacket,
-│               #           VideoEncoderConfig, AudioEncoderConfig, MuxerConfig,
+│               #           VideoConfig, AudioConfig, MuxerConfig,
 │               #           NativeBuffer, enums, PacketSink
 ├── api/         # 抽象接口：VideoEncoder, AudioEncoder, Muxer, InputSurface, 工厂
 ├── backend/     # 平台后端实现（每个后端独立子目录，自带 BUILD.bazel）
@@ -244,8 +244,8 @@ struct VideoFrame;
 struct AudioFrame;
 struct VideoPacket;
 struct AudioPacket;
-struct VideoEncoderConfig;
-struct AudioEncoderConfig;
+struct VideoConfig;
+struct AudioConfig;
 struct NativeBuffer;
 
 // API
@@ -427,10 +427,10 @@ struct NativeBuffer {
 };
 ```
 
-### VideoEncoderConfig / AudioEncoderConfig
+### VideoConfig / AudioConfig
 
 ```cpp
-struct VideoEncoderConfig {
+struct VideoConfig {
     VideoCodecType codec = VideoCodecType::kH264;
     int width = 0;
     int height = 0;
@@ -442,7 +442,7 @@ struct VideoEncoderConfig {
     Backend backend = Backend::kAuto;  // kAuto → platform select
 };
 
-struct AudioEncoderConfig {
+struct AudioConfig {
     AudioCodecType codec = AudioCodecType::kAAC;
     int sample_rate = 48000;
     int channels = 2;
@@ -461,7 +461,7 @@ public:
     virtual ~VideoEncoder() = default;
 
     // Factory: picks backend by platform (or backend).
-    static std::unique_ptr<VideoEncoder> Create(const VideoEncoderConfig& config);
+    static std::unique_ptr<VideoEncoder> Create(const VideoConfig& config);
 
     virtual bool Init() = 0;
 
@@ -502,7 +502,7 @@ class AudioEncoder {
 public:
     virtual ~AudioEncoder() = default;
 
-    static std::unique_ptr<AudioEncoder> Create(const AudioEncoderConfig& config);
+    static std::unique_ptr<AudioEncoder> Create(const AudioConfig& config);
 
     virtual bool Init() = 0;
     virtual bool Encode(const AudioFrame& frame, Packet* out) = 0;
@@ -514,7 +514,7 @@ public:
 ### Factory & Backend Selection
 
 ```cpp
-std::unique_ptr<VideoEncoder> VideoEncoder::Create(const VideoEncoderConfig& c) {
+std::unique_ptr<VideoEncoder> VideoEncoder::Create(const VideoConfig& c) {
     switch (ResolveBackend(c.backend)) {
 #if defined(__ANDROID__)
         case Backend::kAndroid:  return std::make_unique<MediaCodecVideoEncoder>(c);

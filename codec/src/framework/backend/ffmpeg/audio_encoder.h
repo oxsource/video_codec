@@ -17,7 +17,7 @@ class PacketSink;  // defined in queue/queue_iface.h (included by the .cc)
 // planar-float layout libavcodec's AAC encoder requires.
 class FFmpegAudioEncoder : public AudioEncoder {
  public:
-  explicit FFmpegAudioEncoder(const AudioEncoderConfig& config);
+  explicit FFmpegAudioEncoder(const AudioConfig& config);
   ~FFmpegAudioEncoder() override;
 
   Status Init() override;
@@ -29,7 +29,7 @@ class FFmpegAudioEncoder : public AudioEncoder {
  private:
   Result<AudioPacket> Drain(bool drain_eof);
 
-  AudioEncoderConfig config_;
+  AudioConfig config_;
   EncoderLifecycle lifecycle_;
   ffmpeg::AvCodecContextPtr ctx_;
   ffmpeg::AvFramePtr frame_;

@@ -61,7 +61,7 @@ Video/Audio 编码器完全对称，零新增抽象。
 
 **Decision**: `enum class MuxFormat { kMp4 };`（v1）与 `struct MuxerConfig { MuxFormat
 format; bool fragmented=true; int width/height/fps; Backend backend; IsValid(); }`
-放入 `core/types.h`，与 Video/AudioEncoderConfig 同居。`VideoEncoderConfig` 不引用
+放入 `core/types.h`，与 Video/AudioConfig 同居。`VideoConfig` 不引用
 MuxerConfig。
 
 **Rationale**: 编码器保持协议无关（FR-005/US3-A2）；接线由调用方组装
@@ -69,7 +69,7 @@ MuxerConfig。
 内部路由（backend 选择、IsValid 校验），且 core 是 leaf 不能依赖 utils。
 
 **Alternatives considered**: 复用 utils::MediaFileFormat 字符串——core 不能依赖 utils；
-`VideoEncoderConfig` 内嵌容器字段——破坏编码器协议无关。
+`VideoConfig` 内嵌容器字段——破坏编码器协议无关。
 
 ## R6 — mux 模块处置
 

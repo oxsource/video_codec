@@ -45,6 +45,6 @@ Consequences:
 
 ## `backend` use
 
-Set in `VideoEncoderConfig`/`AudioEncoderConfig` to override platform auto-selection
+Set in `VideoConfig`/`AudioConfig` to override platform auto-selection
 (e.g. test the FFmpeg backend on Android, or the Android backend in an emulator build).
 It must match a backend the binary actually links, or `Create` returns `nullptr`.

@@ -17,7 +17,7 @@ class PacketSink;  // defined in queue/queue_iface.h (included by the .cc)
 // Encode(NativeBuffer) returns kUnsupportedOperation (no HW surface).
 class FFmpegVideoEncoder : public VideoEncoder {
  public:
-  explicit FFmpegVideoEncoder(const VideoEncoderConfig& config);
+  explicit FFmpegVideoEncoder(const VideoConfig& config);
   ~FFmpegVideoEncoder() override;
 
   Status Init() override;
@@ -37,7 +37,7 @@ class FFmpegVideoEncoder : public VideoEncoder {
   // yet).
   Result<VideoPacket> Drain(bool drain_eof);
 
-  VideoEncoderConfig config_;
+  VideoConfig config_;
   EncoderLifecycle lifecycle_;
   ffmpeg::AvCodecContextPtr ctx_;
   ffmpeg::AvFramePtr frame_;

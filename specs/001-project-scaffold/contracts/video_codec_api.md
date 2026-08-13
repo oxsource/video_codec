@@ -34,9 +34,9 @@ struct NativeBuffer {              // zero-copy pointer object
     int fence_fd = -1;
 };
 
-struct VideoEncoderConfig { /* codec, width, height, fps, bitrate, bitrate_mode,
+struct VideoConfig { /* codec, width, height, fps, bitrate, bitrate_mode,
                               gop_size, input_format, backend */ };
-struct AudioEncoderConfig { /* codec, sample_rate, channels, bitrate, backend */ };
+struct AudioConfig { /* codec, sample_rate, channels, bitrate, backend */ };
 
 }  // namespace video::codec
 ```
@@ -47,7 +47,7 @@ struct AudioEncoderConfig { /* codec, sample_rate, channels, bitrate, backend */
 class VideoEncoder {
 public:
     virtual ~VideoEncoder() = default;
-    static std::unique_ptr<VideoEncoder> Create(const VideoEncoderConfig&);
+    static std::unique_ptr<VideoEncoder> Create(const VideoConfig&);
     virtual bool Init() = 0;
     virtual bool Encode(const VideoFrame& frame, Packet* out) = 0;   // CPU path
     virtual bool Encode(const NativeBuffer& buf, Packet* out) = 0;   // zero-copy
@@ -70,7 +70,7 @@ public:
 class AudioEncoder {
 public:
     virtual ~AudioEncoder() = default;
-    static std::unique_ptr<AudioEncoder> Create(const AudioEncoderConfig&);
+    static std::unique_ptr<AudioEncoder> Create(const AudioConfig&);
     virtual bool Init() = 0;
     virtual bool Encode(const AudioFrame& frame, Packet* out) = 0;
     virtual bool Flush(Packet* out) = 0;

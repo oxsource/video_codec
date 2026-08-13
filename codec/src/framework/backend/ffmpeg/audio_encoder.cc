@@ -15,7 +15,7 @@ extern "C" {
 namespace video {
 namespace codec {
 
-FFmpegAudioEncoder::FFmpegAudioEncoder(const AudioEncoderConfig& config) : config_(config) {}
+FFmpegAudioEncoder::FFmpegAudioEncoder(const AudioConfig& config) : config_(config) {}
 
 FFmpegAudioEncoder::~FFmpegAudioEncoder() { Release(); }
 

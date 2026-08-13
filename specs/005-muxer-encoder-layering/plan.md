@@ -45,7 +45,7 @@ backend（`@ffmpeg//:ffmpeg_codec*`，含 libavformat）；googletest。`PacketS
   继承；`ByteSink` 在 api 中仅前向声明（`SetOutput(ByteSink*)`）。
 - `muxer` 是 backend 能力：仅 `backend/*` 可依赖 `@ffmpeg`。现有 `mux → @ffmpeg` 边
   违规，本次迁移修正。
-- 编码器保持协议无关：`VideoEncoderConfig` 不引用 `MuxerConfig`；接线由调用方组装
+- 编码器保持协议无关：`VideoConfig` 不引用 `MuxerConfig`；接线由调用方组装
   `encoder → queue → muxer → ByteSink`（FR-005 / US3-A2）。
 - Muxer 非线程安全（同 encoder 先例）；容器在首个关键帧懒打开，先前非关键帧丢弃。
 - `Mp4Muxer`/`Mp4Consumer` 专用类移除，不再作为对外组件（FR-009）。

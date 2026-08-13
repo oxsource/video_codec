@@ -98,13 +98,13 @@
 
 ## Phase 5: User Story 3 - 编码器与封装层解耦 (Priority: P3)
 
-**Goal**: 验证编码器协议无关——`VideoEncoderConfig` 不引用 `MuxerConfig`，编码器代码不含容器逻辑；同一编码器裸流/封装两种走法均成立
+**Goal**: 验证编码器协议无关——`VideoConfig` 不引用 `MuxerConfig`，编码器代码不含容器逻辑；同一编码器裸流/封装两种走法均成立
 
 **Independent Test**: example `--raw`（裸流，FileSinkConsumer）与默认（封装，Muxer）两分支共用同一 `encoder` 配置路径；`encode_push_test` 等既有测试证明裸流模式不变
 
 ### Implementation for User Story 3
 
-- [x] T030 [US3] 审查 `codec/src/framework/backend/ffmpeg/video_encoder.{h,cc}` 确认无任何容器/muxer 逻辑（bsf 输出仍为 Annex-B），`VideoEncoderConfig` 无容器字段（FR-005）
+- [x] T030 [US3] 审查 `codec/src/framework/backend/ffmpeg/video_encoder.{h,cc}` 确认无任何容器/muxer 逻辑（bsf 输出仍为 Annex-B），`VideoConfig` 无容器字段（FR-005）
 - [x] T031 [US3] 更新 `codec/src/examples/ffmpeg_encode_file.cc`：显式展示两分支共享 encoder（裸流分支与封装分支仅接线不同，encoder 配置一致），补充注释说明解耦
 - [x] T032 [US3] 运行 `bazel test //tests/...` 全绿，确认裸流路径（encode_push_test、example --raw）不受 US1 改动影响
 

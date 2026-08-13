@@ -14,7 +14,7 @@ package(default_visibility = ["//src/framework:__subpackages__", "//tests:__subp
 # aggregate `ffmpeg` target deps on all modules for backward compatibility.
 # `register` carries alwayslink so its object (static initializer
 # self-registering the backend in the factory) is force-loaded into any binary
-# that links this backend — otherwise CodecFactory::CreateVideoEncoder returns
+# that links this backend — otherwise CodecFactory::CreateVideo returns
 # nullptr.
 
 cc_library(

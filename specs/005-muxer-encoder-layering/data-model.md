@@ -37,7 +37,7 @@ struct MuxerConfig {
 ```
 
 **Validation rules**:
-- `IsValid()`：宽高必须为正（backend Init 前拒绝，同 Video/AudioEncoderConfig 先例）。
+- `IsValid()`：宽高必须为正（backend Init 前拒绝，同 Video/AudioConfig 先例）。
 - `format` 白名单由 backend 校验：v1 仅 `kMp4`，否则 `kUnsupportedFormat`。
 
 ### MuxerBackend（封装后端）
@@ -64,7 +64,7 @@ encoder(VideoEncoder) ──SetOutputSink──▶ queue(PacketQueue)
 
 - 编码器不感知 muxer：输出仍为 `VideoPacket`（Annex-B 裸流），经 PacketQueue 传递。
 - muxer 不感知编码器：作为 PacketSink 消费包，字节经 ByteSink 输出。
-- 接线由调用方组装（quickstart.md）；`VideoEncoderConfig` 与 `MuxerConfig` 无引用关系。
+- 接线由调用方组装（quickstart.md）；`VideoConfig` 与 `MuxerConfig` 无引用关系。
 
 ## State Transitions
 

@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
   const int fps = 30;
   const int frame_count = seconds * fps;
 
-  vc::VideoEncoderConfig cfg;
+  vc::VideoConfig cfg;
   cfg.codec = vc::VideoCodecType::kH264;
   cfg.width = width;
   cfg.height = height;
@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
     muxer->SetOutput(mp4_sink.get());
   }
 
-  std::unique_ptr<vc::VideoEncoder> encoder = vc::CodecFactory::CreateVideoEncoder(cfg);
+  std::unique_ptr<vc::VideoEncoder> encoder = vc::CodecFactory::CreateVideo(cfg);
   if (!encoder) {
     std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg backend available\n");
     return 1;

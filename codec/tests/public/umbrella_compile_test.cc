@@ -12,13 +12,13 @@ namespace {
 
 TEST(UmbrellaCompileTest, PublicSurfaceReachable) {
   // Core config structs are part of the public surface.
-  video::codec::VideoEncoderConfig vcfg;
+  video::codec::VideoConfig vcfg;
   vcfg.codec = video::codec::VideoCodecType::kH264;
   vcfg.width = 1280;
   vcfg.height = 720;
   vcfg.input_format = video::codec::PixelFormat::kI420;
 
-  video::codec::AudioEncoderConfig acfg;
+  video::codec::AudioConfig acfg;
   acfg.codec = video::codec::AudioCodecType::kAAC;
   acfg.sample_rate = 48000;
 

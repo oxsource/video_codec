@@ -67,10 +67,10 @@ TEST(CodecFactoryTest, ResolveBackend) {
 TEST(CodecFactoryTest, NoBackendLinkedReturnsNull) {
   // This test does not link any backend, so the registry is empty: Create must
   // fail gracefully (nullptr) instead of throwing.
-  VideoEncoderConfig vc;
-  EXPECT_EQ(CodecFactory::CreateVideoEncoder(vc), nullptr);
-  AudioEncoderConfig ac;
-  EXPECT_EQ(CodecFactory::CreateAudioEncoder(ac), nullptr);
+  VideoConfig vc;
+  EXPECT_EQ(CodecFactory::CreateVideo(vc), nullptr);
+  AudioConfig ac;
+  EXPECT_EQ(CodecFactory::CreateAudio(ac), nullptr);
 }
 
 }  // namespace

@@ -16,7 +16,7 @@ class AudioEncoder {
  public:
   virtual ~AudioEncoder() = default;
 
-  static std::unique_ptr<AudioEncoder> Create(const AudioEncoderConfig& config);
+  static std::unique_ptr<AudioEncoder> Create(const AudioConfig& config);
 
   virtual Status Init() = 0;
   virtual Result<AudioPacket> Encode(const AudioFrame& frame) = 0;

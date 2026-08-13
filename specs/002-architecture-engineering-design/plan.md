@@ -208,7 +208,7 @@ not mutate state. Full model in `codec/doc/architecture/lifecycle-model.md`.
 
 ```mermaid
 flowchart LR
-    CFG["VideoEncoderConfig / AudioEncoderConfig<br/>backend field"]
+    CFG["VideoConfig / AudioConfig<br/>backend field"]
     CFG --> RES["ResolveBackend(backend)"]
     RES -->|android| B1["MediaCodecVideoEncoder"]
     RES -->|darwin| B2["FFmpegVideoEncoder (fallback; VT reserved)"]

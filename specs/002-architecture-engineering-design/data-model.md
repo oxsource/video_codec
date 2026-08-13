@@ -70,7 +70,7 @@ struct NativeBuffer {                 // zero-copy pointer object
 ## 3. Config Types (api)
 
 ```cpp
-struct VideoEncoderConfig {
+struct VideoConfig {
     VideoCodecType codec = VideoCodecType::kH264;
     int width = 0; int height = 0; int fps = 30; int bitrate = 4'000'000;
     BitrateMode bitrate_mode = BitrateMode::kConstant;
@@ -79,7 +79,7 @@ struct VideoEncoderConfig {
     Backend backend = Backend::kAuto; // kAuto → platform select
 };
 
-struct AudioEncoderConfig {
+struct AudioConfig {
     AudioCodecType codec = AudioCodecType::kAAC;
     int sample_rate = 48000; int channels = 2; int bitrate = 128'000;
     Backend backend = Backend::kAuto;

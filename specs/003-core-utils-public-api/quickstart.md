@@ -15,13 +15,13 @@ Include exactly one header:
 
 int main() {
     // Build a config, create an encoder through the factory.
-    video_codec::VideoEncoderConfig cfg;
+    video_codec::VideoConfig cfg;
     cfg.codec = video_codec::VideoCodecType::kH264;
     cfg.width = 1280;
     cfg.height = 720;
     // Returns nullptr if no backend is linked/registered for this config.
     std::unique_ptr<video_codec::VideoEncoder> encoder =
-        video_codec::CreateVideoEncoder(cfg);
+        video_codec::CreateVideo(cfg);
     if (!encoder) return 1;
     if (encoder->Init() != video_codec::Status::kOk) return 1;
     // ... feed frames via encoder->Encode(frame) ...

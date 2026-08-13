@@ -55,8 +55,8 @@ VideoFrame MakeI420Frame(int w, int h, int seed) {
   return f;
 }
 
-VideoEncoderConfig MakeEncoderConfig() {
-  VideoEncoderConfig cfg;
+VideoConfig MakeEncoderConfig() {
+  VideoConfig cfg;
   cfg.codec = VideoCodecType::kH264;
   cfg.width = 320;
   cfg.height = 240;
@@ -107,7 +107,7 @@ bool HasFtypAtOffset4(const std::vector<uint8_t>& bytes) {
 // US1/A1+A2+A3: encoder -> queue -> muxer produces a valid fragmented MP4.
 TEST(MuxerTest, EncoderToQueueToMuxerProducesMp4) {
   PacketQueue q(64, Backpressure::kBlock);
-  std::unique_ptr<VideoEncoder> encoder = CodecFactory::CreateVideoEncoder(MakeEncoderConfig());
+  std::unique_ptr<VideoEncoder> encoder = CodecFactory::CreateVideo(MakeEncoderConfig());
   ASSERT_NE(encoder, nullptr);
   ASSERT_EQ(encoder->Init(), Status::kOk);
   ASSERT_EQ(encoder->SetOutputSink(&q), Status::kOk);

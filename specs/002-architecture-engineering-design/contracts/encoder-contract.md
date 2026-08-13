@@ -14,7 +14,7 @@ class VideoEncoder {
     virtual ~VideoEncoder() = default;
 
     // Resolve backend + allocate, but do NOT open the external encoder yet.
-    static std::unique_ptr<VideoEncoder> Create(const VideoEncoderConfig& config);
+    static std::unique_ptr<VideoEncoder> Create(const VideoConfig& config);
 
     virtual Status Init() = 0;                 // → Initialized
 
@@ -40,7 +40,7 @@ class VideoEncoder {
 class AudioEncoder {
   public:
     virtual ~AudioEncoder() = default;
-    static std::unique_ptr<AudioEncoder> Create(const AudioEncoderConfig& config);
+    static std::unique_ptr<AudioEncoder> Create(const AudioConfig& config);
     virtual Status Init() = 0;
     virtual Result<Packet> Encode(const AudioFrame& frame) = 0;
     virtual Result<Packet> Flush() = 0;

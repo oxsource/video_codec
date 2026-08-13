@@ -14,7 +14,7 @@
 namespace vc = video::codec;
 
 // 1. 编码器配置（协议无关：只出裸码流）
-vc::VideoEncoderConfig enc_cfg;
+vc::VideoConfig enc_cfg;
 enc_cfg.codec = vc::VideoCodecType::kH264;
 enc_cfg.width = 640;
 enc_cfg.height = 480;
@@ -22,7 +22,7 @@ enc_cfg.fps = 30;
 enc_cfg.input_format = vc::PixelFormat::kI420;
 enc_cfg.backend = vc::Backend::kFFmpeg;
 
-auto encoder = vc::CreateVideoEncoder(enc_cfg);
+auto encoder = vc::CreateVideo(enc_cfg);
 encoder->Init();
 
 // 2. 队列（中转）
@@ -62,4 +62,4 @@ worker.join();   // Await 内部已调用 muxer->Finish()（写 MP4 尾部）
   一致。
 - Muxer 在**首个关键帧**懒打开容器并一次性产出"头部 + 首分片"；先到的非关键帧丢弃。
 - 输出目标可换任意 `io::ByteSink`（文件 / 网络流 / tee），`SetOutput` 一处切换。
-- 编码器不感知封装：`VideoEncoderConfig` 与 `MuxerConfig` 无引用关系，接线在调用方。
+- 编码器不感知封装：`VideoConfig` 与 `MuxerConfig` 无引用关系，接线在调用方。

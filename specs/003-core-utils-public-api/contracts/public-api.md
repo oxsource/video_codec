@@ -18,8 +18,8 @@ A consumer program MUST be able to do:
 ```
 
 and obtain, with no further includes, the full public surface:
-`VideoEncoder`, `AudioEncoder`, the factory entry points (`CreateVideoEncoder`,
-`CreateAudioEncoder`, `ResolveBackend`, `RegisterVideoEncoder`, `RegisterAudioEncoder`),
+`VideoEncoder`, `AudioEncoder`, the factory entry points (`CreateVideo`,
+`CreateAudio`, `ResolveBackend`, `RegisterVideo`, `RegisterAudio`),
 `VideoFrame`, `AudioFrame`,
 `Packet`, `NativeBuffer`, `PixelFormat`, `SampleFormat`,
 `VideoCodecType`, `AudioCodecType`, `Backend`, `Status`, `Result<T>`, `LogSlot`,

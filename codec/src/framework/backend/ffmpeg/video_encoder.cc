@@ -35,7 +35,7 @@ AVPixelFormat ToAvPixFmt(PixelFormat f) {
 }
 }  // namespace
 
-FFmpegVideoEncoder::FFmpegVideoEncoder(const VideoEncoderConfig& config) : config_(config) {}
+FFmpegVideoEncoder::FFmpegVideoEncoder(const VideoConfig& config) : config_(config) {}
 
 FFmpegVideoEncoder::~FFmpegVideoEncoder() { Release(); }
 
