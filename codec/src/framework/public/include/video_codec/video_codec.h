@@ -32,3 +32,6 @@
 #include "api/encoder_factory.h"
 #include "api/input_surface.h"
 #include "api/video_encoder.h"
+
+// Media file-format constants (common output extensions like .mp4 / .h264)
+#include "utils/media_file_format.h"

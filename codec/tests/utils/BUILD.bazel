@@ -19,3 +19,12 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "media_file_format_test",
+    srcs = ["media_file_format_test.cc"],
+    deps = [
+        "//src/framework/utils",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

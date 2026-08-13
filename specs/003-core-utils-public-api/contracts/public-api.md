@@ -58,6 +58,8 @@ to end consumers):
 
 - `Stride::Row(width, format)` → `size_t` (video) / `Stride::Sample(...)`
   (audio)
+- `MediaFileFormat` — shared file-extension constants (`kMp4`, `kH264`, ...)
+  and `HasExtension(path, ext)`, so callers never hand-code suffix literals.
 
 Pixel-format conversion moved OUT of `utils` into the libyuv-backed
 `convert/libyuv` module — `PixelConverter::Convert(...)` → `Status`

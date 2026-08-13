@@ -37,6 +37,7 @@
 #include "consumer/packet_consumer.h"
 #include "io/file_byte_sink.h"
 #include "queue/packet_queue.h"
+#include "utils/media_file_format.h"
 #include "utils/smpte_bars.h"
 
 namespace vc = video::codec;
@@ -85,8 +86,8 @@ int main(int argc, char** argv) {
   // ByteSink (file / cloud stream / tee) is a one-line change.
   std::unique_ptr<vc::FileByteSink> mp4_sink;  // must outlive the consumer
   std::unique_ptr<vc::PacketConsumer> consumer;
-  const bool is_mp4 = out_path.size() >= 4 &&
-                      out_path.compare(out_path.size() - 4, 4, ".mp4") == 0;
+  const bool is_mp4 =
+      vcu::MediaFileFormat::HasExtension(out_path, vcu::MediaFileFormat::kMp4);
   if (is_mp4) {
     mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
     consumer =
