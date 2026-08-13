@@ -13,7 +13,7 @@ interchangeable.
 
 ```cpp
 enum class Backpressure { kBlock, kDropOldest, kError };
-// Pop outcomes reuse the global Status: kOk (packet), kEmpty (timeout/empty),
+// Next outcomes reuse the global Status: kOk (packet), kEmpty (timeout/empty),
 // kEos (end-of-stream and drained).
 ```
 
@@ -56,8 +56,8 @@ class PacketSource {
     virtual ~PacketSource() = default;
     // Returns Status::kOk (packet), Status::kEmpty (timeout/empty), or
     // Status::kEos (after MarkEos() and drained).
-    virtual Status Pop(VideoPacket& out, int64_t deadline_us) = 0;  // blocking
-    virtual Status Pop(AudioPacket& out, int64_t deadline_us) = 0;
+    virtual Status Next(VideoPacket& out, int64_t deadline_us) = 0;  // blocking
+    virtual Status Next(AudioPacket& out, int64_t deadline_us) = 0;
 
     // Await mechanism (replaces the former PacketPump): blocks on the calling
     // thread, delivering every packet to `sink` until EOS (then sink.Finish());
@@ -68,7 +68,7 @@ class PacketSource {
 };
 ```
 
-- `Pop(deadline_us)` blocks up to `deadline_us` (negative/0 = non-blocking
+- `Next(deadline_us)` blocks up to `deadline_us` (negative/0 = non-blocking
   `TryPop` semantics); returns `Status::kEmpty` on timeout, `Status::kEos` after
   `MarkEos()` and drained.
 - The consumer never allocates; packets are moved out of slots.
@@ -86,8 +86,8 @@ class PacketQueue : public OutputSink, public PacketSource {
     Status Submit(VideoPacket&&) override;
     Status Submit(AudioPacket&&) override;
     // PacketSource
-    Status Pop(VideoPacket&, int64_t) override;
-    Status Pop(AudioPacket&, int64_t) override;
+    Status Next(VideoPacket&, int64_t) override;
+    Status Next(AudioPacket&, int64_t) override;
     void MarkEos() override;
 };
 ```

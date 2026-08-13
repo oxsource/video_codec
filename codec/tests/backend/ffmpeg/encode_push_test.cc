@@ -72,7 +72,7 @@ TEST(EncodePushTest, PushDeliversAllPacketsInOrder) {
   std::vector<VideoPacket> packets;
   VideoPacket pkt;
   for (;;) {
-    const Status pr = q.Pop(pkt, 0);
+    const Status pr = q.Next(pkt, 0);
     if (pr == Status::kEos || pr == Status::kEmpty) break;
     ASSERT_EQ(pr, Status::kOk);
     packets.push_back(std::move(pkt));
@@ -132,7 +132,7 @@ TEST(EncodePushTest, BackpressurePacesProducerWithoutLoss) {
 
   std::vector<VideoPacket> drained;
   VideoPacket pkt;
-  while (q.Pop(pkt, 5000) == Status::kOk) drained.push_back(std::move(pkt));
+  while (q.Next(pkt, 5000) == Status::kOk) drained.push_back(std::move(pkt));
   producer.join();
   EXPECT_FALSE(producer_failed.load());
   EXPECT_TRUE(producer_done.load());

@@ -246,13 +246,13 @@ flowchart LR
     Q["PacketQueue<br/>(bounded SPSC ring buffer)"]
     CON["Consumer<br/>(muxer / network / file)"]
     ENC -->|Submit(VideoPacket)| Q
-    Q -->|Pop()| CON
+    Q -->|Next()| CON
     CON -->|back-pressure / drain| ENC
 ```
 
 Encoded output is handed off through a **bounded SPSC ring buffer**
 (`PacketQueue`): the encoder (producer) calls `OutputSink::Submit(...)`; a
-`PacketSource::Await` drain loop on the consumer thread calls `PacketSource::Pop(...)` and
+`PacketSource::Await` drain loop on the consumer thread calls `PacketSource::Next(...)` and
 forwards each packet to a `PacketConsumer`. The consumer is **transport-agnostic** — both
 target consumers implement `PacketConsumer`: `FileSinkConsumer` (save `.h264`/`.aac` or
 mux to `.mp4`) and `StreamConsumer` (推流: RTMP / SRT / WebRTC). Swapping file output for

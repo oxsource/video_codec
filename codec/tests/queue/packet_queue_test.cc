@@ -37,7 +37,7 @@ TEST(PacketQueueTest, SpscInOrderNoLoss) {
   std::thread consumer([&] {
     while (got < kN) {
       VideoPacket p;
-      Status r = q.Pop(p, 2'000'000);
+      Status r = q.Next(p, 2'000'000);
       if (r == Status::kOk) {
         seen.push_back(p.data[0]);
         ++got;
@@ -83,7 +83,7 @@ TEST(PacketQueueTest, BlockWaitsForConsumer) {
   int got = 0;
   while (got < 2 + 5) {
     VideoPacket p;
-    Status r = q.Pop(p, 2'000'000);
+    Status r = q.Next(p, 2'000'000);
     if (r == Status::kOk)
       ++got;
     else if (r == Status::kEos)
@@ -105,7 +105,7 @@ TEST(PacketQueueTest, DropOldestKeepsNewest) {
   // Remaining packets are the last 4 (6,7,8,9).
   for (int i = 6; i < 10; ++i) {
     VideoPacket p;
-    ASSERT_EQ(q.Pop(p, 0), Status::kOk);
+    ASSERT_EQ(q.Next(p, 0), Status::kOk);
     ASSERT_EQ(p.data[0], static_cast<uint8_t>(i));
   }
 }
@@ -126,9 +126,9 @@ TEST(PacketQueueTest, EosReportedAfterDrain) {
   q.MarkEos();
 
   VideoPacket p;
-  ASSERT_EQ(q.Pop(p, 0), Status::kOk);
+  ASSERT_EQ(q.Next(p, 0), Status::kOk);
   ASSERT_EQ(p.data[0], 1);
-  ASSERT_EQ(q.Pop(p, 0), Status::kEos);
+  ASSERT_EQ(q.Next(p, 0), Status::kEos);
 }
 
 }  // namespace

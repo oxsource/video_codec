@@ -16,7 +16,7 @@ flowchart LR
     SC["StreamConsumer<br/>(RTMP / SRT / WebRTC)"]
 
     ENC -->|OutputSink::Submit| Q
-    Q -->|PacketSource::Pop| AW
+    Q -->|PacketSource::Next| AW
     AW -->|PacketSink::Consume| FC
     AW -->|PacketSink::Consume| SC
 ```
@@ -40,7 +40,7 @@ into pre-allocated slots — no per-packet heap allocation on the encode hot pat
 - Bounded, fixed `capacity` (power of two) chosen at construction.
 - Single producer (encoder), single consumer (drain loop) → **SPSC** over a slot array.
 - Video and audio are **distinct types** (`VideoPacket` / `AudioPacket`), each with its own
-  `Submit`/`Pop` overload, stored on **two independent rings** — one per media — so
+  `Submit`/`Next` overload, stored on **two independent rings** — one per media — so
   back-pressure and drain are per-media: a stall on video does not block audio and vice
   versa.
 - Back-pressure when full (configurable):
@@ -61,7 +61,7 @@ sequenceDiagram
     participant P as PacketSource::Await (consumer thread)
     participant C as PacketConsumer (File / Stream)
     loop while not EOS
-        P->>Q: Pop(deadline)
+        P->>Q: Next(deadline)
         Q-->>P: VideoPacket / AudioPacket (or timeout/empty)
         P->>C: Consume(VideoPacket&&) / Consume(AudioPacket&&)
         C-->>P: Status
@@ -98,7 +98,7 @@ Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us = 100'000) {
   bool video_done = false, audio_done = false;
   while (!video_done || !audio_done) {
     if (!video_done) {
-      switch (Pop(vp, deadline_us)) {
+      switch (Next(vp, deadline_us)) {
         case Status::kOk:
           if (sink.Consume(std::move(vp)) != Status::kOk) {
             sink.Finish();
@@ -113,7 +113,7 @@ Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us = 100'000) {
       }
     }
     if (!audio_done) {
-      switch (Pop(ap, deadline_us)) {
+      switch (Next(ap, deadline_us)) {
         case Status::kOk:
           if (sink.Consume(std::move(ap)) != Status::kOk) {
             sink.Finish();
@@ -134,7 +134,7 @@ Status PacketQueue::Await(PacketSink& sink, int64_t deadline_us = 100'000) {
 
 Behavior:
 
-- **Blocking drain**: `Pop(deadline)` (default 100 ms) blocks instead of busy-spinning when
+- **Blocking drain**: `Next(deadline)` (default 100 ms) blocks instead of busy-spinning when
   the queue is momentarily empty (`kEmpty` → try the other media / retry next iteration).
 - **Video + audio**: distinct types on two internal rings, drained alternately in `Await`;
   a video-only or audio-only queue still ends in a clean `Finish()`.

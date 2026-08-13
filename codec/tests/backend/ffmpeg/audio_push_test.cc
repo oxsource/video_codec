@@ -53,7 +53,7 @@ TEST(AudioPushTest, PushDeliversAudioPacketsInOrder) {
   std::vector<AudioPacket> packets;
   AudioPacket pkt;
   for (;;) {
-    const Status pr = q.Pop(pkt, 0);
+    const Status pr = q.Next(pkt, 0);
     if (pr == Status::kEos || pr == Status::kEmpty) break;
     ASSERT_EQ(pr, Status::kOk);
     packets.push_back(std::move(pkt));

@@ -165,7 +165,7 @@ overflows `cmdsize`; lazy static linking drops unreferenced internal members →
 
 **Decision**: Hand off encoded packets to consumers through a **bounded SPSC ring
 buffer** (`PacketQueue`), exposed as two interfaces — `OutputSink` (producer /
-encoder writes via `Submit`) and `PacketSource` (consumer pops via `TryPop`/`Pop`).
+encoder writes via `Submit`) and `PacketSource` (consumer pops via `TryPop`/`Next`).
 Implementation is lock-free via atomic `head_`/`tail_` indices over a fixed power-of-two
 slot array; packets are **moved** in and out (no per-packet allocation on the hot path).
 Back-pressure when full is configurable: `kBlock` (default), `kDropOldest`, or `kError`.

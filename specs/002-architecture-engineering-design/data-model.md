@@ -161,8 +161,8 @@ class PacketSource {              // consumer endpoint (pops here)
   public:
     virtual ~PacketSource() = default;
     // Blocking variant takes a deadline; returns Status::kOk / kEmpty / kEos.
-    virtual Status Pop(VideoPacket& out, int64_t deadline_us) = 0;
-    virtual Status Pop(AudioPacket& out, int64_t deadline_us) = 0;
+    virtual Status Next(VideoPacket& out, int64_t deadline_us) = 0;
+    virtual Status Next(AudioPacket& out, int64_t deadline_us) = 0;
 };
 ```
 
@@ -193,7 +193,7 @@ consumer side exposes `PacketSource`.
 - `Submit` on a full queue honors `policy`: `kBlock` waits, `kDropOldest` overwrites the
   oldest unconsumed slot, `kError` returns `kBackendUnavailable` (or a dedicated
   back-pressure code).
-- `Pop(deadline)` on an empty queue returns `Status::kEmpty` (non-blocking when
+- `Next(deadline)` on an empty queue returns `Status::kEmpty` (non-blocking when
   `deadline <= 0`); a blocking variant is provided for consumers that must wait.
 
 ### Consumer side (`PacketConsumer`)
@@ -221,8 +221,8 @@ Two target consumers implement this (both deferred to implementation, designed n
 | `FileSinkConsumer` | Save `.h264`/`.aac` or mux to `.mp4`/`.mkv` | preserve order + keyframe/SPS-PPS; flush on `Finish()` |
 | `StreamConsumer` | 推流: RTMP / SRT / WebRTC | frame Annex-B → protocol units; connection lifecycle + reconnect; pace by `pts_us`; propagate back-pressure (slow socket → slow `Consume` → ring fills → encoder slows) |
 
-`src.Await(consumer)` loops `Pop` → `Consume`; calls `Finish()` at EOS. A
-blocking `Pop(deadline)` avoids busy-spin.
+`src.Await(consumer)` loops `Next` → `Consume`; calls `Finish()` at EOS. A
+blocking `Next(deadline)` avoids busy-spin.
 
 ### Multiple consumers (record + stream)
 

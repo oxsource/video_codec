@@ -13,7 +13,7 @@ namespace video {
 namespace codec {
 
 // A single-producer / single-consumer bounded ring buffer. One producer (the
-// encoder) pushes via OutputSink; one consumer drains via PacketSource (Pop /
+// encoder) pushes via OutputSink; one consumer drains via PacketSource (Next /
 // Await). Packets are MOVED in and out of pre-allocated slots, so
 // there is no per-packet heap allocation on the hot path.
 //
@@ -124,8 +124,8 @@ class PacketQueue : public OutputSink, public PacketSource {
   Status Flush() override { return Status::kOk; }
 
   // PacketSource (consumer). Each ring blocks/drains independently.
-  Status Pop(VideoPacket& out, int64_t deadline_us) override;
-  Status Pop(AudioPacket& out, int64_t deadline_us) override;
+  Status Next(VideoPacket& out, int64_t deadline_us) override;
+  Status Next(AudioPacket& out, int64_t deadline_us) override;
 
   // Await mechanism: block on the calling thread, delivering every packet
   // (video and audio, drained alternately) to `sink` until EOS.

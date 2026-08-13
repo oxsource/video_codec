@@ -18,7 +18,7 @@ template <typename Pkt>
 bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink,
               int64_t deadline_us, const char* what) {
   if (done) return true;
-  switch (src.Pop(out, deadline_us)) {
+  switch (src.Next(out, deadline_us)) {
     case Status::kOk:
       if (sink.Consume(std::move(out)) != Status::kOk) {
         VC_LOG(LogLevel::kError,
@@ -33,7 +33,7 @@ bool DrainOne(PacketSource& src, Pkt& out, bool& done, PacketSink& sink,
     case Status::kEmpty:
       return true;  // try the other media (or retry next iteration)
   }
-  return true;  // Pop only yields kOk/kEmpty/kEos; keep draining otherwise
+  return true;  // Next only yields kOk/kEmpty/kEos; keep draining otherwise
 }
 
 }  // namespace
@@ -55,11 +55,11 @@ Status PacketQueue::Submit(AudioPacket&& pkt) {
                                                  : Status::kInvalidArgument;
 }
 
-Status PacketQueue::Pop(VideoPacket& out, int64_t deadline_us) {
+Status PacketQueue::Next(VideoPacket& out, int64_t deadline_us) {
   return video_.Pop(out, deadline_us);
 }
 
-Status PacketQueue::Pop(AudioPacket& out, int64_t deadline_us) {
+Status PacketQueue::Next(AudioPacket& out, int64_t deadline_us) {
   return audio_.Pop(out, deadline_us);
 }
 

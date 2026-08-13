@@ -40,11 +40,11 @@ class PacketSink {
 class PacketSource {
  public:
   virtual ~PacketSource() = default;
-  // Low-level blocking pop. Blocks up to `deadline_us` (<=0 => non-blocking).
+  // Low-level blocking next. Blocks up to `deadline_us` (<=0 => non-blocking).
   // Returns Status::kOk on a packet, Status::kEmpty on timeout/empty, or
   // Status::kEos after MarkEos() and the source is drained.
-  virtual Status Pop(VideoPacket& out, int64_t deadline_us) = 0;
-  virtual Status Pop(AudioPacket& out, int64_t deadline_us) = 0;
+  virtual Status Next(VideoPacket& out, int64_t deadline_us) = 0;
+  virtual Status Next(AudioPacket& out, int64_t deadline_us) = 0;
 
   // Await mechanism replacing the former PacketPump: blocks on the calling
   // thread, delivering every packet (video and audio) to `sink` in order until

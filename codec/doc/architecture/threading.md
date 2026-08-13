@@ -55,13 +55,13 @@ thread** runs the `PacketSource::Await` drain loop:
 flowchart LR
     ET["Encoder thread<br/>(Submit → ring)"]
     Q["PacketQueue"]
-    CT["Consumer thread<br/>(PacketSource::Await: Pop → Consume)"]
+    CT["Consumer thread<br/>(PacketSource::Await: Next → Consume)"]
     ET --> Q
     Q --> CT
 ```
 
 - The encoder thread is the **producer** (calls `OutputSink::Submit`).
-- The consumer thread is the **reader** (calls `PacketSource::Pop` in a loop, then
+- The consumer thread is the **reader** (calls `PacketSource::Next` in a loop, then
   `PacketConsumer::Consume`). This is the SPSC pairing the ring buffer assumes — exactly
   one producer, exactly one reader.
 - The two threads communicate **only** through the ring buffer; no shared mutable state

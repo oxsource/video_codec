@@ -157,7 +157,7 @@ H.264 stream is produced through the public API. MVP achieved. ⚠️ pending T0
 buffer (`PacketQueue`) implementing `OutputSink` (producer) and
 `PacketSource` (consumer), with configurable back-pressure (default `kBlock`).
 
-**Independent Test**: Producer pushes N packets, consumer drains with `Pop(deadline)`
+**Independent Test**: Producer pushes N packets, consumer drains with `Next(deadline)`
 and receives all N in order with zero loss under `kBlock`; verify power-of-two
 capacity + blocking back-pressure in unit tests.
 
