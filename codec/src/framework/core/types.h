@@ -76,6 +76,10 @@ struct VideoEncoderConfig {
   int gop_size = 0;  // 0 = auto
   PixelFormat input_format = PixelFormat::kNV12;
   Backend force_backend = Backend::kAuto;  // kAuto -> platform select
+
+  // True when the config describes an encodable stream (dimensions set).
+  // Backends call this to reject bad configs before doing any real work.
+  bool IsValid() const { return width > 0 && height > 0; }
 };
 
 struct AudioEncoderConfig {
@@ -84,6 +88,9 @@ struct AudioEncoderConfig {
   int channels = 2;
   int bitrate = 128'000;
   Backend force_backend = Backend::kAuto;
+
+  // True when the config describes an encodable stream (rate + channels set).
+  bool IsValid() const { return sample_rate > 0 && channels > 0; }
 };
 
 }  // namespace codec

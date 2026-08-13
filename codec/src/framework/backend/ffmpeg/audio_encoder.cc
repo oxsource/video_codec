@@ -25,13 +25,8 @@ Status FFmpegAudioEncoder::Init() {
   // committing the transition: the lifecycle flips to Initialized only after
   // the real FFmpeg init below succeeds, so a failed Init leaves the encoder
   // in its previous state and reusable.
-  if (lifecycle_.state() != EncoderLifecycle::State::kCreated &&
-      lifecycle_.state() != EncoderLifecycle::State::kFlushed) {
-    return Status::kInvalidArgument;
-  }
-  if (config_.sample_rate <= 0 || config_.channels <= 0) {
-    return Status::kInvalidArgument;
-  }
+  if (!lifecycle_.CanInit()) return Status::kInvalidArgument;
+  if (!config_.IsValid()) return Status::kInvalidArgument;
 
   const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_AAC);
   if (!codec) return Status::kPlatformUnsupported;
