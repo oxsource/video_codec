@@ -24,7 +24,7 @@ cc_library(
 )
 
 cc_library(
-    name = "video_encoder",
+    name = "ffmpeg_video",
     srcs = ["ffmpeg_video.cc"],
     hdrs = ["ffmpeg_video.h"],
     includes = ["."],
@@ -41,7 +41,7 @@ cc_library(
 )
 
 cc_library(
-    name = "audio_encoder",
+    name = "ffmpeg_audio",
     srcs = ["ffmpeg_audio.cc"],
     hdrs = ["ffmpeg_audio.h"],
     includes = ["."],
@@ -57,7 +57,7 @@ cc_library(
 )
 
 cc_library(
-    name = "muxer",
+    name = "ffmpeg_muxer",
     srcs = ["ffmpeg_muxer.cc"],
     hdrs = ["ffmpeg_muxer.h"],
     includes = ["."],
@@ -76,9 +76,9 @@ cc_library(
     includes = ["."],
     alwayslink = True,
     deps = [
-        ":audio_encoder",
-        ":muxer",
-        ":video_encoder",
+        ":ffmpeg_audio",
+        ":ffmpeg_muxer",
+        ":ffmpeg_video",
         "@video_codec//src/framework/api:codec_factory",
     ],
 )
@@ -86,9 +86,9 @@ cc_library(
 cc_library(
     name = "ffmpeg",
     deps = [
-        ":video_encoder",
-        ":audio_encoder",
-        ":muxer",
+        ":ffmpeg_video",
+        ":ffmpeg_audio",
+        ":ffmpeg_muxer",
         ":register",
     ],
 )
