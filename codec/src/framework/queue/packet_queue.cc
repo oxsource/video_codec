@@ -1,6 +1,7 @@
 // packet_queue.cc
 #include "queue/packet_queue.h"
 
+#include <cassert>
 #include <chrono>
 #include <string>
 
@@ -15,7 +16,9 @@ Ring<Pkt>::Ring(size_t capacity, Backpressure policy)
       mask_(capacity - 1),
       policy_(policy),
       slots_(capacity) {
-  // Caller guarantees capacity is a power of two (> 0).
+  // A non-power-of-two capacity corrupts index masking (data loss); capacity 0
+  // deadlocks under kBlock and is UB under kDropOldest (empty slots_).
+  assert(capacity > 0 && (capacity & (capacity - 1)) == 0);
 }
 
 template <typename Pkt>
@@ -44,9 +47,9 @@ template <typename Pkt>
 Status Ring<Pkt>::Pop(Pkt& out, int64_t deadline_us) {
   std::unique_lock<std::mutex> lk(mu_);
   if (deadline_us > 0) {
+    auto ts = std::chrono::microseconds(deadline_us);
     bool signaled =
-        not_empty_.wait_for(lk, std::chrono::microseconds(deadline_us),
-                            [this] { return count_ > 0 || eos_; });
+        not_empty_.wait_for(lk, ts, [this] { return count_ > 0 || eos_; });
     if (!signaled && count_ == 0) return Status::kEmpty;
   } else if (count_ == 0) {
     return eos_ ? Status::kEos : Status::kEmpty;
