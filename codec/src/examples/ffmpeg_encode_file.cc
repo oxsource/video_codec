@@ -39,7 +39,7 @@
 #include "consumer/packet_consumer.h"
 #include "io/file_byte_sink.h"
 #include "queue/packet_queue.h"
-#include "utils/media_file_format.h"
+#include "utils/media_format.h"
 #include "utils/smpte_bars.h"
 
 namespace vc = video::codec;
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
   if (seconds <= 0) seconds = 5;
 
   // The mode owns the extension: --raw -> .h264, otherwise MP4 -> .mp4.
-  out_path += raw ? vcu::MediaFileFormat::kH264 : vcu::MediaFileFormat::kMp4;
+  out_path += raw ? vcu::MediaFormat::kH264 : vcu::MediaFormat::kMp4;
 
   const int width = 640;
   const int height = 480;

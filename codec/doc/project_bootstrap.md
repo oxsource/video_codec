@@ -213,7 +213,7 @@ codec/src/framework/
 ├── io/          # ByteSink 输出契约 + FileByteSink/StreamByteSink/TeeByteSink
 ├── consumer/    # PacketConsumer, FileSinkConsumer（裸流 Annex-B / ADTS）
 ├── convert/     # libyuv 像素格式转换（PixelConverter）
-├── utils/       # 布局/测试图案工具：Stride, SmpteBars, MediaFileFormat
+├── utils/       # 布局/测试图案工具：Stride, SmpteBars, MediaFormat
 └── public/      # 公开 API 汇总入口
 ```
 

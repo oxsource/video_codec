@@ -21,8 +21,8 @@ cc_test(
 )
 
 cc_test(
-    name = "media_file_format_test",
-    srcs = ["media_file_format_test.cc"],
+    name = "media_format_test",
+    srcs = ["media_format_test.cc"],
     deps = [
         "//src/framework/utils",
         "@com_google_googletest//:gtest_main",
