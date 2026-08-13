@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
   }
 
   // Consumer thread awaits packets from the queue into the output.
-  std::thread pump([&] { queue.Await(*consumer); });
+  std::thread worker([&] { queue.Await(*consumer); });
 
   const auto start = std::chrono::steady_clock::now();
   int64_t produced = 0;
@@ -131,7 +131,7 @@ int main(int argc, char** argv) {
   // (multi-producer safety). Await finishes the file at EOS.
   encoder->Flush();
   queue.MarkEos();
-  pump.join();
+  worker.join();
 
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                               std::chrono::steady_clock::now() - start)
