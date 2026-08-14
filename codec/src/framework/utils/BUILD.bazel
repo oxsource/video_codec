@@ -12,6 +12,13 @@ cc_library(
     srcs = ["smpte_bars.cc"],
     hdrs = ["smpte_bars.h"],
     includes = ["."],
+    # Android only: the SurfaceRenderer (input-surface drawing) uses
+    # ANativeWindow + EGL/GLES (libandroid/libEGL/libGLESv2). Host builds get
+    # no linkopts (the renderer is a stub there).
+    linkopts = select({
+        "//platforms:android_arm64_platform_setting": ["-landroid", "-lEGL", "-lGLESv2"],
+        "//conditions:default": [],
+    }),
     deps = ["@video_codec//src/framework/core:types"],
 )
 

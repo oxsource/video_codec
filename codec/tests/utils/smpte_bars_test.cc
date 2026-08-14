@@ -193,6 +193,14 @@ TEST(SmpteBarsTest, AudioPaceCoversVideoDuration) {
   EXPECT_GT(total_samples, 48000 - 1024);
 }
 
+TEST(SmpteBarsTest, SurfaceUnsupportedOnHost) {
+  // Surface encapsulates the platform check: on the host build (non-Android)
+  // Create() returns nullptr, so callers need no platform guards.
+  EXPECT_EQ(SmpteBars::Surface::Create(nullptr, 640, 480), nullptr);
+  EXPECT_EQ(SmpteBars::Surface::Create(reinterpret_cast<void*>(1), 0, 0), nullptr);
+  EXPECT_EQ(SmpteBars::Surface::Create(reinterpret_cast<void*>(1), -640, 480), nullptr);
+}
+
 }  // namespace
 }  // namespace utils
 }  // namespace codec

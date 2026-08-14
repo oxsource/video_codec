@@ -12,7 +12,7 @@ namespace codec {
 
 class PacketSink;  // fwd-declared: `api` stays free of a `queue` dependency.
 
-// Abstract audio encoder (backend subclass). No Surface/InputSurface for audio.
+// Abstract audio encoder (backend subclass). No input surface for audio.
 class VIDEO_CODEC_API AudioEncoder {
  public:
   virtual ~AudioEncoder() = default;

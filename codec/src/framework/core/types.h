@@ -25,7 +25,7 @@ enum class Backend { kAuto, kAndroid, kFFmpeg };
 // for an out-of-range value. A free function (not a member): C++ enum classes
 // cannot declare member functions. Mirrors StatusToString (status.h) so log
 // lines and error paths can name a backend; these lowercase names also back
-// the example's --backend values and output-file suffixes.
+// the example's output-file suffixes (e.g. out-ffmpeg.mp4 / out-android.mp4).
 inline VIDEO_CODEC_API const char* BackendToString(Backend b) {
   switch (b) {
     case Backend::kAuto:
@@ -100,9 +100,22 @@ struct VideoConfig {
   PixelFormat input_format = PixelFormat::kNV12;
   Backend backend = Backend::kAuto;  // kAuto -> platform select
 
+  // Surface input mode (Android MediaCodec createInputSurface, zero-copy): the
+  // encoder exposes a hardware input surface (`CreateInputSurface()` returns
+  // the ANativeWindow* handle) and the caller draws into it. MUST be set before
+  // Init() — the codec is configured with COLOR_FormatSurface at configure time
+  // and cannot switch to CPU input afterwards. Mutually exclusive with
+  // `Encode(VideoFrame)` (input-mode contract C-012).
+  bool input_surface = false;
+
   // True when the config describes an encodable stream (dimensions set).
+  // Surface mode additionally requires even dimensions and H.264 (v1).
   // Backends call this to reject bad configs before doing any real work.
-  bool IsValid() const { return width > 0 && height > 0; }
+  bool IsValid() const {
+    if (width <= 0 || height <= 0) return false;
+    if (!input_surface) return true;
+    return codec == VideoCodecType::kH264 && width % 2 == 0 && height % 2 == 0;
+  }
 };
 
 struct AudioConfig {

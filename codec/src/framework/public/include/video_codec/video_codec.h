@@ -27,10 +27,9 @@
 #include "status.h"
 #include "types.h"
 
-// Abstract encoder interfaces, surface input, muxer, and backend factory
+// Abstract encoder interfaces, muxer, and backend factory
 #include "audio_encoder.h"
 #include "codec_factory.h"
-#include "input_surface.h"
 #include "muxer.h"
 #include "video_encoder.h"
 

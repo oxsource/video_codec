@@ -101,6 +101,41 @@ TEST(MediacodecUtilsTest, StartsWithNal) {
   EXPECT_FALSE(StartsWithNal(no_sc.data(), no_sc.size(), 7));
 }
 
+TEST(MediacodecUtilsTest, SurfaceFormatConstant) {
+  // MediaCodec COLOR_FormatSurface for input-surface mode (contract C-050).
+  EXPECT_EQ(kColorFormatSurface, 0x7F000789);
+}
+
+TEST(MediacodecUtilsTest, VideoConfigSurfaceValidation) {
+  video::codec::VideoConfig cfg;
+  cfg.width = 640;
+  cfg.height = 480;
+  cfg.fps = 30;
+  cfg.codec = video::codec::VideoCodecType::kH264;
+
+  // CPU mode: dims suffice.
+  cfg.input_surface = false;
+  EXPECT_TRUE(cfg.IsValid());
+
+  // Surface mode: needs H.264 + even dimensions.
+  cfg.input_surface = true;
+  EXPECT_TRUE(cfg.IsValid());
+
+  // Odd dimensions rejected in surface mode.
+  cfg.width = 641;
+  EXPECT_FALSE(cfg.IsValid());
+  cfg.width = 640;
+
+  // HEVC rejected in surface mode (v1 H.264 only).
+  cfg.codec = video::codec::VideoCodecType::kHEVC;
+  EXPECT_FALSE(cfg.IsValid());
+  cfg.codec = video::codec::VideoCodecType::kH264;
+
+  // Missing dims rejected regardless of mode.
+  cfg.width = 0;
+  EXPECT_FALSE(cfg.IsValid());
+}
+
 TEST(MediacodecUtilsTest, BuildAudioSpecificConfig) {
   std::vector<uint8_t> asc;
   ASSERT_TRUE(BuildAudioSpecificConfig(48000, 2, &asc));

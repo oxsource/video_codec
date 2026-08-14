@@ -3,6 +3,13 @@
 
 #include <cmath>
 
+#if defined(__ANDROID__)
+#include <android/native_window.h>
+#include <EGL/egl.h>
+#include <EGL/eglext.h>
+#include <GLES2/gl2.h>
+#endif
+
 namespace video {
 namespace codec {
 namespace utils {
@@ -111,6 +118,136 @@ AudioFrame SmpteBars::MakeAudioFrame(int frame_index, const AudioOptions& opts) 
   }
   return f;
 }
+
+// ---- Surface (Android input-surface rendering) ---------------------
+#if defined(__ANDROID__)
+struct SmpteBars::Surface::Impl {
+  EGLDisplay display = EGL_NO_DISPLAY;
+  EGLSurface surface = EGL_NO_SURFACE;
+  EGLContext context = EGL_NO_CONTEXT;
+};
+
+namespace {
+
+// eglPresentationTimeANDROID — per-frame timestamp for the input surface
+// (EGL extension; resolved at runtime, research R7).
+using PresentationTimeFn = EGLBoolean (*)(EGLDisplay, EGLSurface, EGLnsecsANDROID);
+PresentationTimeFn ResolvePresentationTime() {
+  static PresentationTimeFn fn =
+      reinterpret_cast<PresentationTimeFn>(eglGetProcAddress("eglPresentationTimeANDROID"));
+  return fn;
+}
+
+}  // namespace
+
+std::unique_ptr<SmpteBars::Surface> SmpteBars::Surface::Create(void* native_window,
+                                                                               int width,
+                                                                               int height) {
+  ANativeWindow* window = static_cast<ANativeWindow*>(native_window);
+  if (!window || width <= 0 || height <= 0) return nullptr;
+
+  auto impl = std::make_unique<Impl>();
+  impl->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+  if (impl->display == EGL_NO_DISPLAY ||
+      eglInitialize(impl->display, nullptr, nullptr) != EGL_TRUE) {
+    return nullptr;
+  }
+  static const EGLint kWindowAttribs[] = {
+      EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+      EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+      EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
+      EGL_NONE,
+  };
+  EGLConfig config = nullptr;
+  EGLint num_configs = 0;
+  if (eglChooseConfig(impl->display, kWindowAttribs, &config, 1, &num_configs) != EGL_TRUE ||
+      num_configs < 1) {
+    eglTerminate(impl->display);
+    return nullptr;
+  }
+  impl->surface = eglCreateWindowSurface(impl->display, config, window, nullptr);
+  if (impl->surface == EGL_NO_SURFACE) {
+    eglTerminate(impl->display);
+    return nullptr;
+  }
+  static const EGLint kContextAttribs[] = {EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE};
+  impl->context = eglCreateContext(impl->display, config, EGL_NO_CONTEXT, kContextAttribs);
+  if (impl->context == EGL_NO_CONTEXT) {
+    eglDestroySurface(impl->display, impl->surface);
+    eglTerminate(impl->display);
+    return nullptr;
+  }
+  if (eglMakeCurrent(impl->display, impl->surface, impl->surface, impl->context) != EGL_TRUE) {
+    eglDestroyContext(impl->display, impl->context);
+    eglDestroySurface(impl->display, impl->surface);
+    eglTerminate(impl->display);
+    return nullptr;
+  }
+  return std::unique_ptr<Surface>(new Surface(std::move(impl)));
+}
+
+bool SmpteBars::Surface::RenderFrame(int frame_index, int fps, int64_t timestamp_us) {
+  if (!impl_ || fps <= 0) return false;
+  // Use the window's actual size (the surface may scale/reject a mismatched
+  // geometry; the CPU path sizes the pattern to the reported buffer).
+  EGLint w = 0, h = 0;
+  if (eglQuerySurface(impl_->display, impl_->surface, EGL_WIDTH, &w) != EGL_TRUE) return false;
+  if (eglQuerySurface(impl_->display, impl_->surface, EGL_HEIGHT, &h) != EGL_TRUE) return false;
+
+  // 7 vertical SMPTE bars (kPalette, 75%) + a moving white line at the bottom
+  // (matching MakeVideoFrame), drawn with scissor + clear — fixed-function
+  // GLES2, no shaders.
+  glViewport(0, 0, w, h);
+  glDisable(GL_SCISSOR_TEST);
+  glClearColor(0, 0, 0, 1);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glEnable(GL_SCISSOR_TEST);
+  const int bar_w = (w + static_cast<int>(kCount) - 1) / static_cast<int>(kCount);
+  for (size_t b = 0; b < kCount; ++b) {
+    const int x0 = static_cast<int>(b) * bar_w;
+    const int bw = b == kCount - 1 ? w - x0 : bar_w;
+    glScissor(x0, 0, bw, h);
+    glClearColor(kPalette[b].r / 255.0f, kPalette[b].g / 255.0f, kPalette[b].b / 255.0f, 1);
+    glClear(GL_COLOR_BUFFER_BIT);
+  }
+  // Moving white line (bottom 10%, sweeping over ~fps frames) — matches the
+  // CPU-path generator (MakeVideoFrame).
+  const int line_x = (frame_index * w / fps) % w;
+  const int line_w = w / 40;
+  const int line_h = h / 10;
+  glScissor(line_x, 0, line_w, line_h);
+  glClearColor(1, 1, 1, 1);
+  glClear(GL_COLOR_BUFFER_BIT);
+  glDisable(GL_SCISSOR_TEST);
+
+  if (auto pt = ResolvePresentationTime()) {
+    pt(impl_->display, impl_->surface, static_cast<EGLnsecsANDROID>(timestamp_us) * 1000);
+  }
+  return eglSwapBuffers(impl_->display, impl_->surface) == EGL_TRUE;
+}
+
+SmpteBars::Surface::~Surface() {
+  if (!impl_) return;
+  if (impl_->context != EGL_NO_CONTEXT) eglDestroyContext(impl_->display, impl_->context);
+  if (impl_->surface != EGL_NO_SURFACE) eglDestroySurface(impl_->display, impl_->surface);
+  if (impl_->display != EGL_NO_DISPLAY) eglTerminate(impl_->display);
+}
+
+#else  // !defined(__ANDROID__)
+
+struct SmpteBars::Surface::Impl {};
+
+std::unique_ptr<SmpteBars::Surface> SmpteBars::Surface::Create(void*, int, int) {
+  return nullptr;
+}
+
+bool SmpteBars::Surface::RenderFrame(int, int, int64_t) { return false; }
+
+SmpteBars::Surface::~Surface() = default;
+
+#endif  // defined(__ANDROID__)
+
+SmpteBars::Surface::Surface(std::unique_ptr<Impl> impl) : impl_(std::move(impl)) {}
 
 }  // namespace utils
 }  // namespace codec

@@ -57,12 +57,6 @@ cc_library(
 )
 
 cc_library(
-    name = "input_surface",
-    hdrs = ["input_surface.h"],
-    includes = ["."],
-)
-
-cc_library(
     name = "api",
     deps = [
         ":video_encoder",
@@ -70,6 +64,5 @@ cc_library(
         ":encoder_lifecycle",
         ":muxer",
         ":codec_factory",
-        ":input_surface",
     ],
 )

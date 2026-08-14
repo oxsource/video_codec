@@ -21,13 +21,18 @@ namespace {
 // MediaCodec BUFFER_FLAG_KEY_FRAME value is 1.
 constexpr uint32_t kKeyFrameFlag = 1;
 
-// Timeout for dequeue calls while polling for buffers (microseconds).
-constexpr int64_t kDequeueTimeoutUs = 10'000;
+  // Timeout for dequeue calls while polling for buffers (microseconds).
+  constexpr int64_t kDequeueTimeoutUs = 10'000;
 
-// Wait for an input buffer slot, returns its index or -1.
-ssize_t DequeueInput(AMediaCodec* codec) {
-  return AMediaCodec_dequeueInputBuffer(codec, kDequeueTimeoutUs);
-}
+  // Drain deadline for the surface path (microseconds). EOS-after-
+  // signalEndOfInputStream is not guaranteed across Android encoders, so the
+  // surface Flush must not block forever (research R3).
+  constexpr int64_t kEosDrainDeadlineUs = 5'000'000;
+
+  // Wait for an input buffer slot, returns its index or -1.
+  ssize_t DequeueInput(AMediaCodec* codec) {
+    return AMediaCodec_dequeueInputBuffer(codec, kDequeueTimeoutUs);
+  }
 
 }  // namespace
 
@@ -47,7 +52,10 @@ Status MediaCodecVideoEncoder::Init() {
   codec_.reset(AMediaCodec_createEncoderByType(mime));
   if (!codec_) return Status::kPlatformUnsupported;
 
-  const int color_format = android::ColorFormatFor(config_.input_format);
+  // Surface mode configures the encoder with COLOR_FormatSurface and feeds it
+  // through the hardware input surface (zero-copy) instead of CPU frames.
+  const int color_format =
+      SurfaceMode() ? android::kColorFormatSurface : android::ColorFormatFor(config_.input_format);
   if (color_format == 0) {
     Release();
     return Status::kUnsupportedFormat;
@@ -66,7 +74,27 @@ Status MediaCodecVideoEncoder::Init() {
 
   const media_status_t cfg = AMediaCodec_configure(codec_.get(), format_.get(), nullptr, nullptr,
                                                    AMEDIACODEC_CONFIGURE_FLAG_ENCODE);
-  if (cfg != AMEDIA_OK || AMediaCodec_start(codec_.get()) != AMEDIA_OK) {
+  if (cfg != AMEDIA_OK) {
+    Release();
+    return Status::kEncodeFailed;
+  }
+
+  if (SurfaceMode()) {
+    // Create the hardware input surface (zero-copy) BEFORE start() — MediaCodec
+    // requires createInputSurface in the initialized state (INVALID_OPERATION
+    // otherwise). The caller draws into it (ANativeWindow* via
+    // CreateInputSurface) and the system delivers buffers to the encoder. The
+    // window reference is owned by the codec; the caller must not release it
+    // (contract C-004). On failure the encoder reports kPlatformUnsupported
+    // and stays unusable for surface input (C-040).
+    if (AMediaCodec_createInputSurface(codec_.get(), &surface_window_) != AMEDIA_OK ||
+        !surface_window_) {
+      Release();
+      return Status::kPlatformUnsupported;
+    }
+  }
+
+  if (AMediaCodec_start(codec_.get()) != AMEDIA_OK) {
     Release();
     return Status::kEncodeFailed;
   }
@@ -76,6 +104,9 @@ Status MediaCodecVideoEncoder::Init() {
     Release();
     return Status::kInvalidArgument;
   }
+  // Surface input is "encoding" from creation: mark it so Poll()/Flush() work
+  // even if the caller never draws before flushing (idempotent).
+  if (SurfaceMode()) lifecycle_.Encode();
   return Status::kOk;
 }
 
@@ -134,6 +165,9 @@ Status MediaCodecVideoEncoder::QueueInput(const VideoFrame& frame) {
 }
 
 Result<VideoPacket> MediaCodecVideoEncoder::Encode(const VideoFrame& frame) {
+  // Input-mode mutual exclusion (contract C-012): surface mode feeds the codec
+  // through the hardware input surface only; CPU frames are rejected.
+  if (SurfaceMode()) return Err<VideoPacket>(Status::kUnsupportedOperation);
   if (lifecycle_.Encode() != Status::kOk) return Err<VideoPacket>(Status::kNotInitialized);
   if (QueueInput(frame) != Status::kOk) return Err<VideoPacket>(Status::kEncodeFailed);
   // Advance the fallback presentation clock by one frame's duration (µs) so
@@ -146,11 +180,41 @@ Result<VideoPacket> MediaCodecVideoEncoder::Encode(const VideoFrame& frame) {
 
 Result<VideoPacket> MediaCodecVideoEncoder::Encode(const NativeBuffer&) {
   // v1: CPU input path only; no hardware surface / native-buffer import.
+  // Surface mode likewise rejects this (input-mode mutual exclusion, C-012).
   return Err<VideoPacket>(Status::kUnsupportedOperation);
+}
+
+void* MediaCodecVideoEncoder::CreateInputSurface() {
+  // nullptr until Init() created the surface, and after Release() (which clears
+  // surface_window_). Idempotent: repeated calls return the same handle
+  // (contract C-004/C-005). Non-surface (CPU) mode never creates a window and
+  // therefore always returns nullptr (C-002/C-003).
+  return static_cast<void*>(surface_window_);
+}
+
+Status MediaCodecVideoEncoder::Poll() {
+  // Surface-mode pump: drain ready output so the encoder keeps consuming input
+  // surface frames (hardware encoders stall when their output queue fills,
+  // which back-pressures the input surface — research R7). In push mode the
+  // drained packets go to the sink; the pull-mode return is discarded here.
+  if (!SurfaceMode()) return Status::kOk;
+  if (lifecycle_.Encode() != Status::kOk) return Status::kNotInitialized;
+  Result<VideoPacket> r = Drain(/*drain_eof=*/false);
+  return r.ok() ? Status::kOk : r.status();
 }
 
 Result<VideoPacket> MediaCodecVideoEncoder::Flush() {
   if (lifecycle_.Flush() != Status::kOk) return Err<VideoPacket>(Status::kNotInitialized);
+
+  if (SurfaceMode()) {
+    // Surface input has no input buffer: signal end-of-input-stream, then drain.
+    // EOS output after signalEndOfInputStream is NOT guaranteed across Android
+    // encoders, so drain with a deadline instead of blocking forever (R3).
+    AMediaCodec_signalEndOfInputStream(codec_.get());
+    Result<VideoPacket> r = Drain(/*drain_eof=*/true, /*deadline_us=*/kEosDrainDeadlineUs);
+    if (sink_) sink_->Flush();
+    return r;
+  }
 
   // Signal end-of-stream so every buffered frame is emitted, then drain. The
   // codec consumes input asynchronously, so retry briefly if no input slot is
@@ -176,12 +240,25 @@ Status MediaCodecVideoEncoder::SetOutputSink(PacketSink* sink) {
   return Status::kOk;
 }
 
-Result<VideoPacket> MediaCodecVideoEncoder::Drain(bool drain_eof) {
+Result<VideoPacket> MediaCodecVideoEncoder::Drain(bool drain_eof, int64_t deadline_us) {
   VideoPacket out;  // pull-mode result (push mode returns an empty packet)
+  const auto start = std::chrono::steady_clock::now();
   for (;;) {
     AMediaCodecBufferInfo info{};
     const ssize_t idx = AMediaCodec_dequeueOutputBuffer(codec_.get(), &info, kDequeueTimeoutUs);
     if (idx == AMEDIACODEC_INFO_TRY_AGAIN_LATER) {
+      // Poll-once for the normal path. With a deadline (surface EOS drain),
+      // keep polling until the deadline expires — EOS-after-
+      // signalEndOfInputStream is not guaranteed across Android encoders, so
+      // this drain must terminate (research R3).
+      if (drain_eof && deadline_us > 0) {
+        const auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::microseconds>(now - start).count() >=
+            deadline_us) {
+          break;  // deadline reached
+        }
+        continue;
+      }
       break;  // nothing ready
     }
     if (idx == AMEDIACODEC_INFO_OUTPUT_FORMAT_CHANGED ||
@@ -259,6 +336,7 @@ Result<VideoPacket> MediaCodecVideoEncoder::Drain(bool drain_eof) {
 void MediaCodecVideoEncoder::Release() {
   lifecycle_.Release();
   sink_ = nullptr;  // non-owning; caller owns the sink lifetime
+  surface_window_ = nullptr;  // input-surface handle invalidates after Release (C-004)
   if (codec_) AMediaCodec_stop(codec_.get());
   codec_.reset();  // AMediaCodec_delete via the RAII deleter
   format_.reset();

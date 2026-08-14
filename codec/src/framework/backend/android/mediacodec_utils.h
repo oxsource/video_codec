@@ -16,6 +16,11 @@ namespace video {
 namespace codec {
 namespace android {
 
+// MediaCodec COLOR_FormatSurface — the encoder input format for surface mode
+// (AMediaCodec_createInputSurface). Value from the platform (0x7F000789);
+// kept here as a host-testable constant (contract C-050).
+constexpr int kColorFormatSurface = 0x7F000789;
+
 // AMediaCodec COLOR_Format_* value for a framework PixelFormat; 0 = unsupported
 // (I420 -> COLOR_FormatYUV420Planar, NV12 -> COLOR_FormatYUV420SemiPlanar).
 int ColorFormatFor(PixelFormat format);

@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 #include "types.h"
 
@@ -124,6 +125,39 @@ class SmpteBars {
     int fps_;
     int64_t generated_ = 0;  // total samples handed out
     int64_t produced_ = 0;   // audio frames handed out
+  };
+
+  // Renders SMPTE color bars into a hardware input surface — the ANativeWindow*
+  // returned by `VideoEncoder::CreateInputSurface()`. Draws via EGL/GLES (the
+  // canonical input-surface consumer; the CPU ANativeWindow lock path is not
+  // acquired by every vendor encoder, research R7) and sets the per-frame
+  // timestamp via eglPresentationTimeANDROID. This header stays NDK-free:
+  // `native_window` is the opaque ANativeWindow* as void*. The platform check
+  // lives inside the class: on platforms/builds without input-surface support
+  // Create() returns nullptr and RenderFrame() returns false — callers just
+  // test the returned pointer and need no platform guards.
+  class Surface {
+   public:
+    // Set up an EGL display/surface/context over `native_window` (an
+    // ANativeWindow* from CreateInputSurface). Returns nullptr on unsupported
+    // platforms (non-Android), a null handle, invalid dimensions, or EGL
+    // setup failure.
+    static std::unique_ptr<Surface> Create(void* native_window, int width, int height);
+
+    ~Surface();
+    Surface(const Surface&) = delete;
+    Surface& operator=(const Surface&) = delete;
+
+    // Draw one SMPTE color-bars frame (moving white line driven by
+    // frame_index/fps) and present it to the encoder's input surface with
+    // `timestamp_us`. Returns false on unsupported platforms or a
+    // GLES/present failure.
+    bool RenderFrame(int frame_index, int fps, int64_t timestamp_us);
+
+   private:
+    struct Impl;
+    explicit Surface(std::unique_ptr<Impl> impl);
+    std::unique_ptr<Impl> impl_;
   };
 };
 

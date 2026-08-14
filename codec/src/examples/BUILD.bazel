@@ -1,13 +1,12 @@
 package(default_visibility = ["//visibility:public"])
 
 # Runnable example: SMPTE color bars + 1 kHz test tone -> encoder (push) ->
-# queue -> Await -> Muxer (.mp4, backend from --backend), or raw .h264 via
-# FileConsumer. The backend is selected at runtime by --backend (default
-# auto): the `public:video_codec` dep links the platform backend via select()
-# (FFmpeg on host, Android MediaCodec on Android), so this single binary runs
-# on both. The FFmpeg static archive force-load (ADR-001) applies ONLY on the
-# host; on Android the FFmpeg archive does not exist and the MediaCodec backend
-# is linked instead.
+# queue -> Await -> Muxer (.mp4), or raw .h264 via FileConsumer. The backend
+# is resolved automatically by platform (Backend::kAuto: FFmpeg on host,
+# Android MediaCodec on Android): the `public:video_codec` dep links the
+# platform backend via select(), so this single binary runs on both. The FFmpeg
+# static archive force-load (ADR-001) applies ONLY on the host; on Android the
+# FFmpeg archive does not exist and the MediaCodec backend is linked instead.
 cc_binary(
     name = "encode_file",
     srcs = ["encode_file.cc"],
@@ -16,6 +15,8 @@ cc_binary(
         "//conditions:default": ["@ffmpeg//:ffmpeg_codec_archive"],
     }),
     linkopts = select({
+        # Android needs no extra libs here: the --surface renderer lives in
+        # utils:smpte_bars, which declares its own -landroid/-lEGL/-lGLESv2.
         "//platforms:android_arm64_platform_setting": [],
         # Static linkage so the force_load pulls the whole FFmpeg archive into
         # this binary (Bazel otherwise builds the backend as a dylib).

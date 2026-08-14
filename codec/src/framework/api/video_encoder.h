@@ -10,7 +10,6 @@
 namespace video {
 namespace codec {
 
-class InputSurface;
 class PacketSink;  // fwd-declared: `api` stays free of a `queue` dependency.
 
 // Abstract video encoder. Every backend subclasses this; the contract is frozen
@@ -32,9 +31,20 @@ class VIDEO_CODEC_API VideoEncoder {
   // the handle type.
   virtual Result<VideoPacket> Encode(const NativeBuffer& buf) = 0;
 
-  // Returns a drawable surface, or nullptr if the backend has no Surface
-  // support (FFmpeg software path returns nullptr).
-  virtual std::unique_ptr<InputSurface> CreateInputSurface() { return nullptr; }
+  // Returns a drawable input-surface handle, or nullptr if the backend has no
+  // surface support (non-Android backends return nullptr; on Android it is the
+  // ANativeWindow* from MediaCodec createInputSurface, zero-copy). The caller
+  // draws into the handle; the system delivers buffers to the encoder. The
+  // handle stays valid until Release(). Surface mode is declared via
+  // VideoConfig.input_surface and is mutually exclusive with Encode(VideoFrame).
+  virtual void* CreateInputSurface() { return nullptr; }
+
+  // Surface-mode pump: drains any ready encoded output (delivering it per the
+  // current push/pull mode) so the encoder keeps consuming input-surface
+  // frames — hardware encoders stall when their output queue fills, which
+  // back-pressures the input surface. The caller should invoke this after each
+  // drawn frame. No-op for non-surface modes.
+  virtual Status Poll() { return Status::kOk; }
 
   virtual Result<VideoPacket> Flush() = 0;  // -> Flushed (drain + emit final pkt)
   virtual void Release() = 0;               // free external resources -> Released

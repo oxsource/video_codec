@@ -7,15 +7,19 @@
 #              (no muxer). Pulls the stream and decode-checks it on the host.
 #   run      — full A/V mux: MediaCodec video+audio + MediaMuxer -> MP4.
 #              Pulls the MP4 and ffprobe + decode-checks it on the host.
+#   surface  — full A/V mux via the hardware input surface (spec 007):
+#              encode_file --surface CPU-draws frames into the input surface
+#              (zero-copy), then the MP4 is verified like `run`.
 #
 # The Android side is MediaCodec-only (no FFmpeg, spec 006 R5); the host FFmpeg
 # baseline is covered by `make host_ffmpeg_codec`. Requires ANDROID_NDK_HOME for
-# the cross-build and a connected device/emulator for the raw/run modes.
+# the cross-build and a connected device/emulator for the raw/run/surface modes.
 #
 # Usage:
-#   android_codec.sh build           # cross-compile only (CI gate)
-#   android_codec.sh raw [seconds]   # video-only, no muxer
-#   android_codec.sh run [seconds]   # full A/V MP4
+#   android_codec.sh build             # cross-compile only (CI gate)
+#   android_codec.sh raw [seconds]     # video-only, no muxer
+#   android_codec.sh run [seconds]     # full A/V MP4
+#   android_codec.sh surface [seconds] # full A/V MP4 via input surface
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -69,14 +73,22 @@ if [[ "${MODE}" == "raw" ]]; then
     exit 0
 fi
 
-# Mode == run: full A/V mux (MediaMuxer). Run from /data/local/tmp so the
-# -<backend> output (clip-android.mp4) lands there.
-adb -s "${DEVICE}" shell "cd /data/local/tmp && ./encode_file clip ${CLIP_SECONDS}"
-adb -s "${DEVICE}" pull /data/local/tmp/clip-android.mp4 "$ROOT/out/clip-android.mp4" >/dev/null
+# Mode == run|surface: full A/V mux (MediaMuxer). Run from /data/local/tmp so
+# the -<backend> output lands there. surface mode feeds the encoder through
+# its hardware input surface (zero-copy, spec 007) and names the output
+# <out>-android-surface.mp4 to distinguish it from the CPU-frame run.
+RUN_FLAG=""
+BASE="clip-android"
+if [[ "${MODE}" == "surface" ]]; then
+  RUN_FLAG="--surface"
+  BASE="clip-android-surface"
+fi
+adb -s "${DEVICE}" shell "cd /data/local/tmp && ./encode_file ${RUN_FLAG} clip ${CLIP_SECONDS}"
+adb -s "${DEVICE}" pull "/data/local/tmp/${BASE}.mp4" "$ROOT/out/${BASE}.mp4" >/dev/null
 
-OUT="$ROOT/out/clip-android.mp4"
+OUT="$ROOT/out/${BASE}.mp4"
 SIZE="$(wc -c < "$OUT" | tr -d ' ')"
-[ "$SIZE" -gt 0 ] || { echo "[android] FAIL: clip-android.mp4 is empty"; exit 1; }
+[ "$SIZE" -gt 0 ] || { echo "[android] FAIL: ${BASE}.mp4 is empty"; exit 1; }
 
 INFO="$(ffprobe -v error -show_entries stream=codec_name,codec_type \
         -of default=noprint_wrappers=1 "$OUT")"

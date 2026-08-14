@@ -29,8 +29,8 @@ bazel run //src/examples:encode_file -- out 3   # 宿主默认 backend=auto → 
 ## 设备/模拟器运行
 
 将交叉编译出的示例二进制推送至设备并运行（与 `mediacodec_spike` 同验证模式）：
-`--backend` 缺省为 `auto`（Android 上自动解析为 mediacodec），输出文件名带
-`-<backend>` 后缀（`BackendToString` 规范名）：
+backend 由平台自动解析（`Backend::kAuto`：Android → mediacodec，宿主 → FFmpeg），
+输出文件名带 `-<backend>` 后缀（`BackendToString` 规范名）：
 
 ```bash
 adb push <bazel-bin>/src/examples/encode_file /data/local/tmp/
