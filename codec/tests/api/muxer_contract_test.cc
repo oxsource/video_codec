@@ -97,7 +97,7 @@ TEST(MuxerContractTest, CreateMuxerResolvesRegisteredBackend) {
   // Register a stub muxer under a specific backend key, then ask for it.
   // This validates the registration/selection mechanism itself without
   // depending on the real FFmpeg backend (contract test links api only).
-  CodecFactory::RegisterMuxer(Backend::kDarwin,
+  CodecFactory::RegisterMuxer(Backend::kAndroid,
                               [](const MuxerConfig&) { return std::make_unique<StubMuxer>(); });
 
   MuxerConfig cfg;
@@ -106,7 +106,7 @@ TEST(MuxerContractTest, CreateMuxerResolvesRegisteredBackend) {
   cfg.width = 320;
   cfg.height = 240;
   cfg.fps = 30;
-  cfg.backend = Backend::kDarwin;
+  cfg.backend = Backend::kAndroid;
   std::unique_ptr<Muxer> muxer = CodecFactory::CreateMuxer(cfg);
   EXPECT_NE(muxer, nullptr);
 }
@@ -118,7 +118,8 @@ TEST(MuxerContractTest, CreateMuxerReturnsNullptrForUnregisteredBackend) {
   cfg.width = 320;
   cfg.height = 240;
   cfg.fps = 30;
-  cfg.backend = Backend::kAndroid;  // not registered on this host
+  // FFmpeg is not linked in this api-only contract test, so it is unregistered.
+  cfg.backend = Backend::kFFmpeg;
   std::unique_ptr<Muxer> muxer = CodecFactory::CreateMuxer(cfg);
   EXPECT_EQ(muxer, nullptr);
 }

@@ -28,3 +28,13 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "mediacodec_utils_test",
+    srcs = ["mediacodec_utils_test.cc"],
+    deps = [
+        "@video_codec//src/framework/backend/android:mediacodec_utils",
+        "@video_codec//src/framework/core",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

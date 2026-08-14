@@ -18,8 +18,8 @@ Backend ResolveBackend(Backend force) {
 ```
 
 - `kAndroid` → `MediaCodecVideoEncoder` / `MediaCodecAudioEncoder`
-- `kDarwin` → `FFmpegVideoEncoder` (Apple falls back; VideoToolbox not yet implemented)
 - `kFFmpeg` / `kAuto` (non-Android) → `FFmpegVideoEncoder` / `FFmpegAudioEncoder`
+  (Apple falls back to FFmpeg; a native Apple backend is reserved — ADR-004)
 
 `Create` returns `nullptr` when the resolved backend is unavailable on the current
 platform (e.g. `kAndroid` requested on a desktop build).

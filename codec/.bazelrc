@@ -16,6 +16,14 @@ build:android_arm64 --platforms=//platforms:android_arm64_platform
 build:linux_x86_64 --platforms=//platforms:linux_x86_64_platform
 build:darwin_arm64 --platforms=//platforms:darwin_arm64_platform
 
+# Android NDK cc_toolchain (spec 006): registered only under the android config,
+# so host builds never fetch @androidndk and stay NDK-free (FR-008).
+# --incompatible_enable_cc_toolchain_resolution is required so --platforms +
+# --extra_toolchains drive the NDK cc_toolchain (Bazel 6 defaults this to off,
+# which would fall back to the host toolchain).
+build:android_arm64 --extra_toolchains=@androidndk//:all
+build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
+
 # No forced default --platforms: Bazel uses the host platform automatically, so
 # a macOS dev builds for darwin_arm64 and Linux CI builds for linux_x86_64.
 # Cross-compiles (e.g. Android) pass --config android_arm64 explicitly.

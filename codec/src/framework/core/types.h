@@ -16,7 +16,25 @@ enum class SampleFormat { kS16, kF32, kS16Planar, kF32Planar };
 enum class BitrateMode { kConstant, kVariable };
 
 // Which backend understands a NativeBuffer / which backend to force.
-enum class Backend { kAuto, kAndroid, kDarwin, kFFmpeg };
+enum class Backend { kAuto, kAndroid, kFFmpeg };
+
+// Canonical string name of a backend, e.g. BackendToString(Backend::kFFmpeg) ==
+// "ffmpeg", BackendToString(Backend::kAndroid) == "android". Returns "unknown"
+// for an out-of-range value. A free function (not a member): C++ enum classes
+// cannot declare member functions. Mirrors StatusToString (status.h) so log
+// lines and error paths can name a backend; these lowercase names also back
+// the example's --backend values and output-file suffixes.
+inline const char* BackendToString(Backend b) {
+  switch (b) {
+    case Backend::kAuto:
+      return "auto";
+    case Backend::kAndroid:
+      return "android";
+    case Backend::kFFmpeg:
+      return "ffmpeg";
+  }
+  return "unknown";
+}
 
 // ---- Frame / packet value types ------------------------------------------
 

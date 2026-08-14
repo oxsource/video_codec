@@ -361,7 +361,7 @@ enum class AudioCodecType { kAAC, kOpus };
 enum class PixelFormat { kI420, kNV12, kRGBA };  // I420 = YUV420P
 enum class SampleFormat { kS16, kF32, kS16Planar, kF32Planar };
 enum class BitrateMode { kConstant, kVariable };
-enum class Backend { kAuto, kAndroid, kDarwin, kFFmpeg };
+enum class Backend { kAuto, kAndroid, kFFmpeg };
 ```
 
 ### VideoFrame (CPU path)
@@ -521,7 +521,6 @@ std::unique_ptr<VideoEncoder> VideoEncoder::Create(const VideoConfig& c) {
         case Backend::kFFmpeg:   return std::make_unique<FFmpegVideoEncoder>(c);
 #endif
         // Apple: Phase 2+ (VideoToolbox); for now fall back to FFmpeg.
-        case Backend::kDarwin:
         case Backend::kAuto:
         default:                 return std::make_unique<FFmpegVideoEncoder>(c);
     }

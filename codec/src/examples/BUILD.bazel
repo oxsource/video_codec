@@ -1,23 +1,31 @@
 package(default_visibility = ["//visibility:public"])
 
-# Runnable example: SMPTE color bars -> FFmpeg encoder (push) -> queue ->
-# Await -> Muxer (.mp4 via FFmpeg backend muxer), or raw .h264 via
-# FileConsumer. The FFmpeg static archive is force-loaded (ADR-001) exactly
-# like the backend tests and ffmpeg_spike.
+# Runnable example: SMPTE color bars + 1 kHz test tone -> encoder (push) ->
+# queue -> Await -> Muxer (.mp4, backend from --backend), or raw .h264 via
+# FileConsumer. The backend is selected at runtime by --backend (default
+# auto): the `public:video_codec` dep links the platform backend via select()
+# (FFmpeg on host, Android MediaCodec on Android), so this single binary runs
+# on both. The FFmpeg static archive force-load (ADR-001) applies ONLY on the
+# host; on Android the FFmpeg archive does not exist and the MediaCodec backend
+# is linked instead.
 cc_binary(
-    name = "ffmpeg_encode_file",
-    srcs = ["ffmpeg_encode_file.cc"],
-    data = [
-        "@ffmpeg//:ffmpeg_codec_archive",
-    ],
-    linkopts = [
-        "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
-    ],
-    # Static linkage so the force_load above pulls the whole FFmpeg archive into
-    # this binary (Bazel otherwise builds the backend as a dylib).
+    name = "encode_file",
+    srcs = ["encode_file.cc"],
+    data = select({
+        "//platforms:android_arm64_platform_setting": [],
+        "//conditions:default": ["@ffmpeg//:ffmpeg_codec_archive"],
+    }),
+    linkopts = select({
+        "//platforms:android_arm64_platform_setting": [],
+        # Static linkage so the force_load pulls the whole FFmpeg archive into
+        # this binary (Bazel otherwise builds the backend as a dylib).
+        "//conditions:default": [
+            "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
+        ],
+    }),
     linkstatic = True,
     deps = [
-        "@video_codec//src/framework/public:video_codec",  # encoder API + FFmpeg backend
+        "@video_codec//src/framework/public:video_codec",  # encoder API + platform backend
         "@video_codec//src/framework/queue",              # PacketQueue
         "@video_codec//src/framework/consumer",           # FileConsumer (raw mode)
         "@video_codec//src/framework/io",                 # FileByteSink (mp4 output)

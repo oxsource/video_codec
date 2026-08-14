@@ -61,7 +61,6 @@ TEST(CodecFactoryTest, ResolveBackend) {
   // An explicit force is honored regardless of platform.
   EXPECT_EQ(CodecFactory::ResolveBackend(Backend::kAndroid), Backend::kAndroid);
   EXPECT_EQ(CodecFactory::ResolveBackend(Backend::kFFmpeg), Backend::kFFmpeg);
-  EXPECT_EQ(CodecFactory::ResolveBackend(Backend::kDarwin), Backend::kDarwin);
 }
 
 TEST(CodecFactoryTest, NoBackendLinkedReturnsNull) {

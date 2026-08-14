@@ -6,9 +6,10 @@
 
 ## R1: NDK 仓库注册与 `//third_party/android_ndk` 接线
 
-- **Decision**: 在 `codec/WORKSPACE` 注册 `android_ndk_repository(name = "androidndk")`（路径由环境变量 `ANDROID_NDK_HOME` 解析），并将 `codec/third_party/android_ndk/BUILD.bazel` 的空 `android_media_codec` 目标替换为链接 `libmediandk` 的薄封装（`linkopts = ["-lmediandk"]`），保留 `target_compatible_with = ["@platforms//os:android"]`。
-- **Rationale**: `AMediaCodec`/`AMediaFormat`/`AMediaMuxer` 均位于 `libmediandk`；`android_ndk_repository` 提供 Android cc_toolchain 与 sysroot 头文件（`<media/NdkMediaCodec.h>` 等），无需手工拷贝 NDK 头。宿主（非 Android）构建因 `target_compatible_with` + `select()` 不链接该目标，保持 NDK-free（spec FR-008）。
-- **Alternatives**: 手工 `cc_library` 覆盖 NDK 头文件（spec 002 research R2 已否决——丢失 prebuilt libmediandk）；直接依赖 `@androidndk//:media` 预置目标（`android_ndk_repository` 不导出该库目标，需 `-lmediandk` linkopt 显式链接）。
+- **Decision**: 采用 `rules_android_ndk`（bazelbuild/rules_android_ndk v0.1.2，http_archive 固定 sha256）提供 Android cc_toolchain；在 `codec/WORKSPACE` 调用其 `android_ndk_repository(name = "androidndk")`（路径经 `ANDROID_NDK_HOME` 解析，缺省 api_level 31）。工具链注册**不**放在 WORKSPACE 的 `register_toolchains`（会迫使宿主也拉取/校验 NDK 仓库），而是放入 `.bazelrc` 的 `build:android_arm64 --extra_toolchains=@androidndk//:all`，宿主（非 Android）构建因此永不拉取 `@androidndk`（FR-008，宿主测试在无 `ANDROID_NDK_HOME` 下通过）。`//third_party/android_ndk:android_media_codec` 目标改为 `linkopts = ["-lmediandk"]`（NDK sysroot 的 `usr/lib/<triple>/<api>/libmediandk.so`），保留 `target_compatible_with = ["@platforms//os:android"]`。
+- **关键适配**: Bazel 6 的 `--incompatible_enable_cc_toolchain_resolution` 默认 **false**——cc 工具链走旧式 `--cpu` 路径，`--platforms` 不驱动 cc 工具链选择（实测会回退到宿主工具链，`mediacodec_spike` 以 macOS clang 编译）。必须在 `build:android_arm64` 显式 `--incompatible_enable_cc_toolchain_resolution=true`，`--platforms` + `--extra_toolchains` 才生效并选中 NDK clang（`--target=aarch64-linux-android31`，编译链接均通过，输出 ELF aarch64 + `NEEDED libmediandk.so`）。`make android-verify`（`android_build.sh`）改用 `--config android_arm64` 统一携带这些选项。
+- **Rationale**: Bazel 6.5 已从 `@bazel_tools` 移除内置 `android_ndk_repository`（`tools/android/android_repository.bzl` 不存在），rules_android_ndk 是维护中的标准替代；NDK r25（sysroot 布局，无顶层 `platforms/` 目录）被其正确识别。
+- **Alternatives**: 内置 `android_ndk_repository`（Bazel 6.5 已移除，不可用）；`register_toolchains("@androidndk//:all")` 放 WORKSPACE（实测导致宿主在无 NDK 环境下拉取 `@androidndk` 并失败，违背 FR-008，弃用）。
 - **Local env**: `ANDROID_NDK_HOME=/Users/moks/Library/Android/sdk/ndk/25.2.9519653`（NDK 25.2.9519653）；CI 需等价提供。
 
 ## R2: MediaCodec 视频编码（CPU 路径）

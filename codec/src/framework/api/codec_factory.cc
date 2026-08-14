@@ -16,7 +16,8 @@ Backend CodecFactory::ResolveBackend(Backend force) {
 #if defined(__ANDROID__)
   return Backend::kAndroid;
 #else
-  // Apple currently falls back to FFmpeg; VideoToolbox is reserved (ADR-004).
+  // Apple currently falls back to FFmpeg; a native Apple backend is reserved
+  // (ADR-004).
   return Backend::kFFmpeg;
 #endif
 }

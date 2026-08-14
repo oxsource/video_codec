@@ -1,4 +1,4 @@
-// ffmpeg_encode_file.cc
+// encode_file.cc
 //
 // A complete, runnable example of the video_codec pipeline:
 //
@@ -9,22 +9,30 @@
 // Generates a synthetic SMPTE-style color-bars clip (with a moving white line
 // for motion) plus a continuous 1 kHz TV test tone, encodes them as H.264 +
 // AAC at ~fps, paces itself to wall-clock time so the default run takes about
-// `seconds` (default 5) seconds, and writes the output. By default the output
-// is muxed into an MP4 container by a Muxer (FFmpeg backend, implements
-// PacketSink so Await hands video and audio packets straight to it);
-// "--raw" writes a raw Annex-B H.264 elementary stream (FileConsumer).
+// `seconds` (default 5) seconds, and writes the output. The backend is
+// selected with --backend (default `auto` = platform select: Android ->
+// MediaCodec, host -> FFmpeg), so the same binary drives both the FFmpeg and
+// the Android MediaCodec backends. By default the output is muxed into an MP4
+// container by a Muxer (implements PacketSink so Await hands video and audio
+// packets straight to it); "--raw" writes a raw Annex-B H.264 elementary
+// stream (FileConsumer). The output file name reflects the resolved backend:
+// <out>-<backend>.<ext> (e.g. out-ffmpeg.mp4, out-android.mp4).
 //
 // Usage:
-//   ffmpeg_encode_file [--raw] [output] [seconds]
+//   encode_file [--raw] [--backend auto|android|ffmpeg] [output] [seconds]
 //
-//   --raw  write a raw Annex-B H.264 elementary stream (FileConsumer);
-//          appends ".h264" to the output path. Otherwise the output is muxed
-//          into an MP4 container (Muxer), appending ".mp4".
+//   --backend  select the encoder/muxer backend (default auto);
+//              android/ffmpeg force a specific backend.
+//   --raw      write a raw Annex-B H.264 elementary stream (FileConsumer);
+//              appends ".h264" to the output path. Otherwise the output is
+//              muxed into an MP4 container (Muxer), appending ".mp4".
 //
 // Examples:
-//   bazel run //src/examples:ffmpeg_encode_file --          # -> out.mp4
-//   bazel run //src/examples:ffmpeg_encode_file -- clip 5   # -> clip.mp4
-//   bazel run //src/examples:ffmpeg_encode_file -- --raw    # -> out.h264
+//   bazel run //src/examples:encode_file --            # -> out-ffmpeg.mp4
+//   bazel run //src/examples:encode_file -- clip 5     # -> clip-ffmpeg.mp4
+//   bazel run //src/examples:encode_file -- --raw      # -> out-ffmpeg.h264
+//   bazel run //src/examples:encode_file -- --backend android clip 3
+//                                                      # Android -> clip-android.mp4
 
 #include <chrono>
 #include <cstdint>
@@ -48,26 +56,58 @@
 namespace vc = video::codec;
 namespace vcu = video::codec::utils;
 
-static constexpr const char* kLogTag = "ffmpeg_encode_file";
+static constexpr const char* kLogTag = "encode_file";
 
 int main(int argc, char** argv) {
   bool raw = false;
-  std::string out_path = "out";  // extension is appended below from `raw`
+  bool out_set = false;
+  std::string out_path = "out";  // backend suffix + extension appended below
   int seconds = 5;
+  vc::Backend backend = vc::Backend::kAuto;
 
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "--raw") {
       raw = true;
-    } else if (out_path == "out" && seconds == 5 && arg[0] != '-') {
+    } else if (arg == "--backend" || arg.rfind("--backend=", 0) == 0) {
+      std::string name;
+      if (arg == "--backend") {
+        if (i + 1 >= argc) {
+          std::fprintf(stderr, "%s: --backend requires a value (auto|android|ffmpeg)\n", kLogTag);
+          return 1;
+        }
+        name = argv[++i];
+      } else {
+        name = arg.substr(arg.find('=') + 1);
+      }
+      if (name == "auto") {
+        backend = vc::Backend::kAuto;
+      } else if (name == "android") {
+        backend = vc::Backend::kAndroid;
+      } else if (name == "ffmpeg") {
+        backend = vc::Backend::kFFmpeg;
+      } else {
+        std::fprintf(stderr, "%s: unknown --backend '%s' (auto|android|ffmpeg)\n", kLogTag,
+                     name.c_str());
+        return 1;
+      }
+    } else if (!out_set && arg[0] != '-') {
+      // First positional argument is the output path; later ones are seconds.
       out_path = arg;
+      out_set = true;
     } else {
       seconds = std::atoi(arg.c_str());
     }
   }
   if (seconds <= 0) seconds = 5;
 
-  // The mode owns the extension: --raw -> .h264, otherwise MP4 -> .mp4.
+  // The mode and backend own the output name: <out>-<backend>.<ext>. The
+  // resolved backend (auto -> platform select) is reflected in the file name
+  // via the canonical BackendToString name (e.g. out-ffmpeg.mp4).
+  const vc::Backend resolved = vc::CodecFactory::ResolveBackend(backend);
+  const char* backend_tag = vc::BackendToString(resolved);
+  out_path += "-";
+  out_path += backend_tag;
   out_path += raw ? vcu::MediaFormat::kH264 : vcu::MediaFormat::kMp4;
 
   const int width = 640;
@@ -84,7 +124,7 @@ int main(int argc, char** argv) {
   cfg.fps = fps;
   cfg.bitrate = 2'000'000;
   cfg.input_format = vc::PixelFormat::kI420;
-  cfg.backend = vc::Backend::kFFmpeg;
+  cfg.backend = backend;
 
   // Transport: encoder (push) -> bounded ring buffer -> sink.
   vc::PacketQueue queue(64, vc::Backpressure::kBlock);
@@ -110,10 +150,10 @@ int main(int argc, char** argv) {
     mux_cfg.audio_codec = vc::AudioCodecType::kAAC;
     mux_cfg.sample_rate = sample_rate;
     mux_cfg.channels = channels;
-    mux_cfg.backend = vc::Backend::kFFmpeg;
+    mux_cfg.backend = backend;
     muxer = vc::CodecFactory::CreateMuxer(mux_cfg);
     if (!muxer) {
-      std::fprintf(stderr, "%s: no FFmpeg muxer available\n", kLogTag);
+      std::fprintf(stderr, "%s: no muxer available for backend %s\n", kLogTag, backend_tag);
       return 1;
     }
     mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
@@ -140,7 +180,7 @@ int main(int argc, char** argv) {
     acfg.sample_rate = sample_rate;
     acfg.channels = channels;
     acfg.bitrate = 128'000;
-    acfg.backend = vc::Backend::kFFmpeg;
+    acfg.backend = backend;
     auto aenc_res = vc::CodecFactory::CreateAudio(acfg, &queue);
     if (!aenc_res.ok()) {
       std::fprintf(stderr, "%s: audio encoder unavailable (%s)\n", kLogTag,

@@ -68,10 +68,10 @@ TEST(EncoderPushContractTest, DefaultAudioSetOutputSinkIsUnsupported) {
 
 TEST(EncoderPushContractTest, CreateVideoWithSinkInitsAndWires) {
   CodecFactory::RegisterVideo(
-      Backend::kDarwin, [](const VideoConfig&) { return std::make_unique<PushStubVideoEncoder>(); });
+      Backend::kAndroid, [](const VideoConfig&) { return std::make_unique<PushStubVideoEncoder>(); });
   NullSink sink;
   VideoConfig cfg;
-  cfg.backend = Backend::kDarwin;
+  cfg.backend = Backend::kAndroid;
   auto r = CodecFactory::CreateVideo(cfg, &sink);
   ASSERT_TRUE(r.ok()) << "status: " << static_cast<int>(r.status());
   EXPECT_NE(r.value(), nullptr);
@@ -79,10 +79,10 @@ TEST(EncoderPushContractTest, CreateVideoWithSinkInitsAndWires) {
 
 TEST(EncoderPushContractTest, CreateAudioWithSinkInitsAndWires) {
   CodecFactory::RegisterAudio(
-      Backend::kDarwin, [](const AudioConfig&) { return std::make_unique<PushStubAudioEncoder>(); });
+      Backend::kAndroid, [](const AudioConfig&) { return std::make_unique<PushStubAudioEncoder>(); });
   NullSink sink;
   AudioConfig cfg;
-  cfg.backend = Backend::kDarwin;
+  cfg.backend = Backend::kAndroid;
   auto r = CodecFactory::CreateAudio(cfg, &sink);
   ASSERT_TRUE(r.ok()) << "status: " << static_cast<int>(r.status());
   EXPECT_NE(r.value(), nullptr);
@@ -90,7 +90,7 @@ TEST(EncoderPushContractTest, CreateAudioWithSinkInitsAndWires) {
 
 TEST(EncoderPushContractTest, CreateVideoWithSinkFailsForUnregisteredBackend) {
   VideoConfig cfg;
-  cfg.backend = Backend::kAndroid;  // not registered on this host
+  cfg.backend = Backend::kFFmpeg;  // not linked in this api-only test
   auto r = CodecFactory::CreateVideo(cfg, nullptr);
   ASSERT_FALSE(r.ok());
   EXPECT_EQ(r.status(), Status::kPlatformUnsupported);
@@ -98,7 +98,7 @@ TEST(EncoderPushContractTest, CreateVideoWithSinkFailsForUnregisteredBackend) {
 
 TEST(EncoderPushContractTest, CreateAudioWithSinkFailsForUnregisteredBackend) {
   AudioConfig cfg;
-  cfg.backend = Backend::kAndroid;  // not registered on this host
+  cfg.backend = Backend::kFFmpeg;  // not linked in this api-only test
   auto r = CodecFactory::CreateAudio(cfg, nullptr);
   ASSERT_FALSE(r.ok());
   EXPECT_EQ(r.status(), Status::kPlatformUnsupported);
@@ -108,10 +108,10 @@ TEST(EncoderPushContractTest, CreateVideoWithSinkPropagatesSetOutputSinkStatus) 
   // A push-incapable backend (default SetOutputSink) must surface its
   // kUnsupportedOperation through the Result rather than pretending to wire.
   CodecFactory::RegisterVideo(
-      Backend::kDarwin, [](const VideoConfig&) { return std::make_unique<StubVideoEncoder>(); });
+      Backend::kAndroid, [](const VideoConfig&) { return std::make_unique<StubVideoEncoder>(); });
   NullSink sink;
   VideoConfig cfg;
-  cfg.backend = Backend::kDarwin;
+  cfg.backend = Backend::kAndroid;
   auto r = CodecFactory::CreateVideo(cfg, &sink);
   ASSERT_FALSE(r.ok());
   EXPECT_EQ(r.status(), Status::kUnsupportedOperation);

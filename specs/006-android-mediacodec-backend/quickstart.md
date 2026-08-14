@@ -15,31 +15,29 @@
 ```bash
 cd codec
 make android-verify          # 交叉编译 gate：spike + 后端目标，宿主不链接 NDK
-# 或显式：
-bazel build //src/examples:encode_file \
-  --platforms=//platforms:android_arm64_platform \
-  --android_platforms=//platforms:android_arm64_platform
+# 或显式（--config 同时应用 --platforms、--extra_toolchains 与 cc-toolchain resolution）：
+bazel build //src/examples:encode_file --config android_arm64
 ```
 
 宿主（非 Android）构建不受影响：
 
 ```bash
-bazel test //tests/...       # 既有 15 项测试保持通过
-bazel run //src/examples:encode_file -- out 3   # 宿主默认 backend=auto → ffmpeg，输出 out-ffmpeg.mp4
+bazel test //tests/...       # 既有测试（16 项）保持通过
+bazel run //src/examples:encode_file -- out 3   # 宿主默认 backend=auto → FFmpeg，输出 out-ffmpeg.mp4
 ```
 
 ## 设备/模拟器运行
 
 将交叉编译出的示例二进制推送至设备并运行（与 `mediacodec_spike` 同验证模式）：
 `--backend` 缺省为 `auto`（Android 上自动解析为 mediacodec），输出文件名带
-`-<backend>` 后缀：
+`-<backend>` 后缀（`BackendToString` 规范名）：
 
 ```bash
 adb push <bazel-bin>/src/examples/encode_file /data/local/tmp/
-adb shell /data/local/tmp/encode_file clip 3          # → clip-mediacodec.mp4
-adb pull /data/local/tmp/clip-mediacodec.mp4 .
+adb shell /data/local/tmp/encode_file clip 3          # → clip-android.mp4
+adb pull /data/local/tmp/clip-android.mp4 .
 # 校验输出含 H.264 + AAC 双轨：
-ffprobe -show_streams clip-mediacodec.mp4
+ffprobe -show_streams clip-android.mp4
 ```
 
 ## 最短调用（与桌面一致，无平台分支）

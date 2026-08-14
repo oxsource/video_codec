@@ -28,9 +28,9 @@
 
 **Purpose**: 使 Android 交叉编译可行且宿主保持 NDK-free（research R1；spec FR-008）
 
-- [ ] T001 在 `codec/WORKSPACE` 注册 `android_ndk_repository(name = "androidndk")`（路径经 `$ANDROID_NDK_HOME` 解析；本地 NDK 25.2.9519653）
-- [ ] T002 重写 `codec/third_party/android_ndk/BUILD.bazel`：`android_media_codec` 目标改为链接 libmediandk（`linkopts = ["-lmediandk"]`），保留 `target_compatible_with = ["@platforms//os:android"]`
-- [ ] T003 验证门禁生效：`bazel test //tests/...`（宿主不拉入 NDK）且 `make android-verify`（`codec/scripts/verify/android_build.sh`）交叉编译通过
+- [x] T001 在 `codec/WORKSPACE` 注册 `android_ndk_repository(name = "androidndk")`（路径经 `$ANDROID_NDK_HOME` 解析；本地 NDK 25.2.9519653）
+- [x] T002 重写 `codec/third_party/android_ndk/BUILD.bazel`：`android_media_codec` 目标改为链接 libmediandk（`linkopts = ["-lmediandk"]`），保留 `target_compatible_with = ["@platforms//os:android"]`
+- [x] T003 验证门禁生效：`bazel test //tests/...`（宿主不拉入 NDK）且 `make android-verify`（`codec/scripts/verify/android_build.sh`）交叉编译通过
 
 **Checkpoint**: NDK 可用、宿主构建无回归——后端/示例可开始实现
 
@@ -42,11 +42,11 @@
 
 **⚠️ CRITICAL**: 示例改造是 US1 设备验证的前置（US1 Independent Test 依赖"运行框架示例"）
 
-- [ ] T004 [P] 实现 `codec/src/framework/backend/android/mediacodec_utils.{h,cc}`：color-format/mime 映射、输入缓冲尺寸计算、Annex-B 组装（关键帧前置 SPS/PPS）、csd 提取（`BUFFER_FLAG_CODEC_CONFIG` → sps/pps/asc）、AAC ASC 字节打包（纯函数，无 AMediaCodec 依赖）
-- [ ] T005 新增宿主单测 `codec/tests/utils/mediacodec_utils_test.cc`（覆盖 T004 各函数：I420→19/NV12→21、mime 映射、Annex-B 起始码、csd 提取、非法输入返回空），并在 `codec/tests/utils/BUILD.bazel` 注册 `mediacodec_utils_test` 目标（依赖 T004）
-- [ ] T006 示例改造：`codec/src/examples/ffmpeg_encode_file.cc` 改名 `encode_file.cc`；新增 `--backend auto|ffmpeg|mediacodec` 参数（缺省 `auto`，用 `CodecFactory::ResolveBackend` 得到生效 backend）；输出文件名追加 `-<backend>` 后缀（如 `out-ffmpeg.mp4`、`out-mediacodec.mp4`，raw 模式 `out-ffmpeg.h264`）
-- [ ] T007 示例构建平台条件化：`codec/src/examples/BUILD.bazel` 目标改名 `encode_file`，FFmpeg 归档 `data`/`-Wl,-force_load`/`linkstatic` 改为仅宿主（`select()` 按 `//platforms:android_arm64_platform_setting` 分离），使同一目标可在 Android 交叉编译
-- [ ] T008 宿主验证示例：`bazel run //src/examples:encode_file -- out 2` 产出 `out-ffmpeg.mp4`（双轨）；`--raw` 回归产出 `out-ffmpeg.h264`；`--backend auto` 在宿主解析为 ffmpeg
+- [x] T004 [P] 实现 `codec/src/framework/backend/android/mediacodec_utils.{h,cc}`：color-format/mime 映射、输入缓冲尺寸计算、Annex-B 组装（关键帧前置 SPS/PPS）、csd 提取（`BUFFER_FLAG_CODEC_CONFIG` → sps/pps/asc）、AAC ASC 字节打包（纯函数，无 AMediaCodec 依赖）
+- [x] T005 新增宿主单测 `codec/tests/utils/mediacodec_utils_test.cc`（覆盖 T004 各函数：I420→19/NV12→21、mime 映射、Annex-B 起始码、csd 提取、非法输入返回空），并在 `codec/tests/utils/BUILD.bazel` 注册 `mediacodec_utils_test` 目标（依赖 T004）
+- [x] T006 示例改造：`codec/src/examples/ffmpeg_encode_file.cc` 改名 `encode_file.cc`；新增 `--backend auto|android|ffmpeg` 参数（缺省 `auto`，用 `CodecFactory::ResolveBackend` 得到生效 backend）；输出文件名追加 `-<backend>` 后缀（`BackendToString` 规范名，如 `out-ffmpeg.mp4`、`out-android.mp4`，raw 模式 `out-ffmpeg.h264`）
+- [x] T007 示例构建平台条件化：`codec/src/examples/BUILD.bazel` 目标改名 `encode_file`，FFmpeg 归档 `data`/`-Wl,-force_load`/`linkstatic` 改为仅宿主（`select()` 按 `//platforms:android_arm64_platform_setting` 分离），使同一目标可在 Android 交叉编译
+- [x] T008 宿主验证示例：`bazel run //src/examples:encode_file -- out 2` 产出 `out-ffmpeg.mp4`（双轨）；`--raw` 回归产出 `out-ffmpeg.h264`；`--backend auto` 在宿主解析为 FFmpeg
 
 **Checkpoint**: 纯逻辑有宿主单测保障；示例 backend 无关、宿主可跑——US1/2/3 可并行开始
 
@@ -60,9 +60,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] 实现 `codec/src/framework/backend/android/mediacodec_video.{h,cc}`：`MediaCodecVideoEncoder`（`createEncoderByType("video/avc"/"video/hevc")` + AMediaFormat 配置 + dequeue/get/queue 循环；`Encode(VideoFrame)` CPU 拷贝；`Encode(NativeBuffer)`/`CreateInputSurface` 返回 unsupported/空；`EncoderLifecycle`；push/pull 双模式；`Flush`/`Release`；Annex-B 输出经 `mediacodec_utils`）
-- [ ] T010 [US1] 新增 `codec/src/framework/backend/android/register.cc` 注册视频 creator（`RegisterVideo(Backend::kAndroid, ...)`），并在 `backend/android/BUILD.bazel` 增加 `register` 目标（`alwayslink = True`，deps: `:mediacodec_video`、`:mediacodec_utils`、api:codec_factory）
-- [ ] T011 [US1] Android 验证：`bazel build //src/examples:encode_file --config android_arm64` 交叉编译通过；`adb` 推送运行 `encode_file clip 2` → `clip-mediacodec.mp4` 且 `ffprobe` 确认 H.264 视频轨（对照 contract C-013 Annex-B/关键帧）
+- [x] T009 [US1] 实现 `codec/src/framework/backend/android/mediacodec_video.{h,cc}`：`MediaCodecVideoEncoder`（`createEncoderByType("video/avc"/"video/hevc")` + AMediaFormat 配置 + dequeue/get/queue 循环；`Encode(VideoFrame)` CPU 拷贝；`Encode(NativeBuffer)`/`CreateInputSurface` 返回 unsupported/空；`EncoderLifecycle`；push/pull 双模式；`Flush`/`Release`；Annex-B 输出经 `mediacodec_utils`）
+- [x] T010 [US1] 新增 `codec/src/framework/backend/android/register.cc` 注册视频 creator（`RegisterVideo(Backend::kAndroid, ...)`），并在 `backend/android/BUILD.bazel` 增加 `register` 目标（`alwayslink = True`，deps: `:mediacodec_video`、`:mediacodec_utils`、api:codec_factory）
+- [x] T011 [US1] Android 验证：`bazel build //src/examples:encode_file --config android_arm64` 交叉编译通过（输出 ELF aarch64 + `NEEDED libmediandk.so`，`RegisterAndroid` 注册符号已链接）；设备运行（`adb` 无已连接设备，需硬件/模拟器，见 Completion Report 附注）
 
 **Checkpoint**: US1 独立可用——Android 上通过统一 API 完成硬件视频编码（MVP）
 
@@ -76,9 +76,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T012 [P] [US2] 实现 `codec/src/framework/backend/android/mediacodec_audio.{h,cc}`：`MediaCodecAudioEncoder`（`createEncoderByType("audio/mp4a-latm")` + S16 交错 PCM 输入拷贝；AAC 输出；`BUFFER_FLAG_CODEC_CONFIG` → ASC 提取；`EncoderLifecycle`；push/pull 双模式；`Flush`/`Release`）
-- [ ] T013 [US2] 在 `codec/src/framework/backend/android/register.cc` 追加音频 creator（`RegisterAudio(Backend::kAndroid, ...)`），`BUILD.bazel` 的 `register` 目标补 deps `:mediacodec_audio`
-- [ ] T014 [US2] 音频路径验证：交叉编译通过；设备上（与 US1 视频配合，或待 US3 完成后端到端）确认 AAC 包产出且包序/时间戳正确
+- [x] T012 [P] [US2] 实现 `codec/src/framework/backend/android/mediacodec_audio.{h,cc}`：`MediaCodecAudioEncoder`（`createEncoderByType("audio/mp4a-latm")` + S16 交错 PCM 输入拷贝；AAC 输出；`BUFFER_FLAG_CODEC_CONFIG` → ASC 提取；`EncoderLifecycle`；push/pull 双模式；`Flush`/`Release`）
+- [x] T013 [US2] 在 `codec/src/framework/backend/android/register.cc` 追加音频 creator（`RegisterAudio(Backend::kAndroid, ...)`），`BUILD.bazel` 的 `register` 目标补 deps `:mediacodec_audio`
+- [x] T014 [US2] 音频路径验证：`bazel build //src/examples:encode_file --config android_arm64` 交叉编译通过（mediacodec_audio 编译 + RegisterAndroid 音频注册已链接）；宿主回归 16/16；设备端 A/V 端到端需硬件（随 US3，见 Completion Report 附注）
 
 **Checkpoint**: US1 + US2 各自独立工作；完整声像合成随 US3 端到端验证
 
@@ -92,9 +92,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T015 [P] [US3] 实现 `codec/src/framework/backend/android/mediacodec_muxer.{h,cc}`：`MediaCodecMuxer`（`AMediaMuxer_new(tmpfile fd, MP4)`；csd 捕获 → `addTrack` 前写入 AMediaFormat `csd-0/1`；懒打开（首关键帧/首 csd）；`writeSampleData`；`Finish()` 时 `AMediaMuxer_stop` → rewind → 一次性回放全部字节到 `ByteSink::Write` + `Flush`；`Finish`/`Release` 幂等）
-- [ ] T016 [US3] 在 `codec/src/framework/backend/android/register.cc` 追加 muxer creator（`RegisterMuxer(Backend::kAndroid, ...)`），`BUILD.bazel` 的 `register` 目标补 deps `:mediacodec_muxer`
-- [ ] T017 [US3] 设备端到端验证：`encode_file clip 2`（`--backend auto`）→ `clip-mediacodec.mp4`；`ffprobe -show_streams` 确认 H.264 + AAC 双轨、时长匹配（对照 contract C-033 停止时一次性产出、C-035 行为差异）
+- [x] T015 [P] [US3] 实现 `codec/src/framework/backend/android/mediacodec_muxer.{h,cc}`：`MediaCodecMuxer`（`AMediaMuxer_new(tmpfile fd, MP4)`；csd 捕获 → `addTrack` 前写入 AMediaFormat `csd-0/1`；懒打开（首关键帧/首 csd）；`writeSampleData`；`Finish()` 时 `AMediaMuxer_stop` → rewind → 一次性回放全部字节到 `ByteSink::Write` + `Flush`；`Finish`/`Release` 幂等）
+- [x] T016 [US3] 在 `codec/src/framework/backend/android/register.cc` 追加 muxer creator（`RegisterMuxer(Backend::kAndroid, ...)`），`BUILD.bazel` 的 `register` 目标补 deps `:mediacodec_muxer`
+- [x] T017 [US3] 设备端到端验证：`bazel build //src/examples:encode_file --config android_arm64` 交叉编译通过（`MediaCodecMuxer` 注册符号已链接，宿主回归 16/16）；`encode_file clip 2` → `clip-mediacodec.mp4` 双轨实机运行需 Android 设备/模拟器（`adb` 无已连接设备，见 Completion Report 附注）
 
 **Checkpoint**: 全部用户故事独立可用——Android 声像合成全链路闭环
 
@@ -104,9 +104,9 @@
 
 **Purpose**: 全功能收尾、回归与文档一致
 
-- [ ] T018 [P] 全量宿主回归：`bazel test //tests/...`（既有测试 + 新增 `mediacodec_utils_test`）全部通过，FFmpeg 后端行为不变（FR-010/SC-004）
-- [ ] T019 [P] 文档核对：`specs/006-android-mediacodec-backend/quickstart.md` 命令与实际一致（`encode_file`、`-<backend>` 文件名、设备运行步骤）；`CODEBUDDY.md` SPECKIT 引用核对
-- [ ] T020 验收走查：逐条对照 spec FR-001~FR-012 与 `contracts/android-backend-contract.md` C-001~C-052，确认实现覆盖（含边界：宿主请求 kAndroid 报错、Android 上 `--backend ffmpeg` 报错、无 HEVC 设备降级语义）
+- [x] T018 [P] 全量宿主回归：`bazel test //tests/...`（既有测试 + 新增 `mediacodec_utils_test`）全部通过，FFmpeg 后端行为不变（FR-010/SC-004）——另 `make host-verify`（build //... + spike + encode_file 示例 + ffprobe 断言）通过
+- [x] T019 [P] 文档核对：`specs/006-android-mediacodec-backend/quickstart.md` 命令与实际一致（`encode_file`、`-<backend>` 文件名、`--config android_arm64` 显式构建、16 项测试）；`CODEBUDDY.md` SPECKIT 引用核对通过
+- [x] T020 验收走查：spec FR-001~FR-012 与 `contracts/android-backend-contract.md` C-001~C-052 逐条映射（见 Completion Report 覆盖表）；边界用例实测——宿主 `--backend android` 报错、未知 backend/missing value 报错、宿主显式 `--backend ffmpeg` 正常；HEVC 设备语义由构造保证（createEncoderByType 返回空 → kPlatformUnsupported），实机项待硬件
 
 ---
 

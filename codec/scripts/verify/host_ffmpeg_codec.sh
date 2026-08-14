@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Host example: build + run the ffmpeg_encode_file demo (SMPTE color bars ->
-# MP4) and assert the output is a valid 640x480 MP4 (H.264) with ffprobe.
-# Invoked by `make host_ffmpeg_example` (and as part of `make host-verify`).
+# Host example: build + run the encode_file demo (SMPTE color bars + 1 kHz tone
+# -> MP4) and assert the output is a valid 640x480 MP4 (H.264) with ffprobe.
+# Invoked by `make host_ffmpeg_codec` (and as part of `make host-verify`).
 #
 # Args: [seconds] — clip duration (default 2, keeps CI fast; the demo default is 5).
 set -euo pipefail
@@ -11,24 +11,25 @@ cd "$ROOT"
 
 DURATION="${1:-2}"
 
-echo "[host] bazel build //src/examples:ffmpeg_encode_file"
-bazel build //src/examples:ffmpeg_encode_file
+echo "[host] bazel build //src/examples:encode_file"
+bazel build //src/examples:encode_file
 
-BIN="$(find -L bazel-bin -path '*/examples/ffmpeg_encode_file' -type f | head -1)"
-[ -n "$BIN" ] || { echo "[host] FAIL: ffmpeg_encode_file binary not found"; exit 1; }
+BIN="$(find -L bazel-bin -path '*/examples/encode_file' -type f | head -1)"
+[ -n "$BIN" ] || { echo "[host] FAIL: encode_file binary not found"; exit 1; }
 
 mkdir -p "$ROOT/out"          # shared test-output directory (gitignored)
-# The example appends the mode's extension (.mp4 by default), so pass a bare
-# path and verify the .mp4 file it produces.
+# The example appends `-<backend>` + the mode's extension (.mp4 by default), so
+# pass a bare path and verify the .mp4 file it produces (host auto -> FFmpeg,
+# canonical name ffmpeg).
 OUT_BASE="$ROOT/out/example_out"
-OUT="$OUT_BASE.mp4"
+OUT="$OUT_BASE-ffmpeg.mp4"
 rm -f "$OUT"
 
-echo "[host] run ffmpeg_encode_file ($DURATION s clip)"
+echo "[host] run encode_file ($DURATION s clip)"
 "$BIN" "$OUT_BASE" "$DURATION"
 
 SIZE="$(wc -c < "$OUT" | tr -d ' ')"
-[ "$SIZE" -gt 0 ] || { echo "[host] FAIL: example_out.mp4 is empty"; exit 1; }
+[ "$SIZE" -gt 0 ] || { echo "[host] FAIL: example_out-ffmpeg.mp4 is empty"; exit 1; }
 
 echo "[host] ffprobe $OUT"
 ffprobe -v error -show_entries format=format_name,duration \

@@ -13,7 +13,7 @@
 ### Session 2026-08-14
 
 - Q: 示例形态——改造 `ffmpeg_encode_file` 支持 backend 参数，binary 是否改名？ → A: 改名为 `encode_file`（backend 无关，BUILD target/文档同步更新）
-- Q: 输出文件名如何体现 backend？ → A: 统一追加 `-<backend>` 后缀（如 `out-ffmpeg.mp4`、`out-mediacodec.mp4`）
+- Q: 输出文件名如何体现 backend？ → A: 统一追加 `-<backend>` 后缀，backend 用 `BackendToString` 规范名（如 `out-ffmpeg.mp4`、`out-android.mp4`）
 - Q: `--backend` 参数缺省时默认值？ → A: `auto`（平台选择：Android→mediacodec、宿主→ffmpeg）
 
 ## User Scenarios & Testing *(mandatory)*
@@ -91,7 +91,7 @@
 - **FR-009**: 编码输出 MUST 携带正确的包序、时间戳与关键帧标记，满足下游队列/封装/消费端契约
 - **FR-010**: 现有 FFmpeg 后端行为、框架默认行为与既有测试 MUST 不受本功能影响
 - **FR-011**: 系统 MUST 提供 backend 无关的可运行示例 `encode_file`（由 `ffmpeg_encode_file` 改造并改名），通过命令行参数选择编码/封装 backend（缺省 `auto`，即平台选择：Android→mediacodec、宿主→ffmpeg），使 Android（MediaCodec）与宿主（FFmpeg）共用同一示例，示例构建配置需按平台条件化（FFmpeg 归档仅宿主链接）
-- **FR-012**: 示例 `encode_file` MUST 按所用 backend 生成输出文件名，统一追加 `-<backend>` 后缀（如 `out-ffmpeg.mp4`、`out-mediacodec.mp4`），供验收断言稳定引用
+- **FR-012**: 示例 `encode_file` MUST 按所用 backend 生成输出文件名，统一追加 `-<backend>` 后缀（`BackendToString` 规范名，如 `out-ffmpeg.mp4`、`out-android.mp4`），供验收断言稳定引用
 
 ### Key Entities *(include if feature involves data)*
 
