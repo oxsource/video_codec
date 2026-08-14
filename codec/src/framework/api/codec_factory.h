@@ -71,3 +71,58 @@ class CodecFactory {
 
 }  // namespace codec
 }  // namespace video
+
+// Convenience registration macros for backend creator functions (atlas-style,
+// cf. atlas/src/backend/base/backend_factory.h). Each expands to an
+// anonymous-namespace static initializer that registers the creator into
+// CodecFactory at static-init time. __COUNTER__ keeps the variable name unique
+// so `cls` may carry namespace qualifiers (token-paste ## cannot join `::`).
+//
+// Place at the end of a backend's register translation unit (the macro's
+// anonymous namespace may nest inside `namespace video::codec`, which also lets
+// `Backend::kX` and the class names resolve unqualified). `backend` is the
+// Backend enum value; `cls` the concrete encoder/muxer class.
+//
+// Example (backend/android/register.cc):
+//   namespace video { namespace codec {
+//   VIDEO_CODEC_REGISTER_VIDEO(Backend::kAndroid, MediaCodecVideoEncoder)
+//   VIDEO_CODEC_REGISTER_AUDIO(Backend::kAndroid, MediaCodecAudioEncoder)
+//   VIDEO_CODEC_REGISTER_MUXER(Backend::kAndroid, MediaCodecMuxer)
+//   }  // namespace codec
+//   }  // namespace video
+
+#define VIDEO_CODEC_REGISTER_VIDEO_IMPL_(backend, cls, counter)                   \
+  namespace {                                                            \
+  const bool kVideoCreatorRegistered_##counter = []() {                  \
+    ::video::codec::CodecFactory::RegisterVideo(                         \
+        backend, [](const ::video::codec::VideoConfig& c) {              \
+          return std::make_unique<cls>(c);                               \
+        });                                                              \
+    return true;                                                         \
+  }();                                                                   \
+  }  // namespace
+#define VIDEO_CODEC_REGISTER_VIDEO(backend, cls) VIDEO_CODEC_REGISTER_VIDEO_IMPL_(backend, cls, __COUNTER__)
+
+#define VIDEO_CODEC_REGISTER_AUDIO_IMPL_(backend, cls, counter)                   \
+  namespace {                                                            \
+  const bool kAudioCreatorRegistered_##counter = []() {                  \
+    ::video::codec::CodecFactory::RegisterAudio(                         \
+        backend, [](const ::video::codec::AudioConfig& c) {              \
+          return std::make_unique<cls>(c);                               \
+        });                                                              \
+    return true;                                                         \
+  }();                                                                   \
+  }  // namespace
+#define VIDEO_CODEC_REGISTER_AUDIO(backend, cls) VIDEO_CODEC_REGISTER_AUDIO_IMPL_(backend, cls, __COUNTER__)
+
+#define VIDEO_CODEC_REGISTER_MUXER_IMPL_(backend, cls, counter)                   \
+  namespace {                                                            \
+  const bool kMuxerCreatorRegistered_##counter = []() {                  \
+    ::video::codec::CodecFactory::RegisterMuxer(                         \
+        backend, [](const ::video::codec::MuxerConfig& c) {              \
+          return std::make_unique<cls>(c);                               \
+        });                                                              \
+    return true;                                                         \
+  }();                                                                   \
+  }  // namespace
+#define VIDEO_CODEC_REGISTER_MUXER(backend, cls) VIDEO_CODEC_REGISTER_MUXER_IMPL_(backend, cls, __COUNTER__)

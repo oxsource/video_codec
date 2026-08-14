@@ -13,6 +13,7 @@ extern "C" {
 }
 
 #include "byte_sink.h"
+#include "codec_factory.h"
 
 namespace video {
 namespace codec {
@@ -425,5 +426,12 @@ void FFmpegMuxer::Release() {
   sink_ = nullptr;
 }
 
+}  // namespace codec
+}  // namespace video
+
+// Self-registration (atlas-style); `ffmpeg_muxer` carries alwayslink.
+namespace video {
+namespace codec {
+VIDEO_CODEC_REGISTER_MUXER(Backend::kFFmpeg, FFmpegMuxer)
 }  // namespace codec
 }  // namespace video

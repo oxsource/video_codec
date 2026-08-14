@@ -7,6 +7,7 @@
 #include <media/NdkMediaMuxer.h>
 
 #include "byte_sink.h"
+#include "codec_factory.h"
 #include "mediacodec_utils.h"
 
 namespace video {
@@ -227,5 +228,13 @@ void MediaCodecMuxer::Release() {
   sink_ = nullptr;  // non-owning; caller owns the sink lifetime
 }
 
+}  // namespace codec
+}  // namespace video
+
+// Self-registration (atlas-style); `mediacodec_muxer` carries alwayslink and
+// is android-only (target_compatible_with), so this only compiles on Android.
+namespace video {
+namespace codec {
+VIDEO_CODEC_REGISTER_MUXER(Backend::kAndroid, MediaCodecMuxer)
 }  // namespace codec
 }  // namespace video

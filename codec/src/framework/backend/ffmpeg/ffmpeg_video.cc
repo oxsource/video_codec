@@ -9,6 +9,7 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
+#include "codec_factory.h"
 #include "log_slot.h"
 #include "queue_iface.h"
 
@@ -222,5 +223,14 @@ void FFmpegVideoEncoder::Release() {
   ctx_.reset();
 }
 
+}  // namespace codec
+}  // namespace video
+
+// Self-registration (atlas-style): the static initializer registers the
+// creator so CodecFactory can resolve this backend. The `ffmpeg_video` target
+// carries alwayslink so this object is force-linked.
+namespace video {
+namespace codec {
+VIDEO_CODEC_REGISTER_VIDEO(Backend::kFFmpeg, FFmpegVideoEncoder)
 }  // namespace codec
 }  // namespace video

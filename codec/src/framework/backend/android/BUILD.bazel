@@ -1,10 +1,12 @@
 package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//tests:__subpackages__"])
 
-# Android MediaCodec backend (NDK AMediaCodec). android-only so the host build
-# stays NDK-free; @ffmpeg path is selected on non-Android platforms. Mirrors
-# the FFmpeg backend layout: one cc_library per module + `register` (alwayslink)
-# + the `android` aggregate. The pure `mediacodec_utils` helpers are host
-# compatible so host unit tests can cover them.
+# Android MediaCodec backend (NDK AMediaCodec). Every target carries
+# `target_compatible_with = ["@platforms//os:android"]` so these sources only
+# compile on the Android platform (host stays NDK-free; @ffmpeg is selected on
+# non-Android). Mirrors the FFmpeg backend layout: one cc_library per module,
+# each self-registering via VIDEO_CODEC_REGISTER_* (codec_factory.h) at the bottom of
+# its .cc with alwayslink so the static initializer is force-linked. The pure
+# `mediacodec_utils` helpers are host compatible so host unit tests cover them.
 cc_library(
     name = "android",
     target_compatible_with = ["@platforms//os:android"],
@@ -12,7 +14,6 @@ cc_library(
         ":mediacodec_audio",
         ":mediacodec_muxer",
         ":mediacodec_video",
-        ":register",
         "@video_codec//src/framework/core",
         "@video_codec//src/framework/api",
         "@video_codec//src/framework/utils",
@@ -26,9 +27,11 @@ cc_library(
     srcs = ["mediacodec_audio.cc"],
     hdrs = ["mediacodec_audio.h"],
     includes = ["."],
+    alwayslink = True,
     deps = [
         ":mediacodec_raii",
         ":mediacodec_utils",
+        "@video_codec//src/framework/api:codec_factory",
         "@video_codec//src/framework/core",
         "@video_codec//src/framework/api",
         "//third_party/android_ndk:android_media_codec",
@@ -41,9 +44,11 @@ cc_library(
     srcs = ["mediacodec_muxer.cc"],
     hdrs = ["mediacodec_muxer.h"],
     includes = ["."],
+    alwayslink = True,
     deps = [
         ":mediacodec_raii",
         ":mediacodec_utils",
+        "@video_codec//src/framework/api:codec_factory",
         "@video_codec//src/framework/core",
         "@video_codec//src/framework/api",
         "@video_codec//src/framework/io:byte_sink",
@@ -57,9 +62,11 @@ cc_library(
     srcs = ["mediacodec_video.cc"],
     hdrs = ["mediacodec_video.h"],
     includes = ["."],
+    alwayslink = True,
     deps = [
         ":mediacodec_raii",
         ":mediacodec_utils",
+        "@video_codec//src/framework/api:codec_factory",
         "@video_codec//src/framework/core",
         "@video_codec//src/framework/api",
         "//third_party/android_ndk:android_media_codec",
@@ -74,22 +81,6 @@ cc_library(
     hdrs = ["mediacodec_raii.h"],
     includes = ["."],
     target_compatible_with = ["@platforms//os:android"],
-)
-
-# Static self-registration (alwayslink): pulls the register initializer into
-# any binary linking the Android backend, so `CodecFactory::Create*` resolves.
-cc_library(
-    name = "register",
-    srcs = ["register.cc"],
-    target_compatible_with = ["@platforms//os:android"],
-    alwayslink = True,
-    deps = [
-        ":mediacodec_audio",
-        ":mediacodec_muxer",
-        ":mediacodec_raii",
-        ":mediacodec_video",
-        "@video_codec//src/framework/api:codec_factory",
-    ],
 )
 
 # Pure helpers shared by the MediaCodec backends (color/mime/buffer mapping,

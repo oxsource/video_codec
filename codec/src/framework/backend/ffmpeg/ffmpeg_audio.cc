@@ -10,6 +10,7 @@ extern "C" {
 
 #include <cmath>
 
+#include "codec_factory.h"
 #include "queue_iface.h"
 
 namespace video {
@@ -136,5 +137,12 @@ void FFmpegAudioEncoder::Release() {
   ctx_.reset();
 }
 
+}  // namespace codec
+}  // namespace video
+
+// Self-registration (atlas-style); `ffmpeg_audio` carries alwayslink.
+namespace video {
+namespace codec {
+VIDEO_CODEC_REGISTER_AUDIO(Backend::kFFmpeg, FFmpegAudioEncoder)
 }  // namespace codec
 }  // namespace video

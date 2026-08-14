@@ -12,10 +12,10 @@ package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//
 #
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `ffmpeg` target deps on all modules for backward compatibility.
-# `register` carries alwayslink so its object (static initializer
-# self-registering the backend in the factory) is force-loaded into any binary
-# that links this backend — otherwise CodecFactory::CreateVideo returns
-# nullptr.
+# Each module self-registers its creator into the factory via the
+# VIDEO_CODEC_REGISTER_* macros at the bottom of its .cc, and carries alwayslink so the
+# static initializer is force-loaded into any binary that links this backend —
+# otherwise CodecFactory::CreateVideo returns nullptr.
 
 cc_library(
     name = "ffmpeg_raii",
@@ -28,8 +28,10 @@ cc_library(
     srcs = ["ffmpeg_video.cc"],
     hdrs = ["ffmpeg_video.h"],
     includes = ["."],
+    alwayslink = True,
     deps = [
         ":ffmpeg_raii",
+        "@video_codec//src/framework/api:codec_factory",
         "@video_codec//src/framework/api:encoder_lifecycle",
         "@video_codec//src/framework/api:video_encoder",
         "@video_codec//src/framework/core:log_slot",
@@ -45,9 +47,11 @@ cc_library(
     srcs = ["ffmpeg_audio.cc"],
     hdrs = ["ffmpeg_audio.h"],
     includes = ["."],
+    alwayslink = True,
     deps = [
         ":ffmpeg_raii",
         "@video_codec//src/framework/api:audio_encoder",
+        "@video_codec//src/framework/api:codec_factory",
         "@video_codec//src/framework/api:encoder_lifecycle",
         "@video_codec//src/framework/core:types",
         "@video_codec//src/framework/queue:queue_iface",
@@ -61,7 +65,9 @@ cc_library(
     srcs = ["ffmpeg_muxer.cc"],
     hdrs = ["ffmpeg_muxer.h"],
     includes = ["."],
+    alwayslink = True,
     deps = [
+        "@video_codec//src/framework/api:codec_factory",
         "@video_codec//src/framework/api:muxer",
         "@video_codec//src/framework/core:types",
         "@video_codec//src/framework/io:byte_sink",
@@ -71,24 +77,10 @@ cc_library(
 )
 
 cc_library(
-    name = "register",
-    srcs = ["register.cc"],
-    includes = ["."],
-    alwayslink = True,
-    deps = [
-        ":ffmpeg_audio",
-        ":ffmpeg_muxer",
-        ":ffmpeg_video",
-        "@video_codec//src/framework/api:codec_factory",
-    ],
-)
-
-cc_library(
     name = "ffmpeg",
     deps = [
         ":ffmpeg_video",
         ":ffmpeg_audio",
         ":ffmpeg_muxer",
-        ":register",
     ],
 )

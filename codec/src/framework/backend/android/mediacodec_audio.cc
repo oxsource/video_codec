@@ -6,6 +6,7 @@
 #include <media/NdkMediaCodec.h>
 #include <media/NdkMediaFormat.h>
 
+#include "codec_factory.h"
 #include "mediacodec_utils.h"
 #include "packet_sink.h"
 
@@ -187,5 +188,13 @@ void MediaCodecAudioEncoder::Release() {
   asc_.clear();
 }
 
+}  // namespace codec
+}  // namespace video
+
+// Self-registration (atlas-style); `mediacodec_audio` carries alwayslink and
+// is android-only (target_compatible_with), so this only compiles on Android.
+namespace video {
+namespace codec {
+VIDEO_CODEC_REGISTER_AUDIO(Backend::kAndroid, MediaCodecAudioEncoder)
 }  // namespace codec
 }  // namespace video
