@@ -52,6 +52,36 @@ std::unique_ptr<AudioEncoder> CodecFactory::CreateAudio(const AudioConfig& cfg) 
   return it->second(cfg);
 }
 
+// Push-mode convenience overloads: create + Init + SetOutputSink in one call.
+// The failing step's status is propagated through the Result (an unregistered
+// backend reports kPlatformUnsupported, mirroring the nullptr contract of the
+// plain Create* overloads).
+Result<std::unique_ptr<VideoEncoder>> CodecFactory::CreateVideo(const VideoConfig& cfg,
+                                                                PacketSink* sink) {
+  std::unique_ptr<VideoEncoder> encoder = CreateVideo(cfg);
+  if (!encoder) return Err<std::unique_ptr<VideoEncoder>>(Status::kPlatformUnsupported);
+  Status s = encoder->Init();
+  if (s != Status::kOk) return Err<std::unique_ptr<VideoEncoder>>(s);
+  if (sink) {
+    s = encoder->SetOutputSink(sink);
+    if (s != Status::kOk) return Err<std::unique_ptr<VideoEncoder>>(s);
+  }
+  return Ok(std::move(encoder));
+}
+
+Result<std::unique_ptr<AudioEncoder>> CodecFactory::CreateAudio(const AudioConfig& cfg,
+                                                                PacketSink* sink) {
+  std::unique_ptr<AudioEncoder> encoder = CreateAudio(cfg);
+  if (!encoder) return Err<std::unique_ptr<AudioEncoder>>(Status::kPlatformUnsupported);
+  Status s = encoder->Init();
+  if (s != Status::kOk) return Err<std::unique_ptr<AudioEncoder>>(s);
+  if (sink) {
+    s = encoder->SetOutputSink(sink);
+    if (s != Status::kOk) return Err<std::unique_ptr<AudioEncoder>>(s);
+  }
+  return Ok(std::move(encoder));
+}
+
 void CodecFactory::RegisterMuxer(Backend b, MuxerCreator fn) {
   std::lock_guard<std::mutex> lk(reg().mu);
   reg().mux[b] = std::move(fn);

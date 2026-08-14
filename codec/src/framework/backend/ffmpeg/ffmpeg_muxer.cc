@@ -7,6 +7,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
+#include <libavutil/channel_layout.h>
 #include <libavutil/dict.h>
 #include <libavutil/mem.h>
 }
@@ -52,6 +53,27 @@ const char* MuxFormatName(MuxFormat format) {
       return "mp4";
   }
   return "mp4";  // unreachable for the current single-format enum
+}
+
+// Sampling-frequency index for the AAC AudioSpecificConfig (ISO 14496-3
+// Table 1.15); -1 for rates the muxer cannot describe.
+int SamplingFrequencyIndex(int sample_rate) {
+  switch (sample_rate) {
+    case 96000: return 0;
+    case 88200: return 1;
+    case 64000: return 2;
+    case 48000: return 3;
+    case 44100: return 4;
+    case 32000: return 5;
+    case 24000: return 6;
+    case 22050: return 7;
+    case 16000: return 8;
+    case 12000: return 9;
+    case 11025: return 10;
+    case 8000: return 11;
+    case 7350: return 12;
+  }
+  return -1;
 }
 
 }  // namespace
@@ -183,6 +205,42 @@ Status FFmpegMuxer::OpenMuxer(const VideoPacket& first_keyframe) {
     par->extradata_size = static_cast<int>(extradata.size());
   }
 
+  // Optional AAC-LC audio track: the mov muxer writes the esds descriptor
+  // from this stream's codecpar + our 2-byte AudioSpecificConfig extradata
+  // (raw AAC access units, no ADTS headers — exactly what MP4 expects).
+  if (config_.audio_codec == AudioCodecType::kAAC) {
+    AVStream* ast = avformat_new_stream(fmt_, nullptr);
+    if (!ast) {
+      avformat_free_context(fmt_);
+      fmt_ = nullptr;
+      return Status::kEncodeFailed;
+    }
+    ast->id = 1;
+    ast->time_base = AVRational{1, config_.sample_rate};
+    AVCodecParameters* apar = ast->codecpar;
+    apar->codec_type = AVMEDIA_TYPE_AUDIO;
+    apar->codec_id = AV_CODEC_ID_AAC;
+    apar->sample_rate = config_.sample_rate;
+    av_channel_layout_default(&apar->ch_layout, config_.channels);
+
+    std::vector<uint8_t> asc;
+    if (BuildAudioSpecificConfig(config_.sample_rate, config_.channels, &asc) != Status::kOk) {
+      avformat_free_context(fmt_);
+      fmt_ = nullptr;
+      return Status::kEncodeFailed;
+    }
+    apar->extradata =
+        static_cast<uint8_t*>(av_mallocz(asc.size() + AV_INPUT_BUFFER_PADDING_SIZE));
+    if (!apar->extradata) {
+      avformat_free_context(fmt_);
+      fmt_ = nullptr;
+      return Status::kEncodeFailed;
+    }
+    std::memcpy(apar->extradata, asc.data(), asc.size());
+    apar->extradata_size = static_cast<int>(asc.size());
+    audio_stream_index_ = ast->index;
+  }
+
   // Route all output through the attached ByteSink via a custom AVIOContext.
   uint8_t* iobuf = static_cast<uint8_t*>(av_malloc(kIoBufferSize));
   if (!iobuf) {
@@ -226,6 +284,12 @@ Status FFmpegMuxer::Push(VideoPacket&& pkt) {
     if (!pkt.keyframe) return Status::kOk;
     Status s = OpenMuxer(pkt);
     if (s != Status::kOk) return s;
+    // Container is open now: replay any audio buffered before the first
+    // keyframe (Await drains video first, so this is only a fallback).
+    for (const AudioPacket& ap : pending_audio_) {
+      if (WriteAudioPacket(ap) != Status::kOk) return Status::kEncodeFailed;
+    }
+    pending_audio_.clear();
   }
 
   std::vector<uint8_t> sample;
@@ -268,9 +332,69 @@ Status FFmpegMuxer::Push(VideoPacket&& pkt) {
   return ret < 0 ? Status::kEncodeFailed : Status::kOk;
 }
 
-Status FFmpegMuxer::Flush() { return Status::kOk; }
+Status FFmpegMuxer::BuildAudioSpecificConfig(int sample_rate, int channels,
+                                             std::vector<uint8_t>* out) {
+  const int freq_index = SamplingFrequencyIndex(sample_rate);
+  if (freq_index < 0 || channels < 1 || channels > 7) {
+    return Status::kEncodeFailed;
+  }
+  // AAC-LC (audioObjectType 2) AudioSpecificConfig, ISO 14496-3: 5 bits AOT,
+  // 4 bits samplingFrequencyIndex, 4 bits channelConfiguration.
+  constexpr int kAacLc = 2;
+  out->clear();
+  out->push_back(static_cast<uint8_t>(((kAacLc << 3) & 0xF8) | ((freq_index >> 1) & 0x07)));
+  out->push_back(static_cast<uint8_t>(((freq_index & 1) << 7) | ((channels & 0x0F) << 3)));
+  return Status::kOk;
+}
+
+Status FFmpegMuxer::Push(AudioPacket&& pkt) {
+  if (pkt.data.empty()) return Status::kOk;
+  if (!sink_) return Status::kInvalidArgument;
+  // v1: only AAC-LC is carried by the mov muxer (raw access units + ASC).
+  if (config_.audio_codec != AudioCodecType::kAAC) {
+    return Status::kUnsupportedOperation;
+  }
+  if (!opened_) {
+    // Buffer until the container opens on the first video keyframe.
+    pending_audio_.push_back(std::move(pkt));
+    return Status::kOk;
+  }
+  return WriteAudioPacket(pkt);
+}
+
+Status FFmpegMuxer::WriteAudioPacket(const AudioPacket& pkt) {
+  if (audio_stream_index_ < 0) return Status::kEncodeFailed;
+  AVPacket* avpkt = av_packet_alloc();
+  if (!avpkt) return Status::kEncodeFailed;
+  if (av_new_packet(avpkt, static_cast<int>(pkt.data.size())) < 0) {
+    av_packet_free(&avpkt);
+    return Status::kEncodeFailed;
+  }
+  std::memcpy(avpkt->data, pkt.data.data(), pkt.data.size());
+  avpkt->stream_index = audio_stream_index_;
+  const AVRational tb = fmt_->streams[audio_stream_index_]->time_base;
+  const int64_t pts = av_rescale_q(pkt.pts_us, AVRational{1, 1'000'000}, tb);
+  avpkt->pts = pts;
+  avpkt->dts = pts;  // encode order == display order (no codec delay in PTS)
+  avpkt->flags = 0;  // audio is never a keyframe
+
+  // The mov muxer buffers audio samples into the current fragment and writes
+  // them when the next keyframe closes it; no per-packet io flush here.
+  const int ret = config_.fragmented ? av_write_frame(fmt_, avpkt)
+                                     : av_interleaved_write_frame(fmt_, avpkt);
+  av_packet_free(&avpkt);
+  return ret < 0 ? Status::kEncodeFailed : Status::kOk;
+}
+
+Status FFmpegMuxer::Flush() {
+  // Packets still buffered pre-open (no video keyframe yet) are dropped:
+  // without the avcC extradata there is no container to put them in.
+  pending_audio_.clear();
+  return Status::kOk;
+}
 
 Status FFmpegMuxer::Finish() {
+  pending_audio_.clear();  // unreachable audio buffered without an open
   if (opened_) {
     av_write_trailer(fmt_);
     if (fmt_->pb) {
@@ -286,6 +410,7 @@ Status FFmpegMuxer::Finish() {
 }
 
 void FFmpegMuxer::Release() {
+  pending_audio_.clear();
   if (opened_) {
     av_write_trailer(fmt_);
     if (fmt_->pb) {

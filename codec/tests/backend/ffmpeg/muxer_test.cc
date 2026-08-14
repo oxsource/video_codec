@@ -15,6 +15,7 @@
 
 #include "codec_factory.h"
 #include "video_encoder.h"
+#include "audio_encoder.h"
 #include "gtest/gtest.h"
 #include "byte_sink.h"
 #include "packet_queue.h"
@@ -78,6 +79,28 @@ MuxerConfig MakeMuxerConfig() {
   return cfg;
 }
 
+AudioConfig MakeAudioEncoderConfig() {
+  AudioConfig cfg;
+  cfg.codec = AudioCodecType::kAAC;
+  cfg.sample_rate = 48000;
+  cfg.channels = 2;
+  cfg.bitrate = 128'000;
+  cfg.backend = Backend::kFFmpeg;
+  return cfg;
+}
+
+// Interleaved S16 PCM audio frame of `samples` samples, stereo.
+AudioFrame MakePcmFrame(int samples) {
+  AudioFrame f;
+  f.format = SampleFormat::kS16;
+  f.sample_rate = 48000;
+  f.channels = 2;
+  f.data.resize(static_cast<size_t>(samples) * 2 * 2);  // S16 interleaved
+  auto* p = reinterpret_cast<int16_t*>(f.data.data());
+  for (int i = 0; i < samples * 2; ++i) p[i] = static_cast<int16_t>((i % 1000) - 500);
+  return f;
+}
+
 bool Contains(const std::vector<uint8_t>& bytes, const char* tag) {
   const size_t n = std::char_traits<char>::length(tag);
   if (bytes.size() < n) return false;
@@ -134,6 +157,59 @@ TEST(MuxerTest, EncoderToQueueToMuxerProducesMp4) {
       << "output must begin with an MP4 box (4-byte size + 'ftyp')";
   EXPECT_TRUE(Contains(sink.bytes_, "moov")) << "finished output must contain moov";
   EXPECT_TRUE(Contains(sink.bytes_, "mdat")) << "finished output must contain mdat";
+}
+
+// US1 extension: a video encoder AND an audio encoder push into one queue;
+// Await hands both media to the muxer, which produces an MP4 carrying H.264
+// (avc1) and AAC (mp4a) sample entries.
+TEST(MuxerTest, VideoPlusAudioProducesMp4WithBothTracks) {
+  PacketQueue q(64, Backpressure::kBlock);
+  std::unique_ptr<VideoEncoder> venc = CodecFactory::CreateVideo(MakeEncoderConfig());
+  ASSERT_NE(venc, nullptr);
+  ASSERT_EQ(venc->Init(), Status::kOk);
+  ASSERT_EQ(venc->SetOutputSink(&q), Status::kOk);
+
+  std::unique_ptr<AudioEncoder> aenc = CodecFactory::CreateAudio(MakeAudioEncoderConfig());
+  ASSERT_NE(aenc, nullptr);
+  ASSERT_EQ(aenc->Init(), Status::kOk);
+  ASSERT_EQ(aenc->SetOutputSink(&q), Status::kOk);
+
+  MuxerConfig mcfg = MakeMuxerConfig();
+  mcfg.audio_codec = AudioCodecType::kAAC;
+  mcfg.sample_rate = 48000;
+  mcfg.channels = 2;
+  std::unique_ptr<Muxer> muxer = CodecFactory::CreateMuxer(mcfg);
+  ASSERT_NE(muxer, nullptr);
+  MemorySink sink;
+  ASSERT_EQ(muxer->SetOutput(&sink), Status::kOk);
+
+  std::thread mux_thread([&] { q.Await(*muxer); });
+
+  // Generate audio frames (1024 samples each) covering the wall-clock span of
+  // every video frame (48000 / 30 = 1600 samples per 1/30 s).
+  constexpr int kFrames = 30;
+  constexpr int kAudioSamplesPerFrame = 1024;
+  constexpr int64_t kAudioPerVideoPeriod = 48000 / 30;
+  int64_t audio_generated = 0;
+  for (int i = 0; i < kFrames; ++i) {
+    ASSERT_TRUE(venc->Encode(MakeI420Frame(320, 240, i)).ok());
+    while (audio_generated + kAudioSamplesPerFrame <= (i + 1) * kAudioPerVideoPeriod) {
+      ASSERT_TRUE(aenc->Encode(MakePcmFrame(kAudioSamplesPerFrame)).ok());
+      audio_generated += kAudioSamplesPerFrame;
+    }
+  }
+  ASSERT_TRUE(venc->Flush().ok());
+  ASSERT_TRUE(aenc->Flush().ok());
+  q.MarkEos();
+  mux_thread.join();
+
+  EXPECT_GT(sink.bytes_.size(), 0u);
+  EXPECT_TRUE(HasFtypAtOffset4(sink.bytes_))
+      << "output must begin with an MP4 box (4-byte size + 'ftyp')";
+  EXPECT_TRUE(Contains(sink.bytes_, "moov")) << "finished output must contain moov";
+  EXPECT_TRUE(Contains(sink.bytes_, "mdat")) << "finished output must contain mdat";
+  EXPECT_TRUE(Contains(sink.bytes_, "avc1")) << "must contain the H.264 sample entry";
+  EXPECT_TRUE(Contains(sink.bytes_, "mp4a")) << "must contain the AAC sample entry";
 }
 
 }  // namespace

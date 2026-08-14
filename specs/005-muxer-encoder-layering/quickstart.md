@@ -46,7 +46,7 @@ std::thread worker([&] { queue.Await(*muxer); });
 
 // 5. 喂帧
 for (int i = 0; i < 30; ++i) {
-  auto frame = vc::utils::SmpteBars::MakeFrame(640, 480, 30, i);
+  auto frame = vc::utils::SmpteBars::MakeVideoFrame(640, 480, 30, i);
   encoder->Encode(frame);
 }
 

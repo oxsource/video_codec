@@ -34,8 +34,7 @@ Status FFmpegAudioEncoder::Init() {
 
   ctx_->sample_fmt = AV_SAMPLE_FMT_FLTP;
   ctx_->sample_rate = config_.sample_rate;
-  ctx_->channels = config_.channels;
-  ctx_->channel_layout = av_get_default_channel_layout(config_.channels);
+  av_channel_layout_default(&ctx_->ch_layout, config_.channels);
   ctx_->bit_rate = config_.bitrate;
 
   if (avcodec_open2(ctx_.get(), codec, nullptr) < 0) {
@@ -45,7 +44,7 @@ Status FFmpegAudioEncoder::Init() {
   frame_.reset(av_frame_alloc());
   frame_->format = AV_SAMPLE_FMT_FLTP;
   frame_->sample_rate = config_.sample_rate;
-  frame_->channels = config_.channels;
+  av_channel_layout_default(&frame_->ch_layout, config_.channels);
   frame_->nb_samples = ctx_->frame_size > 0 ? ctx_->frame_size : 1024;
   if (av_frame_get_buffer(frame_.get(), 0) < 0) {
     return Status::kEncodeFailed;
@@ -79,9 +78,12 @@ Result<AudioPacket> FFmpegAudioEncoder::Encode(const AudioFrame& frame) {
       dst[i] = static_cast<float>(s) / 32768.0f;
     }
   }
-  frame_->pts = pts_++;
-  // Advance the consumer offset by the actual samples consumed.
-  (void)in_samples;
+  frame_->pts = pts_;
+  // Each encoded frame spans `samples` (= frame_size, 1024 for AAC) input
+  // samples; advance the running PTS by that span so consecutive output
+  // packets are 1024 samples (21.3 ms at 48 kHz) apart — required for
+  // correct A/V sync when the packets are muxed.
+  pts_ += samples;
 
   if (avcodec_send_frame(ctx_.get(), frame_.get()) < 0)
     return Err<AudioPacket>(Status::kEncodeFailed);

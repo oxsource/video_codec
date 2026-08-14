@@ -1,11 +1,15 @@
 // smpte_bars.cc
 #include "smpte_bars.h"
 
+#include <cmath>
+
 namespace video {
 namespace codec {
 namespace utils {
 
 namespace {
+
+constexpr double kPi = 3.14159265358979323846;
 
 // Bar index (0..SmpteBars::kCount-1) covering luma pixel `x` of a `width` row.
 int BarAt(int x, int width) {
@@ -28,8 +32,8 @@ void SmpteBars::RgbToYuv(const Color& c, uint8_t& y, uint8_t& u, uint8_t& v) {
   v = static_cast<uint8_t>(128 + 0.439f * r - 0.368f * g - 0.071f * b);
 }
 
-VideoFrame SmpteBars::MakeFrame(int width, int height, int fps, int frame_index,
-                                const Options& opts) {
+VideoFrame SmpteBars::MakeVideoFrame(int width, int height, int fps, int frame_index,
+                                     const Options& opts) {
   VideoFrame f;
   if (width <= 0 || height <= 0 || width % 2 != 0 || height % 2 != 0 || fps <= 0) {
     return f;  // empty frame (width == 0) on invalid input
@@ -74,6 +78,35 @@ VideoFrame SmpteBars::MakeFrame(int width, int height, int fps, int frame_index,
       f.planes[1][idx] = U;
       f.planes[2][idx] = V;
       (void)Y;
+    }
+  }
+  return f;
+}
+
+AudioFrame SmpteBars::MakeAudioFrame(int frame_index, const AudioOptions& opts) {
+  AudioFrame f;
+  if (opts.sample_rate <= 0 || opts.channels <= 0 || opts.samples_per_frame <= 0 ||
+      opts.tone_hz <= 0 || opts.tone_hz > opts.sample_rate / 2) {
+    return f;  // empty frame (data empty) on invalid input
+  }
+  f.format = SampleFormat::kS16;
+  f.sample_rate = opts.sample_rate;
+  f.channels = opts.channels;
+  f.timestamp_us = static_cast<int64_t>(frame_index) * opts.samples_per_frame * 1'000'000 /
+                   opts.sample_rate;
+
+  const int64_t start_sample = static_cast<int64_t>(frame_index) * opts.samples_per_frame;
+  const int64_t beep_on = opts.sample_rate / 8;  // 125 ms on / 1 s period
+  f.data.resize(static_cast<size_t>(opts.samples_per_frame) * opts.channels * sizeof(int16_t));
+  auto* p = reinterpret_cast<int16_t*>(f.data.data());
+  const double two_pi_f = 2.0 * kPi * opts.tone_hz / opts.sample_rate;
+  for (int i = 0; i < opts.samples_per_frame; ++i) {
+    const int64_t t = start_sample + i;
+    const bool silent = opts.beep && (t % opts.sample_rate) >= beep_on;
+    // ~1/4 full-scale amplitude (-12 dBFS) leaves headroom and never clips.
+    const int16_t v = silent ? 0 : static_cast<int16_t>(8192.0 * std::sin(two_pi_f * t));
+    for (int c = 0; c < opts.channels; ++c) {
+      p[static_cast<size_t>(i) * opts.channels + c] = v;
     }
   }
   return f;

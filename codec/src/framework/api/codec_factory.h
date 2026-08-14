@@ -6,6 +6,7 @@
 #include <mutex>
 #include <unordered_map>
 
+#include "result.h"
 #include "types.h"
 
 namespace video {
@@ -14,6 +15,7 @@ namespace codec {
 class VideoEncoder;
 class AudioEncoder;
 class Muxer;
+class PacketSink;  // fwd-declared: `api` stays free of a `queue` dependency.
 
 // Backend creator functions self-registered by each backend.
 using VideoCreator = std::function<std::unique_ptr<VideoEncoder>(const VideoConfig&)>;
@@ -41,6 +43,18 @@ class CodecFactory {
   static std::unique_ptr<VideoEncoder> CreateVideo(const VideoConfig& cfg);
   static std::unique_ptr<AudioEncoder> CreateAudio(const AudioConfig& cfg);
   static std::unique_ptr<Muxer> CreateMuxer(const MuxerConfig& cfg);
+
+  // Create an encoder already wired for push mode: resolves the backend,
+  // constructs the instance, Init()s it, and attaches `sink` as the packet
+  // output (e.g. a PacketQueue, which implements PacketSink). The encoder is
+  // delivered in value() on success; on failure status() carries the failing
+  // step (kPlatformUnsupported when no backend is registered, otherwise the
+  // Init()/SetOutputSink() status). `sink` may be nullptr to skip push-mode
+  // wiring (the encoder is still Init()ed).
+  static Result<std::unique_ptr<VideoEncoder>> CreateVideo(const VideoConfig& cfg,
+                                                           PacketSink* sink);
+  static Result<std::unique_ptr<AudioEncoder>> CreateAudio(const AudioConfig& cfg,
+                                                           PacketSink* sink);
 
  private:
   CodecFactory() = delete;  // static-class: no instances

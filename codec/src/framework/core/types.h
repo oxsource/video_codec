@@ -10,7 +10,7 @@ namespace codec {
 // ---- Codec / format enums -------------------------------------------------
 
 enum class VideoCodecType { kH264, kHEVC };
-enum class AudioCodecType { kAAC, kOpus };
+enum class AudioCodecType { kNone, kAAC, kOpus };  // kNone = no audio stream
 enum class PixelFormat { kI420, kNV12, kRGBA };
 enum class SampleFormat { kS16, kF32, kS16Planar, kF32Planar };
 enum class BitrateMode { kConstant, kVariable };
@@ -102,11 +102,22 @@ struct MuxerConfig {
   int width = 0;           // stream metadata; SPS-parse fallbacks
   int height = 0;
   int fps = 30;
+  // Optional audio stream metadata. kNone (default) produces a video-only
+  // container; kAAC adds an AAC-LC track (v1: the only muxed audio codec).
+  AudioCodecType audio_codec = AudioCodecType::kNone;
+  int sample_rate = 48000;
+  int channels = 2;
   Backend backend = Backend::kAuto;  // kAuto -> platform select
 
-  // True when the config describes a muxable stream (dimensions set).
-  // Backends call this to reject bad configs before doing any real work.
-  bool IsValid() const { return width > 0 && height > 0; }
+  // True when the config describes a muxable stream (dimensions set, and the
+  // optional audio metadata is valid when an audio track is requested).
+  bool IsValid() const {
+    if (width <= 0 || height <= 0) return false;
+    if (audio_codec != AudioCodecType::kNone) {
+      return sample_rate > 0 && channels > 0;
+    }
+    return true;
+  }
 };
 
 }  // namespace codec

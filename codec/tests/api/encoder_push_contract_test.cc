@@ -3,10 +3,14 @@
 // Spec 004, US1/A4: the default `SetOutputSink` on the abstract encoders
 // returns kUnsupportedOperation (push-incapable backends stay in pull mode).
 // The real FFmpeg backends override this and return kOk (covered by
-// encode_push_test).
+// encode_push_test). Also covers the CodecFactory::Create{Video,Audio}
+// push-mode overloads: create + Init + SetOutputSink in one Result-wrapped
+// call.
 
 #include "audio_encoder.h"
 #include "video_encoder.h"
+#include "codec_factory.h"
+#include "packet_sink.h"
 #include "gtest/gtest.h"
 
 namespace video {
@@ -32,6 +36,26 @@ class StubAudioEncoder : public AudioEncoder {
   void Release() override {}
 };
 
+// Push-capable stubs: the abstract default SetOutputSink is unsupported, so a
+// backend that wants push mode must override it (as the FFmpeg backend does).
+class PushStubVideoEncoder : public StubVideoEncoder {
+ public:
+  Status SetOutputSink(PacketSink*) override { return Status::kOk; }
+};
+
+class PushStubAudioEncoder : public StubAudioEncoder {
+ public:
+  Status SetOutputSink(PacketSink*) override { return Status::kOk; }
+};
+
+// A sink that accepts (and drops) every packet — the queue implements
+// PacketSink the same way at the call site.
+class NullSink : public PacketSink {
+ public:
+  Status Push(VideoPacket&&) override { return Status::kOk; }
+  Status Push(AudioPacket&&) override { return Status::kOk; }
+};
+
 TEST(EncoderPushContractTest, DefaultVideoSetOutputSinkIsUnsupported) {
   StubVideoEncoder enc;
   EXPECT_EQ(enc.SetOutputSink(nullptr), Status::kUnsupportedOperation);
@@ -40,6 +64,57 @@ TEST(EncoderPushContractTest, DefaultVideoSetOutputSinkIsUnsupported) {
 TEST(EncoderPushContractTest, DefaultAudioSetOutputSinkIsUnsupported) {
   StubAudioEncoder enc;
   EXPECT_EQ(enc.SetOutputSink(nullptr), Status::kUnsupportedOperation);
+}
+
+TEST(EncoderPushContractTest, CreateVideoWithSinkInitsAndWires) {
+  CodecFactory::RegisterVideo(
+      Backend::kDarwin, [](const VideoConfig&) { return std::make_unique<PushStubVideoEncoder>(); });
+  NullSink sink;
+  VideoConfig cfg;
+  cfg.backend = Backend::kDarwin;
+  auto r = CodecFactory::CreateVideo(cfg, &sink);
+  ASSERT_TRUE(r.ok()) << "status: " << static_cast<int>(r.status());
+  EXPECT_NE(r.value(), nullptr);
+}
+
+TEST(EncoderPushContractTest, CreateAudioWithSinkInitsAndWires) {
+  CodecFactory::RegisterAudio(
+      Backend::kDarwin, [](const AudioConfig&) { return std::make_unique<PushStubAudioEncoder>(); });
+  NullSink sink;
+  AudioConfig cfg;
+  cfg.backend = Backend::kDarwin;
+  auto r = CodecFactory::CreateAudio(cfg, &sink);
+  ASSERT_TRUE(r.ok()) << "status: " << static_cast<int>(r.status());
+  EXPECT_NE(r.value(), nullptr);
+}
+
+TEST(EncoderPushContractTest, CreateVideoWithSinkFailsForUnregisteredBackend) {
+  VideoConfig cfg;
+  cfg.backend = Backend::kAndroid;  // not registered on this host
+  auto r = CodecFactory::CreateVideo(cfg, nullptr);
+  ASSERT_FALSE(r.ok());
+  EXPECT_EQ(r.status(), Status::kPlatformUnsupported);
+}
+
+TEST(EncoderPushContractTest, CreateAudioWithSinkFailsForUnregisteredBackend) {
+  AudioConfig cfg;
+  cfg.backend = Backend::kAndroid;  // not registered on this host
+  auto r = CodecFactory::CreateAudio(cfg, nullptr);
+  ASSERT_FALSE(r.ok());
+  EXPECT_EQ(r.status(), Status::kPlatformUnsupported);
+}
+
+TEST(EncoderPushContractTest, CreateVideoWithSinkPropagatesSetOutputSinkStatus) {
+  // A push-incapable backend (default SetOutputSink) must surface its
+  // kUnsupportedOperation through the Result rather than pretending to wire.
+  CodecFactory::RegisterVideo(
+      Backend::kDarwin, [](const VideoConfig&) { return std::make_unique<StubVideoEncoder>(); });
+  NullSink sink;
+  VideoConfig cfg;
+  cfg.backend = Backend::kDarwin;
+  auto r = CodecFactory::CreateVideo(cfg, &sink);
+  ASSERT_FALSE(r.ok());
+  EXPECT_EQ(r.status(), Status::kUnsupportedOperation);
 }
 
 }  // namespace

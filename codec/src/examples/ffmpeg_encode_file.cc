@@ -3,13 +3,15 @@
 // A complete, runnable example of the video_codec pipeline:
 //
 //   SMPTE color-bars generator -> VideoEncoder (push mode)
+//   TV test tone (1 kHz)       -> AudioEncoder (push mode)
 //     -> PacketQueue -> Muxer (or FileConsumer) -> file
 //
 // Generates a synthetic SMPTE-style color-bars clip (with a moving white line
-// for motion), encodes it as H.264 at ~fps, paces itself to wall-clock time so
-// the default run takes about `seconds` (default 5) seconds, and writes the
-// output. By default the output is muxed into an MP4 container by a Muxer
-// (FFmpeg backend, implements PacketSink so Await hands packets to it);
+// for motion) plus a continuous 1 kHz TV test tone, encodes them as H.264 +
+// AAC at ~fps, paces itself to wall-clock time so the default run takes about
+// `seconds` (default 5) seconds, and writes the output. By default the output
+// is muxed into an MP4 container by a Muxer (FFmpeg backend, implements
+// PacketSink so Await hands video and audio packets straight to it);
 // "--raw" writes a raw Annex-B H.264 elementary stream (FileConsumer).
 //
 // Usage:
@@ -34,6 +36,7 @@
 
 #include "codec_factory.h"
 #include "muxer.h"
+#include "audio_encoder.h"
 #include "video_encoder.h"
 #include "file_consumer.h"
 #include "packet_consumer.h"
@@ -44,6 +47,8 @@
 
 namespace vc = video::codec;
 namespace vcu = video::codec::utils;
+
+static constexpr const char* kLogTag = "ffmpeg_encode_file";
 
 int main(int argc, char** argv) {
   bool raw = false;
@@ -68,6 +73,8 @@ int main(int argc, char** argv) {
   const int width = 640;
   const int height = 480;
   const int fps = 30;
+  const int sample_rate = 48000;
+  const int channels = 2;
   const int frame_count = seconds * fps;
 
   vc::VideoConfig cfg;
@@ -84,9 +91,10 @@ int main(int argc, char** argv) {
 
   // The output side differs by mode only in wiring; the encoder config above
   // is shared and protocol-agnostic (it never mentions a container):
-  //   default -> Muxer (implements PacketSink; Await hands packets straight
-  //              to it, writing a fragmented MP4 through the ByteSink)
-  //   --raw   -> FileConsumer writing a raw Annex-B file
+  //   default -> Muxer (implements PacketSink; Await hands video AND audio
+  //              packets straight to it, writing a fragmented MP4 with H.264
+  //              + AAC tracks through the ByteSink)
+  //   --raw   -> FileConsumer writing a raw Annex-B file (video only)
   std::unique_ptr<vc::ByteSink> mp4_sink;  // must outlive the muxer
   std::unique_ptr<vc::Muxer> muxer;
   std::unique_ptr<vc::PacketConsumer> consumer;
@@ -99,31 +107,51 @@ int main(int argc, char** argv) {
     mux_cfg.width = width;
     mux_cfg.height = height;
     mux_cfg.fps = fps;
+    mux_cfg.audio_codec = vc::AudioCodecType::kAAC;
+    mux_cfg.sample_rate = sample_rate;
+    mux_cfg.channels = channels;
     mux_cfg.backend = vc::Backend::kFFmpeg;
     muxer = vc::CodecFactory::CreateMuxer(mux_cfg);
     if (!muxer) {
-      std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg muxer available\n");
+      std::fprintf(stderr, "%s: no FFmpeg muxer available\n", kLogTag);
       return 1;
     }
     mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
     muxer->SetOutput(mp4_sink.get());
   }
 
-  std::unique_ptr<vc::VideoEncoder> encoder = vc::CodecFactory::CreateVideo(cfg);
-  if (!encoder) {
-    std::fprintf(stderr, "ffmpeg_encode_file: no FFmpeg backend available\n");
+  // Video encoder: create + Init + push-mode wiring in one factory call. The
+  // queue implements PacketSink, so it is handed straight to the factory; the
+  // Result carries the encoder (value()) or the failing step's status.
+  auto venc_res = vc::CodecFactory::CreateVideo(cfg, &queue);
+  if (!venc_res.ok()) {
+    std::fprintf(stderr, "%s: video encoder unavailable (%s)\n", kLogTag,
+                 vc::StatusToString(venc_res.status()));
     return 1;
   }
-  if (encoder->Init() != vc::Status::kOk) {
-    std::fprintf(stderr, "ffmpeg_encode_file: encoder Init failed\n");
-    return 1;
-  }
-  if (encoder->SetOutputSink(&queue) != vc::Status::kOk) {
-    std::fprintf(stderr, "ffmpeg_encode_file: push mode unavailable\n");
-    return 1;
+  std::unique_ptr<vc::VideoEncoder> video_encoder = venc_res.Release();
+
+  // Audio encoder: same push-mode wiring into the SAME queue. Only the muxed
+  // path encodes audio (raw mode writes a video-only elementary stream).
+  std::unique_ptr<vc::AudioEncoder> audio_encoder;
+  if (!raw) {
+    vc::AudioConfig acfg;
+    acfg.codec = vc::AudioCodecType::kAAC;
+    acfg.sample_rate = sample_rate;
+    acfg.channels = channels;
+    acfg.bitrate = 128'000;
+    acfg.backend = vc::Backend::kFFmpeg;
+    auto aenc_res = vc::CodecFactory::CreateAudio(acfg, &queue);
+    if (!aenc_res.ok()) {
+      std::fprintf(stderr, "%s: audio encoder unavailable (%s)\n", kLogTag,
+                   vc::StatusToString(aenc_res.status()));
+      return 1;
+    }
+    audio_encoder = aenc_res.Release();
   }
 
-  // Drain thread: Await delivers packets to the sink (muxer or raw consumer)
+  // Drain thread: Await delivers every packet (video AND audio, drained
+  // alternately from the two rings) to the sink — muxer or raw consumer —
   // and finishes it at EOS. Both implement PacketSink; PacketSink::Ptr
   // upcasts the concrete unique_ptr to the common base so Await needs no
   // branch.
@@ -135,30 +163,44 @@ int main(int argc, char** argv) {
 
   const auto start = std::chrono::steady_clock::now();
   int64_t produced = 0;
+  // The pacer turns each video frame's wall-clock span into the right number
+  // of AAC frames (1024 samples @48 kHz) and owns the audio frame index.
+  vcu::SmpteBars::AudioPace audio_pace(vcu::SmpteBars::AudioOptions(), fps);
   for (int i = 0; i < frame_count; ++i) {
-    vc::VideoFrame frame = vcu::SmpteBars::MakeFrame(width, height, fps, i);
-    const auto r = encoder->Encode(frame);
+    vc::VideoFrame frame = vcu::SmpteBars::MakeVideoFrame(width, height, fps, i);
+    const auto r = video_encoder->Encode(frame);
     if (!r.ok()) {
-      std::fprintf(stderr, "ffmpeg_encode_file: Encode error %d at frame %d\n",
-                   static_cast<int>(r.status()), i);
+      std::fprintf(stderr, "%s: Encode error %d at frame %d\n", kLogTag, static_cast<int>(r.status()), i);
       break;
     }
     ++produced;
+
+    if (audio_encoder) {
+      vc::AudioFrame af;
+      while (audio_pace.NextAudioFrame(i, &af)) {
+        const auto ar = audio_encoder->Encode(af);
+        if (!ar.ok()) {
+          std::fprintf(stderr, "%s: audio Encode error %d at frame %d\n", kLogTag, static_cast<int>(ar.status()), i);
+          break;
+        }
+      }
+    }
     // Pace to wall-clock ~fps so the default run takes ~`seconds`.
     std::this_thread::sleep_for(std::chrono::microseconds(1'000'000 / fps));
   }
 
   // Flush drains any remaining packets, then the CALLER marks end-of-stream
   // (multi-producer safety). Await finishes the sink at EOS.
-  encoder->Flush();
+  video_encoder->Flush();
+  if (audio_encoder) audio_encoder->Flush();
   queue.MarkEos();
   worker.join();
 
   const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                               std::chrono::steady_clock::now() - start)
                               .count();
-  std::printf("ffmpeg_encode_file: encoded %lld frames in %lld ms -> %s\n",
-              static_cast<long long>(produced), static_cast<long long>(elapsed_ms),
-              out_path.c_str());
+  std::printf("%s: encoded %lld frames + %lld audio frames in %lld ms -> %s\n", kLogTag,
+              static_cast<long long>(produced), static_cast<long long>(audio_pace.produced()),
+              static_cast<long long>(elapsed_ms), out_path.c_str());
   return 0;
 }
