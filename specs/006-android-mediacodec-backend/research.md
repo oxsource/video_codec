@@ -14,7 +14,7 @@
 
 ## R2: MediaCodec 视频编码（CPU 路径）
 
-- **Decision**: 采用 NDK `AMediaCodec` 标准 "dequeue/get/queue" 循环，输出经 `dequeueOutputBuffer`/`getOutputBuffer` 组装为 Annex-B（关键帧前置 SPS/PPS），`BUFFER_FLAG_KEY_FRAME` → `keyframe`。
+- **Decision**: 采用 NDK `AMediaCodec` 标准 "dequeue/get/queue" 循环，输出经 `dequeueOutputBuffer`/`getOutputBuffer` 组装为 Annex-B。关键帧 payload 在本平台已含 SPS/PPS（`[sc]SPS [sc]PPS [sc]IDR`，实测），仅当首个 NAL 非 SPS 时预置 `sps_/pps_`（`StartsWithNal(payload, 7)` 探测）；`BUFFER_FLAG_KEY_FRAME` → `keyframe`。
 - **Rationale**: 与既有 `codec/src/spike/mediacodec_spike.cc`（已验证 `video/avc` 循环）一致；输出格式与桌面一致（Annex-B），供下游队列/封装直接消费。
 - **API 形态**（NDK 25.2.9519653 头文件确认）:
   - `AMediaCodec_createEncoderByType("video/avc" | "video/hevc")`
@@ -55,3 +55,23 @@
 - **Decision**: 纯逻辑（格式键构造、颜色格式映射、缓冲尺寸计算、Annex-B 组装、ASC/csd 提取等）抽为可宿主单测的 `mediacodec_utils`；Android 集成验证走"交叉编译门禁 + 设备/模拟器示例运行"（沿用 `codec/mk/android.mk` → `android-verify` / `mediacodec_spike` 模式）。
 - **Rationale**: MediaCodec/MediaMuxer 无法在宿主运行；repo 尚无 android_instrumentation_test 基建。交叉编译门禁低成本捕获 NDK 破坏（spec 002 R2），宿主单测覆盖可测逻辑。
 - **Alternatives**: `android_instrumentation_test`（需模拟器/设备 CI 基建，v1 不做，记录为后续项）。
+
+## R7: AMediaMuxer 样本帧格式与写入生命周期
+
+- **Decision（帧格式）**: MediaCodecMuxer 的 video track 用**起始码前缀的 SPS/PPS**（csd-0/csd-1，与 `AMediaCodec_getOutputFormat` 逐字节一致），样本直接透传 Annex-B 但**剥掉缓冲开头的起始码**；encoder 不再重复预置 SPS/PPS（codec 关键帧 payload 已自带）。音频 track csd-0 为 2 字节 AudioSpecificConfig。
+- **实证**（Amalogic be11，Android 12，libstagefright，逐步隔离验证 R6）:
+  1. codec 输出 format 的 csd-0/csd-1 实测为 `[00 00 00 01][SPS]` / `[00 00 00 01][PPS]`（起始码 + 裸 NAL，非 avcC 盒子）。
+  2. 传 **avcC 盒子**给 csd-0 → `MPEG4Writer: Missing codec specific data`，`stop()` 返回 -1007 `ERROR_MALFORMED`，文件为空。
+  3. 传**裸 SPS**（无起始码）→ moov avcC 畸形 → `ffprobe: non-existing PPS 0 referenced`。
+  4. 传**带起始码 SPS/PPS**（匹配 codec format）→ avcC 正确，样本被 `addMultipleLengthPrefixedSamples_l` 剥起始码后按长度前缀写入。
+  5. 样本缓冲**以起始码开头**时，`addMultipleLengthPrefixedSamples_l` 把首个起始码读成空 NAL（`currentNalSize = nextNalStart - currentNalStart - 4`）→ mp4 样本帧错位 → `FORTIFY: write: count -1` 崩溃（`addLengthPrefixedSample_l` 写 count=range_length=-1）或 `Invalid NAL unit size (0 > ...)`。剥掉首个起始码后样本帧正确。
+  6. encoder 原用 `AppendAnnexB` 对关键帧预置 SPS/PPS，但本平台 codec 关键帧 payload 已含 SPS/PPS → 样本出现双 start code → 再次空 NAL。改为 `StartsWithNal(payload, 7)` 探测，仅当 payload 无 SPS 时预置。
+- **Decision（生命周期）**: 传给 `AMediaMuxer_writeSampleData` 的样本缓冲保持在 `in_flight_` 成员直至 `AMediaMuxer_stop()`（写线程 join）后释放——官方 API 要求缓冲存活至 stop，这是防御性正确做法；实证中崩溃主因是帧格式而非生命周期（参考项目立即释放 codec 缓冲亦正常）。
+- **成本**: `in_flight_` 峰值内存 ∝ 未停写帧数（每帧一份拷贝）；对 v1 短片段可忽略。长时录制可改为持久 growable buffer/文件。
+- **Alternatives**: 调用方保持缓冲存活（把生命周期责任推给 encoder 队列）→ 否决：`Muxer` 抽象按值 `Push`，接口不表达"缓冲借用"语义；后端自持拷贝最鲁棒。
+
+## R8: 安卓验证的逐步隔离（make 目标）
+
+- **Decision**: `make host_ffmpeg_codec`（host FFmpeg 基线）→ `make android-raw`（MediaCodec 视频编码器直出 raw H.264，无 muxer）→ `make android-run`（MediaCodec 视频+音频 + MediaMuxer 全流程），每步各自 ffprobe/ffmpeg 解码校验。Android 侧保持 **MediaCodec-only**（不引入 FFmpeg，架构不变式 R5）：FFmpeg 基线仅在 host 覆盖，设备验证不提供 backend 选择。
+- **Rationale**: 崩溃/畸形输出被逐环节隔离（编码器 vs muxer），避免在错误层排查。host 基线先确认 A/V 管线与示例本身无误；raw 模式验证 MediaCodec 编码器独立可用；最后才验证 MediaMuxer 的 csd/样本帧适配。设备侧单一 MediaCodec 后端简化验证路径，也符合 spec 006 的依赖约束。
+- **实证**: 依此流程，编码器独立 PASS 后才定位到 muxer 的 csd 格式与样本帧问题（R7）；设备 run 产出可解码 MP4。

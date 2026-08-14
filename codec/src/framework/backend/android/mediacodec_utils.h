@@ -38,6 +38,10 @@ void AppendAnnexB(bool keyframe, const std::vector<uint8_t>& sps,
 // with the start codes stripped. Returns true if at least one unit was found.
 bool SplitAnnexB(const uint8_t* data, size_t size, std::vector<std::vector<uint8_t>>* units);
 
+// True if the (start-code stripped) first NAL of an Annex-B access unit has
+// `nal_type` (5-bit NAL unit type). Empty input / no leading NAL -> false.
+bool StartsWithNal(const uint8_t* data, size_t size, int nal_type);
+
 // Build the 2-byte AudioSpecificConfig (AAC-LC, ISO 14496-3) for a sample rate
 // / channel count. Returns false for rates or layouts not representable.
 bool BuildAudioSpecificConfig(int sample_rate, int channels, std::vector<uint8_t>* out);

@@ -89,6 +89,18 @@ TEST(MediacodecUtilsTest, SplitAnnexBRejectsNullOrEmptyInput) {
   EXPECT_FALSE(SplitAnnexB(empty.data(), 0, &units));
 }
 
+TEST(MediacodecUtilsTest, StartsWithNal) {
+  // 4-byte and 3-byte start codes, then the SPS (type 7).
+  const std::vector<uint8_t> sps4 = {0, 0, 0, 1, 0x67, 0x42};
+  const std::vector<uint8_t> sps3 = {0, 0, 1, 0x67, 0x42};
+  EXPECT_TRUE(StartsWithNal(sps4.data(), sps4.size(), 7));
+  EXPECT_TRUE(StartsWithNal(sps3.data(), sps3.size(), 7));
+  EXPECT_FALSE(StartsWithNal(sps4.data(), sps4.size(), 5));   // not an IDR
+  EXPECT_FALSE(StartsWithNal(nullptr, 0, 7));                 // null/empty
+  const std::vector<uint8_t> no_sc = {0x67, 0x42};            // no start code
+  EXPECT_FALSE(StartsWithNal(no_sc.data(), no_sc.size(), 7));
+}
+
 TEST(MediacodecUtilsTest, BuildAudioSpecificConfig) {
   std::vector<uint8_t> asc;
   ASSERT_TRUE(BuildAudioSpecificConfig(48000, 2, &asc));

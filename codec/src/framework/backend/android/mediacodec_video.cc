@@ -205,8 +205,16 @@ Result<VideoPacket> MediaCodecVideoEncoder::Drain(bool drain_eof) {
     if (payload_size > 0) {
       VideoPacket pkt;
       const bool keyframe = (info.flags & kKeyFrameFlag) != 0;
-      android::AppendAnnexB(keyframe, sps_, pps_,
-                            std::vector<uint8_t>(payload, payload + payload_size), &pkt.data);
+      // The codec keyframe payload already carries SPS/PPS on this platform
+      // (Amlogic: [sc]SPS [sc]PPS [sc]IDR, confirmed on device). Prepend the
+      // captured SPS/PPS only when the payload does NOT start with an SPS NAL
+      // (other encoders keep SPS/PPS solely in the CODEC_CONFIG buffer).
+      if (keyframe && !android::StartsWithNal(payload, payload_size, 7)) {
+        android::AppendAnnexB(keyframe, sps_, pps_,
+                              std::vector<uint8_t>(payload, payload + payload_size), &pkt.data);
+      } else {
+        pkt.data.assign(payload, payload + payload_size);
+      }
       pkt.pts_us = info.presentationTimeUs;
       pkt.keyframe = keyframe;
       AMediaCodec_releaseOutputBuffer(codec_.get(), static_cast<size_t>(idx), false);

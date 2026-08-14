@@ -46,8 +46,6 @@ class MediaCodecMuxer : public Muxer {
   Status EnsureMuxer();
   // Extract SPS/PPS from an Annex-B keyframe into sps_/pps_.
   Status CaptureVideoCsd(const VideoPacket& pkt);
-  // Strip SPS/PPS NAL units (types 7/8) from an Annex-B access unit.
-  Status StripCsd(const std::vector<uint8_t>& in, std::vector<uint8_t>* out);
   // Add a track (before start). Returns the track index or -1.
   ssize_t AddVideoTrack();
   ssize_t AddAudioTrack();
@@ -74,6 +72,11 @@ class MediaCodecMuxer : public Muxer {
   std::vector<uint8_t> pps_;
   std::vector<uint8_t> asc_;
   std::vector<PendingSample> pending_;  // samples delivered before start()
+  // Copies of every sample passed to AMediaMuxer_writeSampleData, kept alive
+  // until AMediaMuxer_stop() joins the async writer thread (libstagefright
+  // MPEG4Writer reads the sample buffers on a background thread; the buffers
+  // must stay valid until stop() — research R7). Cleared in Finalize().
+  std::vector<std::vector<uint8_t>> in_flight_;
 };
 
 }  // namespace codec

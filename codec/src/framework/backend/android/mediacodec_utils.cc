@@ -122,6 +122,16 @@ bool SplitAnnexB(const uint8_t* data, size_t size, std::vector<std::vector<uint8
   return !units->empty();
 }
 
+bool StartsWithNal(const uint8_t* data, size_t size, int nal_type) {
+  if (!data || size == 0) return false;
+  const uint8_t* p = data;
+  const uint8_t* end = data + size;
+  const int sc = StartCodeLength(p, end);
+  if (sc == 0) return false;
+  p += sc;
+  return p < end && ((p[0] & 0x1F) == (nal_type & 0x1F));
+}
+
 bool BuildAudioSpecificConfig(int sample_rate, int channels, std::vector<uint8_t>* out) {
   const int freq_index = SamplingFrequencyIndex(sample_rate);
   if (freq_index < 0 || channels < 1 || channels > 7) return false;

@@ -15,7 +15,7 @@
 | `config_` | `VideoConfig` | 编码配置（codec/宽高/fps/码率/input_format） |
 | `codec_` | `AMediaCodec*` | 系统编码器句柄（`createEncoderByType`） |
 | `format_` | `AMediaFormat*` | 编码器输入格式（含 color-format 映射） |
-| `sps_/pps_` | `std::vector<uint8_t>` | `BUFFER_FLAG_CODEC_CONFIG` 缓冲（Annex-B 关键帧前置用） |
+| `sps_/pps_` | `std::vector<uint8_t>` | `BUFFER_FLAG_CODEC_CONFIG` 缓冲（关键帧 payload 缺 SPS 时预置用；本平台关键帧已自带 SPS/PPS） |
 | `pts_` | `int64_t` | 输入帧时间戳计数器（微秒） |
 | `Init()` | Status | 创建/配置/启动编码器 |
 | `Encode(VideoFrame)` | Result<VideoPacket> | 拷贝输入缓冲 + 收输出包（push 模式转发 sink） |

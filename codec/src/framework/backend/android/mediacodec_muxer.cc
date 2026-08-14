@@ -62,31 +62,27 @@ Status MediaCodecMuxer::CaptureVideoCsd(const VideoPacket& pkt) {
   return (sps_.empty() || pps_.empty()) ? Status::kEncodeFailed : Status::kOk;
 }
 
-Status MediaCodecMuxer::StripCsd(const std::vector<uint8_t>& in, std::vector<uint8_t>* out) {
-  out->clear();
-  std::vector<std::vector<uint8_t>> units;
-  if (!android::SplitAnnexB(in.data(), in.size(), &units)) {
-    *out = in;  // not Annex-B; pass through
-    return Status::kOk;
-  }
-  for (const auto& u : units) {
-    if (u.empty()) continue;
-    const int type = u[0] & 0x1F;
-    if (type == 7 || type == 8) continue;  // SPS/PPS live in csd-0/csd-1 only
-    out->insert(out->end(), {0, 0, 0, 1});
-    out->insert(out->end(), u.begin(), u.end());
-  }
-  return out->empty() ? Status::kEncodeFailed : Status::kOk;
-}
-
 ssize_t MediaCodecMuxer::AddVideoTrack() {
   android::MediaFormatPtr fmt(AMediaFormat_new());
   AMediaFormat_setString(fmt.get(), AMEDIAFORMAT_KEY_MIME, "video/avc");
   AMediaFormat_setInt32(fmt.get(), AMEDIAFORMAT_KEY_WIDTH, config_.width);
   AMediaFormat_setInt32(fmt.get(), AMEDIAFORMAT_KEY_HEIGHT, config_.height);
   AMediaFormat_setInt32(fmt.get(), AMEDIAFORMAT_KEY_FRAME_RATE, config_.fps > 0 ? config_.fps : 30);
-  if (!sps_.empty()) AMediaFormat_setBuffer(fmt.get(), kCsd0, sps_.data(), sps_.size());
-  if (!pps_.empty()) AMediaFormat_setBuffer(fmt.get(), kCsd1, pps_.data(), pps_.size());
+  // The codec output format (AMediaCodec_getOutputFormat) carries csd-0/csd-1
+  // as start-code-prefixed SPS/PPS on this platform; MediaMuxer builds the
+  // avcC in moov from exactly this form. Match it verbatim: a synthesized
+  // avcC box is rejected ("Missing codec specific data"), a bare SPS yields a
+  // malformed avcC ("non-existing PPS 0 referenced").
+  if (!sps_.empty()) {
+    std::vector<uint8_t> csd = {0, 0, 0, 1};
+    csd.insert(csd.end(), sps_.begin(), sps_.end());
+    AMediaFormat_setBuffer(fmt.get(), kCsd0, csd.data(), csd.size());
+  }
+  if (!pps_.empty()) {
+    std::vector<uint8_t> csd = {0, 0, 0, 1};
+    csd.insert(csd.end(), pps_.begin(), pps_.end());
+    AMediaFormat_setBuffer(fmt.get(), kCsd1, csd.data(), csd.size());
+  }
   return AMediaMuxer_addTrack(muxer_.get(), fmt.get());
 }
 
@@ -130,12 +126,18 @@ Status MediaCodecMuxer::WriteSample(size_t track, const std::vector<uint8_t>& da
       return Status::kOk;
     }
   }
+  // AMediaMuxer_writeSampleData consumes the sample asynchronously on a
+  // background writer thread (libstagefright MPEG4Writer) that joins at
+  // AMediaMuxer_stop(). Keep a private copy alive until then; handing it the
+  // caller's buffer (e.g. a temporary in Push()) would read freed memory.
+  in_flight_.push_back(data);
   AMediaCodecBufferInfo info{};
   info.offset = 0;
-  info.size = static_cast<int32_t>(data.size());
+  info.size = static_cast<int32_t>(in_flight_.back().size());
   info.presentationTimeUs = pts_us;
   info.flags = keyframe ? kKeyFrameFlag : 0;
-  return AMediaMuxer_writeSampleData(muxer_.get(), track, data.data(), &info) == AMEDIA_OK
+  return AMediaMuxer_writeSampleData(muxer_.get(), track, in_flight_.back().data(), &info) ==
+                 AMEDIA_OK
              ? Status::kOk
              : Status::kEncodeFailed;
 }
@@ -147,15 +149,27 @@ Status MediaCodecMuxer::Push(VideoPacket&& pkt) {
   if (s != Status::kOk) return s;
 
   if (video_track_ < 0) {
-    // Wait for the first keyframe: it carries SPS/PPS for csd-0/csd-1.
+    // Wait for the first keyframe: it carries SPS/PPS for the avcC csd.
     if (!pkt.keyframe) return Status::kOk;
     if (CaptureVideoCsd(pkt) != Status::kOk) return Status::kEncodeFailed;
     video_track_ = AddVideoTrack();
     if (video_track_ < 0) return Status::kEncodeFailed;
   }
 
-  std::vector<uint8_t> sample;
-  if (StripCsd(pkt.data, &sample) != Status::kOk) return Status::kEncodeFailed;
+  // Pass the Annex-B access unit through as-is, minus the LEADING start code.
+  // libstagefright's addMultipleLengthPrefixedSamples_l reads the first NAL of
+  // a sample buffer as not start-code delimited (the buffer boundary is the
+  // separator) and only uses start codes to split subsequent NALs; a leading
+  // start code is misread as an empty first NAL (mp4 sample framing:
+  // "Invalid NAL unit size (0 > ...)").
+  std::vector<uint8_t> sample = pkt.data;
+  const uint8_t* d = pkt.data.data();
+  const size_t n = pkt.data.size();
+  if (n >= 4 && d[0] == 0 && d[1] == 0 && d[2] == 0 && d[3] == 1) {
+    sample.assign(d + 4, d + n);
+  } else if (n >= 3 && d[0] == 0 && d[1] == 0 && d[2] == 1) {
+    sample.assign(d + 3, d + n);
+  }
   return WriteSample(static_cast<size_t>(video_track_), sample, pkt.pts_us, pkt.keyframe);
 }
 
@@ -186,6 +200,9 @@ Status MediaCodecMuxer::Finalize() {
       // below (no early return — Finalize must not leak tmp_/muxer_).
       result = Status::kEncodeFailed;
     }
+    // The async writer thread has joined; the sample buffers we handed it are
+    // no longer read, so the in-flight copies can be released.
+    in_flight_.clear();
   }
   if (result == Status::kOk && tmp_ && sink_) {
     // Replay the whole file (written by AMediaMuxer through the fd) to the sink.
