@@ -107,6 +107,10 @@ Status MediaCodecMuxer::Start() {
   started_ = true;
   for (const PendingSample& s : pending_) {
     if (WriteSample(s.track, s.data, s.pts_us, s.keyframe) != Status::kOk) {
+      // Replaying must not leave the muxer with a half-flushed pending list:
+      // the muxer is started and the writer thread owns what was already
+      // handed over, so drop the rest and report the failure.
+      pending_.clear();
       return Status::kEncodeFailed;
     }
   }
@@ -114,7 +118,7 @@ Status MediaCodecMuxer::Start() {
   return Status::kOk;
 }
 
-Status MediaCodecMuxer::WriteSample(size_t track, const std::vector<uint8_t>& data, int64_t pts_us,
+Status MediaCodecMuxer::WriteSample(size_t track, std::vector<uint8_t> data, int64_t pts_us,
                                     bool keyframe) {
   if (!started_) {
     if (CanStart()) {
@@ -122,7 +126,7 @@ Status MediaCodecMuxer::WriteSample(size_t track, const std::vector<uint8_t>& da
       if (s != Status::kOk) return s;
     }
     if (!started_) {
-      pending_.push_back(PendingSample{track, data, pts_us, keyframe});
+      pending_.push_back(PendingSample{track, std::move(data), pts_us, keyframe});
       return Status::kOk;
     }
   }
@@ -130,7 +134,7 @@ Status MediaCodecMuxer::WriteSample(size_t track, const std::vector<uint8_t>& da
   // background writer thread (libstagefright MPEG4Writer) that joins at
   // AMediaMuxer_stop(). Keep a private copy alive until then; handing it the
   // caller's buffer (e.g. a temporary in Push()) would read freed memory.
-  in_flight_.push_back(data);
+  in_flight_.push_back(std::move(data));
   AMediaCodecBufferInfo info{};
   info.offset = 0;
   info.size = static_cast<int32_t>(in_flight_.back().size());
@@ -162,15 +166,15 @@ Status MediaCodecMuxer::Push(VideoPacket&& pkt) {
   // separator) and only uses start codes to split subsequent NALs; a leading
   // start code is misread as an empty first NAL (mp4 sample framing:
   // "Invalid NAL unit size (0 > ...)").
-  std::vector<uint8_t> sample = pkt.data;
   const uint8_t* d = pkt.data.data();
   const size_t n = pkt.data.size();
   if (n >= 4 && d[0] == 0 && d[1] == 0 && d[2] == 0 && d[3] == 1) {
-    sample.assign(d + 4, d + n);
+    pkt.data.erase(pkt.data.begin(), pkt.data.begin() + 4);
   } else if (n >= 3 && d[0] == 0 && d[1] == 0 && d[2] == 1) {
-    sample.assign(d + 3, d + n);
+    pkt.data.erase(pkt.data.begin(), pkt.data.begin() + 3);
   }
-  return WriteSample(static_cast<size_t>(video_track_), sample, pkt.pts_us, pkt.keyframe);
+  return WriteSample(static_cast<size_t>(video_track_), std::move(pkt.data), pkt.pts_us,
+                     pkt.keyframe);
 }
 
 Status MediaCodecMuxer::Push(AudioPacket&& pkt) {
@@ -181,20 +185,31 @@ Status MediaCodecMuxer::Push(AudioPacket&& pkt) {
   if (s != Status::kOk) return s;
 
   if (audio_track_ < 0) {
-    if (!android::BuildAudioSpecificConfig(config_.sample_rate, config_.channels, &asc_)) {
-      return Status::kEncodeFailed;
+    // Prefer the exact AudioSpecificConfig the encoder emitted (first packet's
+    // codec_config); fall back to one derived from the config.
+    if (!pkt.codec_config.empty()) {
+      asc_ = pkt.codec_config;
+    } else if (asc_.empty()) {
+      if (!android::BuildAudioSpecificConfig(config_.sample_rate, config_.channels, &asc_)) {
+        return Status::kEncodeFailed;
+      }
     }
     audio_track_ = AddAudioTrack();
     if (audio_track_ < 0) return Status::kEncodeFailed;
   }
-  return WriteSample(static_cast<size_t>(audio_track_), pkt.data, pkt.pts_us, false);
+  return WriteSample(static_cast<size_t>(audio_track_), std::move(pkt.data), pkt.pts_us, false);
 }
 
 Status MediaCodecMuxer::Flush() { return Status::kOk; }
 
 Status MediaCodecMuxer::Finalize() {
   Status result = Status::kOk;
-  if (muxer_ && started_) {
+  if (!started_) {
+    // No sample was ever written (e.g. a required track never arrived, or the
+    // muxer never received enough packets to start): there is no output to
+    // produce. Fail rather than silently replaying an empty file.
+    result = Status::kEncodeFailed;
+  } else if (muxer_) {
     if (AMediaMuxer_stop(muxer_.get()) != AMEDIA_OK) {
       // The file is incomplete; skip the replay but still release everything
       // below (no early return — Finalize must not leak tmp_/muxer_).
@@ -221,7 +236,10 @@ Status MediaCodecMuxer::Finalize() {
     if (result == Status::kOk && std::ferror(tmp_)) result = Status::kEncodeFailed;
     if (result == Status::kOk && !sink_->Flush()) result = Status::kEncodeFailed;
   }
-  muxer_.reset();  // AMediaMuxer_delete via the RAII deleter
+  // AMediaMuxer_delete (via the RAII deleter). Safe here: the started path
+  // stopped the muxer above (joining the writer thread) before releasing; a
+  // never-started muxer has no writer thread to tear down.
+  muxer_.reset();
   if (tmp_) {
     std::fclose(tmp_);
     tmp_ = nullptr;

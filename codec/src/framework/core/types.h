@@ -65,10 +65,14 @@ struct VideoPacket {
 };
 
 // Encoded audio output (e.g. ADTS AAC). `keyframe` is always false for audio.
+// `codec_config` carries the codec-specific configuration (e.g. the AAC
+// AudioSpecificConfig) on the first packet, so a muxer can use the exact bytes
+// the encoder produced instead of re-deriving them from the config.
 struct AudioPacket {
   std::vector<uint8_t> data;
   int64_t pts_us = 0;
   bool keyframe = false;
+  std::vector<uint8_t> codec_config;
 };
 
 // Zero-copy pointer object. The framework NEVER takes ownership of `handle`;

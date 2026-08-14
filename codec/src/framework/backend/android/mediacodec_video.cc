@@ -1,7 +1,9 @@
 // mediacodec_video.cc
 #include "mediacodec_video.h"
 
+#include <chrono>
 #include <cstring>
+#include <thread>
 
 #include <media/NdkMediaCodec.h>
 #include <media/NdkMediaFormat.h>
@@ -134,7 +136,11 @@ Status MediaCodecVideoEncoder::QueueInput(const VideoFrame& frame) {
 Result<VideoPacket> MediaCodecVideoEncoder::Encode(const VideoFrame& frame) {
   if (lifecycle_.Encode() != Status::kOk) return Err<VideoPacket>(Status::kNotInitialized);
   if (QueueInput(frame) != Status::kOk) return Err<VideoPacket>(Status::kEncodeFailed);
-  ++pts_;
+  // Advance the fallback presentation clock by one frame's duration (µs) so
+  // untimestamped input still yields real-time-spaced PTS (frame-count units
+  // would be read as µs and play back near-instantaneously).
+  const int fps = config_.fps > 0 ? config_.fps : 30;
+  pts_ += 1'000'000 / fps;
   return Drain(/*drain_eof=*/false);
 }
 
@@ -146,8 +152,13 @@ Result<VideoPacket> MediaCodecVideoEncoder::Encode(const NativeBuffer&) {
 Result<VideoPacket> MediaCodecVideoEncoder::Flush() {
   if (lifecycle_.Flush() != Status::kOk) return Err<VideoPacket>(Status::kNotInitialized);
 
-  // Signal end-of-stream so every buffered frame is emitted, then drain.
-  const ssize_t idx = DequeueInput(codec_.get());
+  // Signal end-of-stream so every buffered frame is emitted, then drain. The
+  // codec consumes input asynchronously, so retry briefly if no input slot is
+  // immediately free — skipping EOS would silently drop buffered frames.
+  ssize_t idx = -1;
+  for (int attempt = 0; attempt < 4 && idx < 0; ++attempt) {
+    idx = DequeueInput(codec_.get());
+  }
   if (idx >= 0) {
     AMediaCodec_queueInputBuffer(codec_.get(), static_cast<size_t>(idx), 0, 0,
                                  static_cast<uint64_t>(pts_),
@@ -210,8 +221,16 @@ Result<VideoPacket> MediaCodecVideoEncoder::Drain(bool drain_eof) {
       // captured SPS/PPS only when the payload does NOT start with an SPS NAL
       // (other encoders keep SPS/PPS solely in the CODEC_CONFIG buffer).
       if (keyframe && !android::StartsWithNal(payload, payload_size, 7)) {
-        android::AppendAnnexB(keyframe, sps_, pps_,
-                              std::vector<uint8_t>(payload, payload + payload_size), &pkt.data);
+        // Strip a leading start code from the payload first: prepending SPS/PPS
+        // around a payload that itself starts with a start code would produce a
+        // double start code (an empty NAL for the muxer's writer).
+        std::vector<uint8_t> unit(payload, payload + payload_size);
+        if (unit.size() >= 4 && unit[0] == 0 && unit[1] == 0 && unit[2] == 0 && unit[3] == 1) {
+          unit.erase(unit.begin(), unit.begin() + 4);
+        } else if (unit.size() >= 3 && unit[0] == 0 && unit[1] == 0 && unit[2] == 1) {
+          unit.erase(unit.begin(), unit.begin() + 3);
+        }
+        android::AppendAnnexB(keyframe, sps_, pps_, unit, &pkt.data);
       } else {
         pkt.data.assign(payload, payload + payload_size);
       }

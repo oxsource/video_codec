@@ -104,8 +104,13 @@ Result<AudioPacket> MediaCodecAudioEncoder::Encode(const AudioFrame& frame) {
 Result<AudioPacket> MediaCodecAudioEncoder::Flush() {
   if (lifecycle_.Flush() != Status::kOk) return Err<AudioPacket>(Status::kNotInitialized);
 
-  // Signal end-of-stream so every buffered frame is emitted, then drain.
-  const ssize_t idx = DequeueInput(codec_.get());
+  // Signal end-of-stream so every buffered frame is emitted, then drain. The
+  // codec consumes input asynchronously, so retry briefly if no input slot is
+  // immediately free — skipping EOS would silently drop buffered frames.
+  ssize_t idx = -1;
+  for (int attempt = 0; attempt < 4 && idx < 0; ++attempt) {
+    idx = DequeueInput(codec_.get());
+  }
   if (idx >= 0) {
     AMediaCodec_queueInputBuffer(codec_.get(), static_cast<size_t>(idx), 0, 0, 0,
                                  AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM);
@@ -160,6 +165,12 @@ Result<AudioPacket> MediaCodecAudioEncoder::Drain(bool drain_eof) {
       pkt.data.assign(payload, payload + payload_size);
       pkt.pts_us = info.presentationTimeUs;
       pkt.keyframe = false;  // audio is never a keyframe
+      // Carry the AudioSpecificConfig on the first packet so a muxer can use
+      // the exact bytes the encoder produced (not a config-derived guess).
+      if (!asc_.empty() && !codec_config_sent_) {
+        pkt.codec_config = asc_;
+        codec_config_sent_ = true;
+      }
       AMediaCodec_releaseOutputBuffer(codec_.get(), static_cast<size_t>(idx), false);
       if (sink_) {
         if (sink_->Push(std::move(pkt)) != Status::kOk) {
@@ -186,6 +197,7 @@ void MediaCodecAudioEncoder::Release() {
   codec_.reset();  // AMediaCodec_delete via the RAII deleter
   format_.reset();
   asc_.clear();
+  codec_config_sent_ = false;
 }
 
 }  // namespace codec

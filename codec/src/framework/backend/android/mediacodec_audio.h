@@ -46,6 +46,7 @@ class MediaCodecAudioEncoder : public AudioEncoder {
   PacketSink* sink_ = nullptr;  // push mode; non-owning, cleared on Release()
   int64_t pts_ = 0;             // fallback presentation clock (microseconds)
   std::vector<uint8_t> asc_;    // AudioSpecificConfig from CODEC_CONFIG
+  bool codec_config_sent_ = false;  // first emitted packet carries asc_
 };
 
 }  // namespace codec

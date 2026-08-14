@@ -53,9 +53,9 @@ class MediaCodecMuxer : public Muxer {
   bool CanStart() const;
   // AMediaMuxer_start + replay of buffered samples.
   Status Start();
-  // Write one sample; buffers it until the muxer is started.
-  Status WriteSample(size_t track, const std::vector<uint8_t>& data, int64_t pts_us,
-                     bool keyframe);
+  // Write one sample; takes ownership of `data` (moved into a pending buffer
+  // before start, or an in-flight buffer kept alive until stop after start).
+  Status WriteSample(size_t track, std::vector<uint8_t> data, int64_t pts_us, bool keyframe);
   // Stop the muxer, replay the temp file to the sink, and free resources.
   Status Finalize();
 
