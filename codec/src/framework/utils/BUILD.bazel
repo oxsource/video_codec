@@ -8,18 +8,28 @@ package(default_visibility = [
 # on all modules for backward compatibility.
 
 cc_library(
-    name = "smpte_bars",
-    srcs = ["smpte_bars.cc"],
-    hdrs = ["smpte_bars.h"],
+    name = "egl_surface",
+    srcs = ["egl_surface.cc"],
+    hdrs = ["egl_surface.h"],
     includes = ["."],
-    # Android only: the SurfaceRenderer (input-surface drawing) uses
-    # ANativeWindow + EGL/GLES (libandroid/libEGL/libGLESv2). Host builds get
-    # no linkopts (the renderer is a stub there).
+    # Android only: EGL window-surface setup uses ANativeWindow + EGL
+    # (libandroid/libEGL/libGLESv2). Host builds get no linkopts (the class is
+    # a stub there).
     linkopts = select({
         "//platforms:android_arm64_platform_setting": ["-landroid", "-lEGL", "-lGLESv2"],
         "//conditions:default": [],
     }),
-    deps = ["@video_codec//src/framework/core:types"],
+)
+
+cc_library(
+    name = "smpte_bars",
+    srcs = ["smpte_bars.cc"],
+    hdrs = ["smpte_bars.h"],
+    includes = ["."],
+    deps = [
+        ":egl_surface",
+        "@video_codec//src/framework/core:types",
+    ],
 )
 
 cc_library(
@@ -39,6 +49,7 @@ cc_library(
 cc_library(
     name = "utils",
     deps = [
+        ":egl_surface",
         ":media_format",
         ":smpte_bars",
         ":stride",

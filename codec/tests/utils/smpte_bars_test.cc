@@ -1,4 +1,5 @@
 // smpte_bars_test.cc
+#include "egl_surface.h"
 #include "smpte_bars.h"
 
 #include <cstdint>
@@ -199,6 +200,14 @@ TEST(SmpteBarsTest, SurfaceUnsupportedOnHost) {
   EXPECT_EQ(SmpteBars::Surface::Create(nullptr, 640, 480), nullptr);
   EXPECT_EQ(SmpteBars::Surface::Create(reinterpret_cast<void*>(1), 0, 0), nullptr);
   EXPECT_EQ(SmpteBars::Surface::Create(reinterpret_cast<void*>(1), -640, 480), nullptr);
+}
+
+TEST(SmpteBarsTest, EglSurfaceUnsupportedOnHost) {
+  // The reusable EGL window-surface module is Android-only: on the host build
+  // Create() returns nullptr (null handles/dims are also rejected).
+  EXPECT_EQ(EglSurface::Create(nullptr, 640, 480), nullptr);
+  EXPECT_EQ(EglSurface::Create(reinterpret_cast<void*>(1), 0, 0), nullptr);
+  EXPECT_EQ(EglSurface::Create(reinterpret_cast<void*>(1), -640, 480), nullptr);
 }
 
 }  // namespace
