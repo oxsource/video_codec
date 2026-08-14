@@ -1,0 +1,13 @@
+# libvideo_codec.map — ELF linker version script (symbol export control).
+#
+# Internal symbols are already hidden by -fvisibility=hidden (--config=shared,
+# scripts/publish.sh); the script additionally version-tags the exported
+# public API for ABI tracking. `global: *` only matches symbols in the dynamic
+# symbol table (i.e. the VIDEO_CODEC_API-decorated public surface), so hidden
+# internals are not re-exported.
+#
+# Applied via -Wl,--version-script on Linux/Android; macOS uses the default
+# visibility control (Apple ld has no version-script support).
+LIBVIDEO_CODEC_1.0 {
+  global: *;
+};

@@ -12,10 +12,10 @@
 // specs/003-core-utils-public-api/contracts/public-api.md.
 //
 // Symbol visibility for shared-library builds is governed by VIDEO_CODEC_API
-// (video_codec_export.h); it expands to nothing for static builds. Note: the
-// individual API types below are not yet decorated with VIDEO_CODEC_API;
-// tagging them for shared-library export is a tracked follow-up. Static builds
-// are the default and are unaffected.
+// (video_codec_export.h); it expands to nothing for static builds. The public
+// classes and free functions (encoders, muxer, factory, status/backend names,
+// log slot) are decorated with VIDEO_CODEC_API so the shared library exports
+// them. Static builds are the default and are unaffected.
 
 #pragma once
 
@@ -27,10 +27,11 @@
 #include "status.h"
 #include "types.h"
 
-// Abstract encoder interfaces, surface input, and backend factory
+// Abstract encoder interfaces, surface input, muxer, and backend factory
 #include "audio_encoder.h"
 #include "codec_factory.h"
 #include "input_surface.h"
+#include "muxer.h"
 #include "video_encoder.h"
 
 // Media file-format constants (common output extensions like .mp4 / .h264)

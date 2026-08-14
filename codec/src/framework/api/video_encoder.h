@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "export.h"
 #include "result.h"
 #include "types.h"
 
@@ -14,7 +15,7 @@ class PacketSink;  // fwd-declared: `api` stays free of a `queue` dependency.
 
 // Abstract video encoder. Every backend subclasses this; the contract is frozen
 // by contracts/encoder-contract.md. Not thread-safe: one instance per thread.
-class VideoEncoder {
+class VIDEO_CODEC_API VideoEncoder {
  public:
   virtual ~VideoEncoder() = default;
 

@@ -1,16 +1,7 @@
 // video_codec_export.h
 #pragma once
 
-#if defined(_WIN32)
-#if defined(VIDEO_CODEC_SHARED_LIBRARY)
-#define VIDEO_CODEC_API __declspec(dllexport)
-#else
-#define VIDEO_CODEC_API __declspec(dllimport)
-#endif
-#else
-#if defined(VIDEO_CODEC_SHARED_LIBRARY)
-#define VIDEO_CODEC_API __attribute__((visibility("default")))
-#else
-#define VIDEO_CODEC_API
-#endif
-#endif
+// The canonical definition lives in core/export.h (framework headers tag their
+// public types from there). Re-export it here so consumers who include only
+// <video_codec/video_codec.h> still see the VIDEO_CODEC_API macro.
+#include "export.h"

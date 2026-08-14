@@ -9,6 +9,9 @@
 *.pyc
 __pycache__/
 
+# Published SDK output (scripts/publish.sh / make dist-publish)
+/dist/
+
 # Editor / OS
 .DS_Store
 *.swp

@@ -4,13 +4,15 @@
 #include <cstdint>
 #include <memory>
 
+#include "export.h"
+
 namespace video {
 namespace codec {
 
 // A drawable surface a caller renders into; the backend serializes against its
 // own encode thread. Only the Android backend returns a real surface; the
 // FFmpeg (software) backend returns nullptr.
-class InputSurface {
+class VIDEO_CODEC_API InputSurface {
  public:
   virtual ~InputSurface() = default;
   virtual void* GetNativeSurface() = 0;  // e.g. ANativeWindow*

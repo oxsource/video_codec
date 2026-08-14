@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "export.h"
+
 namespace video {
 namespace codec {
 
@@ -24,7 +26,7 @@ enum class Backend { kAuto, kAndroid, kFFmpeg };
 // cannot declare member functions. Mirrors StatusToString (status.h) so log
 // lines and error paths can name a backend; these lowercase names also back
 // the example's --backend values and output-file suffixes.
-inline const char* BackendToString(Backend b) {
+inline VIDEO_CODEC_API const char* BackendToString(Backend b) {
   switch (b) {
     case Backend::kAuto:
       return "auto";

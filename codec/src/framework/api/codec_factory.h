@@ -6,6 +6,7 @@
 #include <mutex>
 #include <unordered_map>
 
+#include "export.h"
 #include "result.h"
 #include "types.h"
 
@@ -26,7 +27,7 @@ using MuxerCreator = std::function<std::unique_ptr<Muxer>(const MuxerConfig&)>;
 // self-register here so `api` never depends on `backend/*`; the selected
 // backend (wired by `public` via select()) runs its registration at static
 // init. Static-class utility: all methods are static, no instances.
-class CodecFactory {
+class VIDEO_CODEC_API CodecFactory {
  public:
   // Resolve which backend to instantiate given a backend request and the
   // current platform. kAuto -> platform select (non-Android -> FFmpeg; Android

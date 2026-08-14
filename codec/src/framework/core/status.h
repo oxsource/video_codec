@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "export.h"
+
 namespace video {
 namespace codec {
 
@@ -26,7 +28,7 @@ enum class Status {
 // Human-readable name of a status, e.g. StatusToString(Status::kEncodeFailed)
 // == "kEncodeFailed". Returns "kUnknown" for an out-of-range value. A free
 // function (not a member): C++ enum classes cannot declare member functions.
-inline const char* StatusToString(Status c) {
+inline VIDEO_CODEC_API const char* StatusToString(Status c) {
   switch (c) {
     case Status::kOk:
       return "kOk";

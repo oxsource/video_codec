@@ -3,6 +3,7 @@
 
 #include <memory>
 
+#include "export.h"
 #include "packet_sink.h"
 #include "result.h"
 #include "types.h"
@@ -20,7 +21,7 @@ class ByteSink;  // fwd-declared: `api` stays free of an `io` dependency.
 // The container opens lazily on the first keyframe (it needs SPS/PPS for the
 // avcC extradata); earlier non-keyframes are dropped. Not thread-safe: one
 // instance per thread.
-class Muxer : public PacketSink {
+class VIDEO_CODEC_API Muxer : public PacketSink {
  public:
   ~Muxer() override = default;
 

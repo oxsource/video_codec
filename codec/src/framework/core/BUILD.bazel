@@ -5,7 +5,10 @@ package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//
 
 cc_library(
     name = "types",
-    hdrs = ["types.h"],
+    hdrs = [
+        "types.h",
+        "export.h",
+    ],
     includes = ["."],
 )
 
@@ -21,7 +24,10 @@ cc_library(
 
 cc_library(
     name = "status",
-    hdrs = ["status.h"],
+    hdrs = [
+        "status.h",
+        "export.h",
+    ],
     includes = ["."],
 )
 
@@ -35,7 +41,10 @@ cc_library(
 cc_library(
     name = "log_slot",
     srcs = ["log_slot.cc"],
-    hdrs = ["log_slot.h"],
+    hdrs = [
+        "log_slot.h",
+        "export.h",
+    ],
     includes = ["."],
 )
 

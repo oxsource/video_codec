@@ -39,3 +39,30 @@ cc_library(
         "@video_codec//src/framework/utils",
     ],
 )
+
+# Self-contained shared library for distribution (publish mechanism, cf.
+# atlas //src/public:atlas_shared): links the whole framework + platform
+# backend statically into one .so/.dylib. On the host the FFmpeg archive is
+# force-loaded (ADR-001, like the example); on Android the MediaCodec backend
+# is linked instead. Public symbols are exported via VIDEO_CODEC_API
+# (core/export.h) + -fvisibility=hidden (--config=shared); internal symbols
+# stay hidden. libvideo_codec.map is the ELF symbol-export control script
+# (kept for reference / non-Bazel link lines — Bazel 6 does not mount a
+# version-script file into the cc link sandbox, so export control is done by
+# the visibility attribute). Output: libvideo_codec_shared.so / .dylib.
+cc_binary(
+    name = "video_codec_shared",
+    linkshared = True,
+    linkstatic = True,
+    data = select({
+        "//platforms:android_arm64_platform_setting": [],
+        "//conditions:default": ["@ffmpeg//:ffmpeg_codec_archive"],
+    }),
+    linkopts = select({
+        "//platforms:android_arm64_platform_setting": [],
+        "//conditions:default": [
+            "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
+        ],
+    }),
+    deps = [":video_codec"],
+)

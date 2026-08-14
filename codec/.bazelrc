@@ -24,6 +24,14 @@ build:darwin_arm64 --platforms=//platforms:darwin_arm64_platform
 build:android_arm64 --extra_toolchains=@androidndk//:all
 build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
 
+# Shared-library (publish) config: compile the framework with hidden visibility
+# so ONLY symbols tagged VIDEO_CODEC_API (public API) are exported from
+# libvideo_codec_shared. The define activates the export attribute; hidden
+# visibility hides everything else. Used by scripts/publish.sh via
+# --config=shared.
+build:shared --copt=-fvisibility=hidden
+build:shared --copt=-DVIDEO_CODEC_SHARED_LIBRARY
+
 # No forced default --platforms: Bazel uses the host platform automatically, so
 # a macOS dev builds for darwin_arm64 and Linux CI builds for linux_x86_64.
 # Cross-compiles (e.g. Android) pass --config android_arm64 explicitly.
