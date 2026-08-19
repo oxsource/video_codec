@@ -1,14 +1,14 @@
 // mediacodec_muxer.cc
-#include "mediacodec_muxer.h"
+#include "src/framework/backend/android/mediacodec_muxer.h"
 
 #include <cstring>
 
 #include <media/NdkMediaFormat.h>
 #include <media/NdkMediaMuxer.h>
 
-#include "byte_sink.h"
-#include "codec_factory.h"
-#include "mediacodec_utils.h"
+#include "src/framework/io/byte_sink.h"
+#include "src/framework/api/codec_factory.h"
+#include "src/framework/backend/android/mediacodec_utils.h"
 
 namespace video {
 namespace codec {

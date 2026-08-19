@@ -9,13 +9,11 @@ cc_library(
         "types.h",
         "export.h",
     ],
-    includes = ["."],
 )
 
 cc_library(
     name = "packet_sink",
     hdrs = ["packet_sink.h"],
-    includes = ["."],
     deps = [
         ":status",
         ":types",
@@ -28,13 +26,11 @@ cc_library(
         "status.h",
         "export.h",
     ],
-    includes = ["."],
 )
 
 cc_library(
     name = "result",
     hdrs = ["result.h"],
-    includes = ["."],
     deps = [":status"],
 )
 
@@ -45,7 +41,6 @@ cc_library(
         "log_slot.h",
         "export.h",
     ],
-    includes = ["."],
 )
 
 cc_library(

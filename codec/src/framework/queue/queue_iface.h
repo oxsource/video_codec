@@ -1,9 +1,9 @@
 // queue_iface.h
 #pragma once
 
-#include "packet_sink.h"
-#include "status.h"
-#include "types.h"
+#include "src/framework/core/packet_sink.h"
+#include "src/framework/core/status.h"
+#include "src/framework/core/types.h"
 
 namespace video {
 namespace codec {

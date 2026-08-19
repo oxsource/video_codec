@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-#include "export.h"
+#include "src/framework/core/export.h"
 
 namespace video {
 namespace codec {

@@ -11,7 +11,6 @@ package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//
 cc_library(
     name = "packet_consumer",
     hdrs = ["packet_consumer.h"],
-    includes = ["."],
     deps = [
         "@video_codec//src/framework/core:packet_sink",
         "@video_codec//src/framework/core:status",
@@ -23,7 +22,6 @@ cc_library(
     name = "file_consumer",
     srcs = ["file_consumer.cc"],
     hdrs = ["file_consumer.h"],
-    includes = ["."],
     deps = [
         ":packet_consumer",
         "@video_codec//src/framework/io:file_byte_sink",

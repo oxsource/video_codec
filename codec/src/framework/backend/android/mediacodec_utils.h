@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "types.h"
+#include "src/framework/core/types.h"
 
 namespace video {
 namespace codec {

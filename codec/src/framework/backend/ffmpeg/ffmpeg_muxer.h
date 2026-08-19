@@ -4,8 +4,8 @@
 #include <memory>
 #include <vector>
 
-#include "muxer.h"
-#include "types.h"
+#include "src/framework/api/muxer.h"
+#include "src/framework/core/types.h"
 
 struct AVFormatContext;
 

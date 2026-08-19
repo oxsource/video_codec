@@ -1,5 +1,5 @@
 // log_slot.cc
-#include "log_slot.h"
+#include "src/framework/core/log_slot.h"
 
 #include <mutex>
 

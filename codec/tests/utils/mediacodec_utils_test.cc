@@ -4,13 +4,13 @@
 // (backend/android/mediacodec_utils). No NDK dependency, so this runs on the
 // host build (spec 006, contract C-050).
 
-#include "mediacodec_utils.h"
+#include "src/framework/backend/android/mediacodec_utils.h"
 
 #include <cstdint>
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "types.h"
+#include "src/framework/core/types.h"
 
 namespace video {
 namespace codec {

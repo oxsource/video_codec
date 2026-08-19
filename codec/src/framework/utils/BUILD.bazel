@@ -11,7 +11,6 @@ cc_library(
     name = "egl_surface",
     srcs = ["egl_surface.cc"],
     hdrs = ["egl_surface.h"],
-    includes = ["."],
     # Android only: EGL window-surface setup uses ANativeWindow + EGL
     # (libandroid/libEGL/libGLESv2). Host builds get no linkopts (the class is
     # a stub there).
@@ -25,7 +24,6 @@ cc_library(
     name = "smpte_bars",
     srcs = ["smpte_bars.cc"],
     hdrs = ["smpte_bars.h"],
-    includes = ["."],
     deps = [
         ":egl_surface",
         "@video_codec//src/framework/core:types",
@@ -36,14 +34,12 @@ cc_library(
     name = "stride",
     srcs = ["stride.cc"],
     hdrs = ["stride.h"],
-    includes = ["."],
     deps = ["@video_codec//src/framework/core:types"],
 )
 
 cc_library(
     name = "media_format",
     hdrs = ["media_format.h"],
-    includes = ["."],
 )
 
 cc_library(

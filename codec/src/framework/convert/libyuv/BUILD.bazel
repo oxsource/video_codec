@@ -10,7 +10,6 @@ cc_library(
     name = "pixel_convert",
     srcs = ["pixel_convert.cc"],
     hdrs = ["pixel_convert.h"],
-    includes = ["."],
     deps = [
         "@video_codec//src/framework/core",
         "@video_codec//src/framework/utils",

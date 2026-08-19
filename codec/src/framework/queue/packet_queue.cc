@@ -1,11 +1,11 @@
 // packet_queue.cc
-#include "packet_queue.h"
+#include "src/framework/queue/packet_queue.h"
 
 #include <cassert>
 #include <chrono>
 #include <string>
 
-#include "log_slot.h"
+#include "src/framework/core/log_slot.h"
 
 namespace video {
 namespace codec {

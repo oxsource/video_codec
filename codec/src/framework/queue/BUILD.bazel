@@ -6,7 +6,6 @@ package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//
 cc_library(
     name = "queue_iface",
     hdrs = ["queue_iface.h"],
-    includes = ["."],
     deps = [
         "@video_codec//src/framework/core:packet_sink",
         "@video_codec//src/framework/core:status",
@@ -18,7 +17,6 @@ cc_library(
     name = "packet_queue",
     srcs = ["packet_queue.cc"],
     hdrs = ["packet_queue.h"],
-    includes = ["."],
     deps = [
         ":queue_iface",
         "@video_codec//src/framework/core:log_slot",

@@ -5,9 +5,9 @@
 #include <vector>
 
 #include "gtest/gtest.h"
-#include "file_byte_sink.h"
-#include "stream_byte_sink.h"
-#include "tee_byte_sink.h"
+#include "src/framework/io/file_byte_sink.h"
+#include "src/framework/io/stream_byte_sink.h"
+#include "src/framework/io/tee_byte_sink.h"
 
 namespace video {
 namespace codec {

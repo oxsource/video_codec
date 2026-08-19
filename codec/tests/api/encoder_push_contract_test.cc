@@ -7,10 +7,10 @@
 // push-mode overloads: create + Init + SetOutputSink in one Result-wrapped
 // call.
 
-#include "audio_encoder.h"
-#include "video_encoder.h"
-#include "codec_factory.h"
-#include "packet_sink.h"
+#include "src/framework/api/audio_encoder.h"
+#include "src/framework/api/video_encoder.h"
+#include "src/framework/api/codec_factory.h"
+#include "src/framework/core/packet_sink.h"
 #include "gtest/gtest.h"
 
 namespace video {

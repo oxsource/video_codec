@@ -6,10 +6,10 @@
 
 #include <android/native_window.h>
 
-#include "encoder_lifecycle.h"
-#include "mediacodec_raii.h"
-#include "video_encoder.h"
-#include "types.h"
+#include "src/framework/api/encoder_lifecycle.h"
+#include "src/framework/backend/android/mediacodec_raii.h"
+#include "src/framework/api/video_encoder.h"
+#include "src/framework/core/types.h"
 
 namespace video {
 namespace codec {

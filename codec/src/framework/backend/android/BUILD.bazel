@@ -26,7 +26,6 @@ cc_library(
     target_compatible_with = ["@platforms//os:android"],
     srcs = ["mediacodec_audio.cc"],
     hdrs = ["mediacodec_audio.h"],
-    includes = ["."],
     alwayslink = True,
     deps = [
         ":mediacodec_raii",
@@ -43,7 +42,6 @@ cc_library(
     target_compatible_with = ["@platforms//os:android"],
     srcs = ["mediacodec_muxer.cc"],
     hdrs = ["mediacodec_muxer.h"],
-    includes = ["."],
     alwayslink = True,
     deps = [
         ":mediacodec_raii",
@@ -61,7 +59,6 @@ cc_library(
     target_compatible_with = ["@platforms//os:android"],
     srcs = ["mediacodec_video.cc"],
     hdrs = ["mediacodec_video.h"],
-    includes = ["."],
     alwayslink = True,
     deps = [
         ":mediacodec_raii",
@@ -79,7 +76,6 @@ cc_library(
 cc_library(
     name = "mediacodec_raii",
     hdrs = ["mediacodec_raii.h"],
-    includes = ["."],
     target_compatible_with = ["@platforms//os:android"],
 )
 
@@ -90,6 +86,5 @@ cc_library(
     name = "mediacodec_utils",
     srcs = ["mediacodec_utils.cc"],
     hdrs = ["mediacodec_utils.h"],
-    includes = ["."],
     deps = ["@video_codec//src/framework/core:types"],
 )

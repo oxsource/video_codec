@@ -20,14 +20,12 @@ package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//
 cc_library(
     name = "ffmpeg_raii",
     hdrs = ["ffmpeg_raii.h"],
-    includes = ["."],
 )
 
 cc_library(
     name = "ffmpeg_video",
     srcs = ["ffmpeg_video.cc"],
     hdrs = ["ffmpeg_video.h"],
-    includes = ["."],
     alwayslink = True,
     deps = [
         ":ffmpeg_raii",
@@ -46,7 +44,6 @@ cc_library(
     name = "ffmpeg_audio",
     srcs = ["ffmpeg_audio.cc"],
     hdrs = ["ffmpeg_audio.h"],
-    includes = ["."],
     alwayslink = True,
     deps = [
         ":ffmpeg_raii",
@@ -64,7 +61,6 @@ cc_library(
     name = "ffmpeg_muxer",
     srcs = ["ffmpeg_muxer.cc"],
     hdrs = ["ffmpeg_muxer.h"],
-    includes = ["."],
     alwayslink = True,
     deps = [
         "@video_codec//src/framework/api:codec_factory",

@@ -5,9 +5,9 @@
 #include <cstdio>
 #include <vector>
 
-#include "mediacodec_raii.h"
-#include "muxer.h"
-#include "types.h"
+#include "src/framework/backend/android/mediacodec_raii.h"
+#include "src/framework/api/muxer.h"
+#include "src/framework/core/types.h"
 
 namespace video {
 namespace codec {

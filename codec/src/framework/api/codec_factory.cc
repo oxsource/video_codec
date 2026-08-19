@@ -1,12 +1,12 @@
 // codec_factory.cc
-#include "codec_factory.h"
+#include "src/framework/api/codec_factory.h"
 
 #include <mutex>
 #include <unordered_map>
 
-#include "audio_encoder.h"
-#include "muxer.h"
-#include "video_encoder.h"
+#include "src/framework/api/audio_encoder.h"
+#include "src/framework/api/muxer.h"
+#include "src/framework/api/video_encoder.h"
 
 namespace video {
 namespace codec {

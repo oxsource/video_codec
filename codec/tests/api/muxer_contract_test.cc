@@ -1,8 +1,8 @@
 // muxer_contract_test.cc
-#include "codec_factory.h"
-#include "muxer.h"
+#include "src/framework/api/codec_factory.h"
+#include "src/framework/api/muxer.h"
 #include "gtest/gtest.h"
-#include "byte_sink.h"
+#include "src/framework/io/byte_sink.h"
 
 namespace video {
 namespace codec {

@@ -4,8 +4,8 @@
 #include <memory>
 #include <string>
 
-#include "packet_consumer.h"
-#include "file_byte_sink.h"
+#include "src/framework/consumer/packet_consumer.h"
+#include "src/framework/io/file_byte_sink.h"
 
 namespace video {
 namespace codec {

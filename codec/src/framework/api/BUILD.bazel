@@ -6,7 +6,6 @@ package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//
 cc_library(
     name = "video_encoder",
     hdrs = ["video_encoder.h"],
-    includes = ["."],
     deps = [
         "@video_codec//src/framework/core:result",
         "@video_codec//src/framework/core:types",
@@ -16,7 +15,6 @@ cc_library(
 cc_library(
     name = "audio_encoder",
     hdrs = ["audio_encoder.h"],
-    includes = ["."],
     deps = [
         "@video_codec//src/framework/core:result",
         "@video_codec//src/framework/core:types",
@@ -27,14 +25,12 @@ cc_library(
     name = "encoder_lifecycle",
     srcs = ["encoder_lifecycle.cc"],
     hdrs = ["encoder_lifecycle.h"],
-    includes = ["."],
     deps = ["@video_codec//src/framework/core:status"],
 )
 
 cc_library(
     name = "muxer",
     hdrs = ["muxer.h"],
-    includes = ["."],
     deps = [
         "@video_codec//src/framework/core:packet_sink",
         "@video_codec//src/framework/core:result",
@@ -47,7 +43,6 @@ cc_library(
     name = "codec_factory",
     srcs = ["codec_factory.cc"],
     hdrs = ["codec_factory.h"],
-    includes = ["."],
     deps = [
         ":audio_encoder",
         ":muxer",

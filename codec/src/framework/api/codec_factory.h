@@ -6,9 +6,9 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "export.h"
-#include "result.h"
-#include "types.h"
+#include "src/framework/core/export.h"
+#include "src/framework/core/result.h"
+#include "src/framework/core/types.h"
 
 namespace video {
 namespace codec {

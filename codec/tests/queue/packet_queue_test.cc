@@ -1,5 +1,5 @@
 // packet_queue_test.cc
-#include "packet_queue.h"
+#include "src/framework/queue/packet_queue.h"
 
 #include <atomic>
 #include <string>
