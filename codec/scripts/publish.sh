@@ -46,6 +46,8 @@ for h in \
     src/framework/api/codec_factory.h \
     src/framework/api/input_surface.h \
     src/framework/api/muxer.h \
+    src/framework/io/byte_sink.h \
+    src/framework/io/file_byte_sink.h \
     src/framework/utils/media_format.h; do
     cp "${h}" "${PREFIX}/include/video_codec/"
 done

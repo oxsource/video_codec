@@ -81,7 +81,32 @@ int SamplingFrequencyIndex(int sample_rate) {
 
 int FFmpegMuxer::SinkWrite(void* opaque, uint8_t* buf, int size) {
   auto* muxer = static_cast<FFmpegMuxer*>(opaque);
-  return muxer->sink_ && muxer->sink_->Write(buf, static_cast<size_t>(size)) ? size : AVERROR(EIO);
+  if (!muxer->sink_ || !muxer->sink_->Write(buf, static_cast<size_t>(size))) {
+    return AVERROR(EIO);
+  }
+  muxer->written_ += size;
+  return size;
+}
+
+int64_t FFmpegMuxer::SinkSeek(void* opaque, int64_t offset, int whence) {
+  auto* muxer = static_cast<FFmpegMuxer*>(opaque);
+  if (!muxer->sink_) return -1;
+  int64_t target = -1;
+  switch (whence) {
+    case SEEK_SET:
+      target = offset;
+      break;
+    case SEEK_CUR:
+      target = muxer->sink_->Tell() + offset;
+      break;
+    case SEEK_END:
+      target = muxer->written_ + offset;  // file size == bytes written so far
+      break;
+    default:
+      return -1;
+  }
+  if (target < 0 || !muxer->sink_->Seek(target)) return -1;
+  return muxer->sink_->Tell();
 }
 
 FFmpegMuxer::FFmpegMuxer(const MuxerConfig& config) : config_(config) {}
@@ -250,7 +275,8 @@ Status FFmpegMuxer::OpenMuxer(const VideoPacket& first_keyframe) {
     return Status::kEncodeFailed;
   }
   fmt_->pb =
-      avio_alloc_context(iobuf, kIoBufferSize, 1, this, nullptr, &FFmpegMuxer::SinkWrite, nullptr);
+      avio_alloc_context(iobuf, kIoBufferSize, 1, this, nullptr, &FFmpegMuxer::SinkWrite,
+                         &FFmpegMuxer::SinkSeek);
   if (!fmt_->pb) {
     av_free(iobuf);
     avformat_free_context(fmt_);
@@ -258,7 +284,8 @@ Status FFmpegMuxer::OpenMuxer(const VideoPacket& first_keyframe) {
     return Status::kEncodeFailed;
   }
   // Fragmented mode writes the header (ftyp + moov) upfront and emits one
-  // fragment per keyframe — sequential, no seeking needed.
+  // fragment per keyframe — sequential, no seeking needed. Non-fragmented mode
+  // (moov at end) requires the seekable avio wired above.
   AVDictionary* opts = nullptr;
   if (config_.fragmented) {
     av_dict_set(&opts, "movflags", "frag_keyframe", 0);
@@ -312,6 +339,7 @@ Status FFmpegMuxer::Push(VideoPacket&& pkt) {
   const int64_t pts = av_rescale_q(pkt.pts_us, AVRational{1, 1'000'000}, tb);
   avpkt->pts = pts;
   avpkt->dts = pts;  // encode order == display order (max_b_frames = 0)
+  avpkt->duration = 1;  // one time_base tick = 1/fps (mov muxer needs it)
   avpkt->flags = pkt.keyframe ? AV_PKT_FLAG_KEY : 0;
 
   // Fragmented mode: write each sample immediately (single stream, no
@@ -320,14 +348,13 @@ Status FFmpegMuxer::Push(VideoPacket&& pkt) {
   // unstable/streaming sinks. Non-fragmented keeps the interleaved path
   // (moov at end).
   int ret;
-  if (config_.fragmented) {
-    ret = av_write_frame(fmt_, avpkt);
-    if (ret >= 0 && pkt.keyframe) {
-      avio_flush(fmt_->pb);                    // push the completed fragment bytes to the sink
-      if (sink_ && !sink_->Flush()) ret = -1;  // commit point
-    }
-  } else {
-    ret = av_interleaved_write_frame(fmt_, avpkt);
+  // av_interleaved_write_frame handles both modes: interleaved writes for the
+  // non-fragmented path (moov at end) and fragment management for frag_keyframe
+  // (single stream; raw av_write_frame leaves a trailing fragment without moof).
+  ret = av_interleaved_write_frame(fmt_, avpkt);
+  if (ret >= 0 && config_.fragmented && pkt.keyframe) {
+    avio_flush(fmt_->pb);                    // push the completed fragment bytes to the sink
+    if (sink_ && !sink_->Flush()) ret = -1;  // commit point
   }
   av_packet_free(&avpkt);
   return ret < 0 ? Status::kEncodeFailed : Status::kOk;

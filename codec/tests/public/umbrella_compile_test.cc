@@ -35,4 +35,17 @@ TEST(UmbrellaCompileTest, PublicSurfaceReachable) {
   EXPECT_EQ(acfg.sample_rate, 48000);
 }
 
+TEST(UmbrellaCompileTest, IoByteSinksReachableThroughUmbrella) {
+  // ByteSink / FileByteSink (the Muxer output target) are re-exported by the
+  // umbrella so consumers can wire a file output without internal headers
+  // (dependency-contract D-1). Construction + base-class dispatch must compile
+  // and link from the single umbrella include.
+  video::codec::FileByteSink sink("/nonexistent_media_record_dir/out.bin");
+  EXPECT_FALSE(sink.IsOpen());  // bogus path -> open fails
+
+  video::codec::ByteSink* base = &sink;
+  EXPECT_FALSE(base->Write(reinterpret_cast<const uint8_t*>("x"), 1));
+  EXPECT_EQ(base->Tell(), -1);
+}
+
 }  // namespace

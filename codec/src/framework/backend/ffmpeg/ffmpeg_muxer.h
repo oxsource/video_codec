@@ -59,9 +59,13 @@ class FFmpegMuxer : public Muxer {
 
   // avio write callback: forward muxer output bytes to the attached sink.
   static int SinkWrite(void* opaque, uint8_t* buf, int size);
+  // avio seek callback: forward seeks to a seekable ByteSink (FileByteSink),
+  // enabling the non-fragmented moov-at-end MP4 layout.
+  static int64_t SinkSeek(void* opaque, int64_t offset, int whence);
 
   MuxerConfig config_;
   ByteSink* sink_ = nullptr;  // non-owning; must outlive this muxer
+  int64_t written_ = 0;       // bytes written to the sink (for SEEK_END)
   bool opened_ = false;
   AVFormatContext* fmt_ = nullptr;
   int stream_index_ = -1;  // video stream

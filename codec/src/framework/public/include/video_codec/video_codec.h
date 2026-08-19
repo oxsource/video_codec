@@ -33,5 +33,9 @@
 #include "muxer.h"
 #include "video_encoder.h"
 
+// Byte-output sinks used by Muxer (SetOutput) to write container bytes
+#include "byte_sink.h"
+#include "file_byte_sink.h"
+
 // Media file-format constants (common output extensions like .mp4 / .h264)
 #include "media_format.h"
