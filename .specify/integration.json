@@ -2,14 +2,14 @@
   "version": "0.8.16",
   "integration_state_schema": 1,
   "installed_integrations": [
-    "codebuddy"
+    "opencode"
   ],
   "integration_settings": {
-    "codebuddy": {
+    "opencode": {
       "script": "sh",
       "invoke_separator": "."
     }
   },
-  "integration": "codebuddy",
-  "default_integration": "codebuddy"
+  "integration": "opencode",
+  "default_integration": "opencode"
 }
