@@ -30,6 +30,7 @@
 
 #include "src/api/stream.h"
 #include "src/api/stream_config.h"
+#include "src/api/stream_utils.h"
 
 namespace vc = video::codec;
 namespace vcu = video::codec::utils;
@@ -155,6 +156,10 @@ int main(int argc, char** argv) {
     st = stream->Start();
     if (st == vc::Status::kOk) {
       stream_ok = true;
+      // Send a tiny dummy SEI frame immediately so the remote server
+      // (e.g. MediaMTX) doesn't hit its "no tracks" timeout while the
+      // codec pipeline is still being set up.
+      stream->SendVideo(vs::MakeSeiFrame());
     } else {
       std::fprintf(stderr, "%s: stream Start failed (%s) — recording only\n", kLogTag,
                    vc::StatusToString(st));

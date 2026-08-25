@@ -236,20 +236,6 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
   // state fires. The caller will push data immediately; if the track is still
   // closed by then SendVideo will report the error naturally.
 
-  // Send a tiny dummy SEI frame immediately so the remote server doesn't hit
-  // its "no tracks" timeout while the caller's pipeline is being set up.
-  std::printf("  [webrtc] sending dummy frame to prevent timeout\n");
-  if (video_track_) {
-    try {
-      rtc::binary dummy_data = {
-          std::byte{0x00}, std::byte{0x00}, std::byte{0x00}, std::byte{0x01},
-          std::byte{0x06}, std::byte{0x01}, std::byte{0x02}, std::byte{0x03}};
-      video_track_->send(rtc::message_variant(std::move(dummy_data)));
-    } catch (...) {
-      // Ignore — the track may not be open yet, that's fine.
-    }
-  }
-
   std::printf("  [webrtc] Connect complete, connected=%d\n", connected_);
   return connect_result_;
 }

@@ -7,6 +7,7 @@ cc_library(
         "stream_backend.h",
         "stream_config.h",
         "stream_status.h",
+        "stream_utils.h",
         "video_stream_export.h",
     ],
 )
