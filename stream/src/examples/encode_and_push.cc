@@ -155,13 +155,6 @@ int main(int argc, char** argv) {
     st = stream->Start();
     if (st == vc::Status::kOk) {
       stream_ok = true;
-      // Send a tiny dummy frame immediately so the remote server (e.g.
-      // MediaMTX) doesn't hit its "no tracks" timeout while the codec
-      // pipeline is still being set up.
-      vc::VideoPacket dummy;
-      dummy.data = {0x00, 0x00, 0x00, 0x01, 0x06, 0x01, 0x02, 0x03};  // SEI
-      dummy.pts_us = 1;
-      stream->SendVideo(dummy);
     } else {
       std::fprintf(stderr, "%s: stream Start failed (%s) — recording only\n", kLogTag,
                    vc::StatusToString(st));
