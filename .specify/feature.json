@@ -1,1 +1,3 @@
-{"feature_directory": "specs/007-input-surface-api"}
+{
+  "feature_directory": "specs/008-stream-interface"
+}

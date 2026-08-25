@@ -1,0 +1,23 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_import(
+    name = "ssl",
+    shared_library = "lib/libssl.dylib",
+    hdrs = glob(["include/**/*.h"]),
+    includes = ["include"],
+)
+
+cc_import(
+    name = "crypto",
+    shared_library = "lib/libcrypto.dylib",
+    hdrs = glob(["include/**/*.h"]),
+    includes = ["include"],
+)
+
+cc_library(
+    name = "openssl",
+    deps = [
+        ":ssl",
+        ":crypto",
+    ],
+)

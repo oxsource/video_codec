@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>WHIP Stream Player</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; background: #1a1a2e; color: #eee; }
+    video { width: 80%; max-width: 854px; background: #000; border-radius: 8px; margin: 20px auto; display: block; }
+    .status { margin: 10px; padding: 10px; border-radius: 4px; }
+    .connected { background: #1b5e20; }
+    .disconnected { background: #b71c1c; }
+    .connecting { background: #e65100; }
+    h1 { color: #e94560; }
+  </style>
+</head>
+<body>
+  <h1>WHIP Stream Player</h1>
+  <video id="player" autoplay muted playsinline></video>
+  <div id="status" class="status disconnected">Disconnected</div>
+  <script>
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+    const player = document.getElementById('player');
+    const statusDiv = document.getElementById('status');
+
+    pc.ontrack = (event) => {
+      player.srcObject = event.streams[0];
+      statusDiv.textContent = 'Streaming';
+      statusDiv.className = 'status connected';
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+        statusDiv.textContent = 'Disconnected';
+        statusDiv.className = 'status disconnected';
+      } else if (pc.iceConnectionState === 'connected') {
+        statusDiv.textContent = 'Connected';
+        statusDiv.className = 'status connected';
+      } else {
+        statusDiv.textContent = pc.iceConnectionState;
+        statusDiv.className = 'status connecting';
+      }
+    };
+
+    statusDiv.textContent = 'Waiting for stream...';
+    statusDiv.className = 'status connecting';
+
+    player.addEventListener('loadedmetadata', () => {
+      player.play();
+    });
+  </script>
+</body>
+</html>

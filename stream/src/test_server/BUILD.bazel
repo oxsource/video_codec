@@ -1,0 +1,22 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "whip_test_server_lib",
+    srcs = ["whip_test_server.cc"],
+    hdrs = ["whip_test_server.h"],
+    deps = [
+        "//src/api:stream_api",
+        "@libdatachannel//:datachannel",
+    ],
+)
+
+cc_binary(
+    name = "whip_test_server",
+    srcs = ["test_server_main.cc"],
+    linkopts = [
+        "-Wl,-rpath,@loader_path/../../external/libdatachannel/libdatachannel/lib",
+    ],
+    deps = [
+        ":whip_test_server_lib",
+    ],
+)

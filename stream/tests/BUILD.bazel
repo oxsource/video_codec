@@ -1,0 +1,65 @@
+package(default_visibility = ["//visibility:public"])
+
+test_suite(
+    name = "all",
+    tests = [
+        ":abr_controller_test",
+        ":backend_selection_test",
+        ":reconnect_handler_test",
+        ":stream_interface_test",
+        ":whip_test_server_test",
+    ],
+)
+
+cc_test(
+    name = "stream_interface_test",
+    srcs = ["stream_interface_test.cc"],
+    deps = [
+        "//src/api:stream_api",
+        "//src/core:stream_core",
+        "//src/backend/mock:mock_backend",
+        "@com_google_googletest//:gtest_main",
+        "@video_codec//src/framework/core:status",
+        "@video_codec//src/framework/core:types",
+    ],
+)
+
+cc_test(
+    name = "backend_selection_test",
+    srcs = ["backend_selection_test.cc"],
+    deps = [
+        "//src/api:stream_api",
+        "//src/core:stream_core",
+        "//src/backend/mock:mock_backend",
+        "@com_google_googletest//:gtest_main",
+        "@video_codec//src/framework/core:status",
+        "@video_codec//src/framework/core:types",
+    ],
+)
+
+cc_test(
+    name = "whip_test_server_test",
+    srcs = ["whip_test_server_test.cc"],
+    deps = [
+        "//src/test_server:whip_test_server_lib",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "abr_controller_test",
+    srcs = ["abr_controller_test.cc"],
+    deps = [
+        "//src/core:stream_core",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "reconnect_handler_test",
+    srcs = ["reconnect_handler_test.cc"],
+    deps = [
+        "//src/core:stream_core",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

@@ -1,0 +1,24 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "stream_core",
+    srcs = [
+        "abr_controller.cc",
+        "backend_registry.cc",
+        "reconnect_handler.cc",
+        "stream_factory.cc",
+        "stream_impl.cc",
+    ],
+    hdrs = [
+        "abr_controller.h",
+        "backend_registry.h",
+        "reconnect_handler.h",
+        "stream_impl.h",
+        "video_stream_register.h",
+    ],
+    deps = [
+        "//src/api:stream_api",
+        "@video_codec//src/framework/core:status",
+        "@video_codec//src/framework/core:types",
+    ],
+)

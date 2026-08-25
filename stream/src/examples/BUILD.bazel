@@ -1,0 +1,18 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_binary(
+    name = "encode_and_push",
+    srcs = ["encode_and_push.cc"],
+    linkopts = [
+        "-Wl,-rpath,@loader_path/../../external/libdatachannel/libdatachannel/lib",
+    ],
+    deps = [
+        "//src/api:stream_api",
+        "//src/core:stream_core",
+        "//src/backend/webrtc:webrtc_backend",
+        "@video_codec//src/framework/public:video_codec",
+        "@video_codec//src/framework/queue",
+        "@video_codec//src/framework/consumer",
+        "@video_codec//src/framework/core:packet_sink",
+    ],
+)

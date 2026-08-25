@@ -1,0 +1,20 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "webrtc_backend",
+    srcs = [
+        "webrtc_backend.cc",
+        "whip_session.cc",
+    ],
+    hdrs = [
+        "webrtc_backend.h",
+        "webrtc_raii.h",
+        "whip_session.h",
+    ],
+    alwayslink = True,
+    deps = [
+        "//src/api:stream_api",
+        "//src/core:stream_core",
+        "@libdatachannel//:datachannel",
+    ],
+)

@@ -1,0 +1,2 @@
+# Bazel should ignore the codec workspace when scanning for BUILD files.
+codec

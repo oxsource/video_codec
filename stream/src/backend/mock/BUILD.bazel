@@ -1,0 +1,11 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "mock_backend",
+    srcs = ["mock_backend.cc"],
+    hdrs = ["mock_backend.h"],
+    deps = [
+        "//src/api:stream_api",
+        "//src/core:stream_core",
+    ],
+)

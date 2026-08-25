@@ -1,0 +1,8 @@
+build --cxxopt=-std=c++17
+build --host_cxxopt=-std=c++17
+build --features=visibility=hidden
+
+common --disk_cache=~/.cache/bazel/disk
+common --repository_cache=~/.cache/bazel/repository
+
+test --test_output=errors

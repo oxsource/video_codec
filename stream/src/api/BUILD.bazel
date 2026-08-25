@@ -1,0 +1,12 @@
+package(default_visibility = ["//visibility:public"])
+
+cc_library(
+    name = "stream_api",
+    hdrs = [
+        "stream.h",
+        "stream_backend.h",
+        "stream_config.h",
+        "stream_status.h",
+        "video_stream_export.h",
+    ],
+)

@@ -1,0 +1,36 @@
+package(default_visibility = ["//visibility:public"])
+
+load("@rules_foreign_cc//foreign_cc:cmake.bzl", "cmake")
+
+filegroup(
+    name = "all",
+    srcs = glob(["**/*"]),
+)
+
+cmake(
+    name = "libdatachannel",
+    lib_source = ":all",
+    out_shared_libs = [
+        "libdatachannel.dylib",
+        "libdatachannel.0.dylib",
+    ],
+    cache_entries = {
+        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
+        "BUILD_SHARED_LIBS": "ON",
+        "CMAKE_BUILD_TYPE": "Release",
+        "NO_WEBSOCKET": "ON",
+        "NO_EXAMPLES": "ON",
+        "NO_TESTS": "ON",
+        "USE_GNUTLS": "OFF",
+        "USE_MBEDTLS": "OFF",
+    },
+    deps = [
+        "@openssl//:openssl",
+    ],
+)
+
+cc_library(
+    name = "datachannel",
+    deps = [":libdatachannel"],
+    includes = ["include"],
+)
