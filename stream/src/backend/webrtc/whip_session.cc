@@ -8,6 +8,8 @@
 
 #include <curl/curl.h>
 
+#include "src/framework/core/log_slot.h"
+
 namespace video {
 namespace stream {
 
@@ -76,18 +78,18 @@ std::string CurlEasyPerform(const std::string& url, const std::string& method,
   curl_slist_free_all(headers);
 
   if (res != CURLE_OK) {
-    std::printf("  [whip] curl error: %s\n", curl_easy_strerror(res));
+    VC_LOG(video::codec::LogLevel::kError, std::string("curl error: ") + curl_easy_strerror(res));
     curl_easy_cleanup(curl);
     return "";
   }
 
   long http_code = 0;
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-  std::printf("  [whip] HTTP %s -> %ld\n", method.c_str(), http_code);
+  VC_LOG(video::codec::LogLevel::kDebug, std::string("HTTP ") + method + " -> " + std::to_string(http_code));
 
   if (http_code < 200 || http_code >= 300) {
-    std::printf("  [whip] unexpected status, body=%s\n",
-                response_body.substr(0, 200).c_str());
+    VC_LOG(video::codec::LogLevel::kError,
+           std::string("unexpected status, body=") + response_body.substr(0, 200));
     curl_easy_cleanup(curl);
     return "";
   }
@@ -121,19 +123,21 @@ WhipSession::~WhipSession() { curl_global_cleanup(); }
 
 bool WhipSession::Create(const std::string& whip_endpoint,
                           const std::string& offer_sdp) {
-  std::printf("  [whip] Create: POST %s (%zu bytes)\n", whip_endpoint.c_str(), offer_sdp.size());
+  VC_LOG(video::codec::LogLevel::kDebug,
+         std::string("Create: POST ") + whip_endpoint + " (" + std::to_string(offer_sdp.size()) + " bytes)");
 
   std::string content_type;
   std::string location;
   auto response = CurlEasyPerform(whip_endpoint, kMethodPost, offer_sdp,
                                    kMimeSdp, &content_type, &location);
   if (response.empty()) {
-    std::printf("  [whip] POST failed\n");
+    VC_LOG(video::codec::LogLevel::kError, "POST failed");
     if (on_error_) on_error_("WHIP POST failed");
     return false;
   }
 
-  std::printf("  [whip] POST OK (%zu bytes, type=%s)\n", response.size(), content_type.c_str());
+  VC_LOG(video::codec::LogLevel::kDebug,
+         std::string("POST OK (") + std::to_string(response.size()) + " bytes, type=" + content_type + ")");
   answer_sdp_ = response;
 
   // Extract session ID from the Location header

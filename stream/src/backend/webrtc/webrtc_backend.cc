@@ -2,12 +2,14 @@
 #include "src/api/stream_config.h"
 #include "src/core/video_stream_register.h"
 
+#include "src/framework/core/log_slot.h"
 #include "src/framework/core/status.h"
 #include "src/framework/core/types.h"
 
 #include <rtc/rtc.hpp>
 
 #include <sstream>
+#include <string>
 
 namespace video {
 namespace stream {
@@ -39,7 +41,7 @@ WebrtcBackend::~WebrtcBackend() {
 }
 
 void WebrtcBackend::OnStateChange(rtc::PeerConnection::State state) {
-  std::printf("  [webrtc] state change: %d\n", static_cast<int>(state));
+  VC_LOG(video::codec::LogLevel::kDebug, std::string("webrtc state change: ") + std::to_string(static_cast<int>(state)));
   switch (state) {
     case rtc::PeerConnection::State::New:
       break;
@@ -70,7 +72,7 @@ void WebrtcBackend::OnStateChange(rtc::PeerConnection::State state) {
 
 video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
   config_ = config;
-  std::printf("  [webrtc] Connect: url=%s\n", config_.remote_url.c_str());
+  VC_LOG(video::codec::LogLevel::kDebug, std::string("Connect: url=") + config_.remote_url);
 
   if (config_.remote_url.empty()) {
     return video::codec::Status::kInvalidArgument;
@@ -83,7 +85,7 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
 
   rtc::Configuration pc_config;
   pc_config.iceServers.emplace_back("stun:stun.l.google.com:19302");
-  std::printf("  [webrtc] creating PeerConnection\n");
+  VC_LOG(video::codec::LogLevel::kDebug, "creating PeerConnection");
 
   pc_ = std::make_shared<rtc::PeerConnection>(pc_config);
 
@@ -93,21 +95,24 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
 
   pc_->onLocalDescription([this, whip_endpoint](const rtc::Description& description) {
     std::string offer = std::string(description);
-    std::printf("  [webrtc] onLocalDescription: %zu bytes, offer_ready_=%d, gathering=%d\n",
-                offer.size(), offer_ready_, gathering_complete_);
+    VC_LOG(video::codec::LogLevel::kDebug,
+           std::string("onLocalDescription: ") + std::to_string(offer.size()) +
+           " bytes, offer_ready_=" + std::to_string(offer_ready_) +
+           ", gathering=" + std::to_string(gathering_complete_));
 
     if (offer_ready_) {
-      std::printf("  [webrtc]   -> already sent, ignoring\n");
+      VC_LOG(video::codec::LogLevel::kDebug, "  -> already sent, ignoring");
       return;
     }
 
     if (!gathering_complete_) {
       current_offer_ = offer;
-      std::printf("  [webrtc]   -> waiting for ICE gathering (%zu bytes stored)\n", offer.size());
+      VC_LOG(video::codec::LogLevel::kDebug,
+             std::string("  -> waiting for ICE gathering (") + std::to_string(offer.size()) + " bytes stored)");
       return;
     }
 
-    std::printf("  [webrtc]   -> gathering done, sending WHIP POST\n");
+    VC_LOG(video::codec::LogLevel::kDebug, "  -> gathering done, sending WHIP POST");
     current_offer_ = offer;
 
     {
@@ -117,7 +122,7 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
     cv_.notify_one();
 
     whip_session_->SetOnReady([this](const std::string& sdp) {
-      std::printf("  [webrtc] WHIP OnReady, setting remote description\n");
+      VC_LOG(video::codec::LogLevel::kDebug, "WHIP OnReady, setting remote description");
       pc_->setRemoteDescription(sdp);
       session_id_ = whip_session_->SessionId();
       {
@@ -128,7 +133,7 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
     });
 
     whip_session_->SetOnError([this](const std::string& error) {
-      std::printf("  [webrtc] WHIP OnError: %s\n", error.c_str());
+      VC_LOG(video::codec::LogLevel::kError, std::string("WHIP OnError: ") + error);
       status_.last_error = error;
       {
         std::lock_guard<std::mutex> lock(mtx_);
@@ -139,7 +144,7 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
     });
 
     if (!whip_session_->Create(whip_endpoint, offer)) {
-      std::printf("  [webrtc] WHIP Create failed\n");
+      VC_LOG(video::codec::LogLevel::kError, "WHIP Create failed");
       {
         std::lock_guard<std::mutex> lock(mtx_);
         answer_ready_ = true;
@@ -150,23 +155,26 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
   });
 
   pc_->onGatheringStateChange([this, whip_endpoint](rtc::PeerConnection::GatheringState state) {
-    std::printf("  [webrtc] onGatheringStateChange: %d, offer_ready_=%d\n",
-                static_cast<int>(state), offer_ready_);
+    VC_LOG(video::codec::LogLevel::kDebug,
+           std::string("onGatheringStateChange: ") + std::to_string(static_cast<int>(state)) +
+           ", offer_ready_=" + std::to_string(offer_ready_));
     if (state == rtc::PeerConnection::GatheringState::Complete) {
       gathering_complete_ = true;
       if (!offer_ready_) {
         auto local_desc = pc_->localDescription();
         if (!local_desc) {
-          std::printf("  [webrtc]   -> no local description available\n");
+          VC_LOG(video::codec::LogLevel::kError, "  -> no local description available");
           return;
         }
         std::string offer = std::string(*local_desc);
-        std::printf("  [webrtc]   -> gathering complete, SDP=%zu bytes\n", offer.size());
+        VC_LOG(video::codec::LogLevel::kDebug,
+               std::string("  -> gathering complete, SDP=") + std::to_string(offer.size()) + " bytes");
         auto candidates = ExtractIceCandidates(offer);
-        std::printf("  [webrtc]   -> %zu ICE candidates in SDP\n", candidates.size());
+        VC_LOG(video::codec::LogLevel::kDebug,
+               std::string("  -> ") + std::to_string(candidates.size()) + " ICE candidates in SDP");
 
         whip_session_->SetOnReady([this](const std::string& sdp) {
-          std::printf("  [webrtc] WHIP OnReady (from gathering), setting remote description\n");
+          VC_LOG(video::codec::LogLevel::kDebug, "WHIP OnReady (from gathering), setting remote description");
           pc_->setRemoteDescription(sdp);
           session_id_ = whip_session_->SessionId();
           {
@@ -177,7 +185,7 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
         });
 
         whip_session_->SetOnError([this](const std::string& error) {
-          std::printf("  [webrtc] WHIP OnError (from gathering): %s\n", error.c_str());
+          VC_LOG(video::codec::LogLevel::kError, std::string("WHIP OnError (from gathering): ") + error);
           status_.last_error = error;
           {
             std::lock_guard<std::mutex> lock(mtx_);
@@ -189,7 +197,7 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
 
         offer_ready_ = true;
         if (!whip_session_->Create(whip_endpoint, offer)) {
-          std::printf("  [webrtc] WHIP Create (from gathering) failed\n");
+          VC_LOG(video::codec::LogLevel::kError, "WHIP Create (from gathering) failed");
           std::lock_guard<std::mutex> lock(mtx_);
           answer_ready_ = true;
           connect_result_ = video::codec::Status::kEncodeFailed;
@@ -209,7 +217,6 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
     rtp_config_ = std::make_shared<rtc::RtpPacketizationConfig>(ssrc, "video-send", 96, 90000);
     auto packetizer = std::make_shared<rtc::H264RtpPacketizer>(
         rtc::NalUnit::Separator::StartSequence, rtp_config_);
-    // Add RTCP handlers for keyframe request (PLI) and packet retransmission (NACK).
     packetizer->addToChain(std::make_shared<rtc::RtcpSrReporter>(rtp_config_));
     packetizer->addToChain(std::make_shared<rtc::RtcpNackResponder>());
     video_track_->setMediaHandler(packetizer);
@@ -226,38 +233,34 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
     return connect_result_;
   }
 
-  std::printf("  [webrtc] waiting for ICE connected state...\n");
+  VC_LOG(video::codec::LogLevel::kDebug, "waiting for ICE connected state...");
   {
     std::unique_lock<std::mutex> lock(mtx_);
     cv_.wait_for(lock, std::chrono::seconds(10), [this] { return connected_state_; });
   }
-  // Don't check connected_state_ here — MediaMTX (and other servers) may start
-  // the DTLS handshake and hit their "no tracks" timeout before the Connected
-  // state fires. The caller will push data immediately; if the track is still
-  // closed by then SendVideo will report the error naturally.
 
-  std::printf("  [webrtc] Connect complete, connected=%d\n", connected_);
+  VC_LOG(video::codec::LogLevel::kDebug,
+         std::string("Connect complete, connected=") + std::to_string(connected_));
   return connect_result_;
 }
 
 video::codec::Status WebrtcBackend::SendVideo(const video::codec::VideoPacket& packet) {
   if (!video_track_) return video::codec::Status::kNotInitialized;
-  // Advance the RTP timestamp (90 kHz clock) from the encoder PTS. Without this
-  // every packet carries the same timestamp and the receiver never emits a frame.
   if (rtp_config_) {
     uint32_t new_ts;
     if (packet.pts_us > 0) {
       new_ts = rtp_config_->startTimestamp +
                static_cast<uint32_t>((static_cast<uint64_t>(packet.pts_us) * 90) / 1000);
     } else {
-      // Fallback: encoder didn't set PTS, increment by 3000 per frame (= 30fps @ 90kHz)
       new_ts = rtp_config_->startTimestamp +
                static_cast<uint32_t>(frame_index_ * 3000);
     }
     rtp_config_->timestamp = new_ts;
     frame_index_++;
   }
-  std::printf("  [webrtc] SendVideo: %zu bytes, ts=%u\n", packet.data.size(), rtp_config_ ? rtp_config_->timestamp : 0);
+  VC_LOG(video::codec::LogLevel::kDebug,
+         std::string("SendVideo: ") + std::to_string(packet.data.size()) + " bytes, ts=" +
+         std::to_string(rtp_config_ ? rtp_config_->timestamp : 0));
   try {
     rtc::message_variant msg(std::vector<std::byte>(
         reinterpret_cast<const std::byte*>(packet.data.data()),
@@ -265,9 +268,10 @@ video::codec::Status WebrtcBackend::SendVideo(const video::codec::VideoPacket& p
     video_track_->send(msg);
     stats_.packets_sent++;
     stats_.bytes_sent += packet.data.size();
-    std::printf("  [webrtc] SendVideo OK (%llu total)\n", (unsigned long long)stats_.packets_sent);
+    VC_LOG(video::codec::LogLevel::kDebug,
+           std::string("SendVideo OK (") + std::to_string(stats_.packets_sent) + " total)");
   } catch (const std::exception& e) {
-    std::printf("  [webrtc] SendVideo FAILED: %s\n", e.what());
+    VC_LOG(video::codec::LogLevel::kError, std::string("SendVideo FAILED: ") + e.what());
     status_.last_error = e.what();
     return video::codec::Status::kEncodeFailed;
   }
@@ -282,7 +286,7 @@ video::codec::Status WebrtcBackend::SendAudio(const video::codec::AudioPacket& p
 }
 
 video::codec::Status WebrtcBackend::Disconnect() {
-  std::printf("  [webrtc] Disconnect() called\n");
+  VC_LOG(video::codec::LogLevel::kDebug, "Disconnect() called");
   if (pc_) {
     pc_->close();
     pc_.reset();
