@@ -1,240 +1,121 @@
 #include "src/backend/webrtc/whip_session.h"
 
+#include <cstdio>
 #include <cstring>
 #include <sstream>
+#include <string>
+#include <vector>
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netdb.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include <curl/curl.h>
 
 namespace video {
 namespace stream {
 
 namespace {
 
-struct UrlParts {
-  std::string host;
-  std::string path;
-  int port = 80;
-};
-
-UrlParts ParseUrl(const std::string& url) {
-  UrlParts parts;
-  auto pos = url.find("://");
-  if (pos != std::string::npos) {
-    auto rest = url.substr(pos + 3);
-    auto colon = rest.find(':');
-    auto slash = rest.find('/');
-    if (colon != std::string::npos && colon < slash) {
-      parts.port = std::stoi(rest.substr(colon + 1, slash - colon - 1));
-      parts.host = rest.substr(0, colon);
-    } else {
-      parts.host = rest.substr(0, slash);
-    }
-    parts.path = slash != std::string::npos ? rest.substr(slash) : "/";
-  } else {
-    parts.host = url;
-    parts.path = "/";
-  }
-  return parts;
+static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+  size_t total = size * nmemb;
+  reinterpret_cast<std::string*>(userp)->append(static_cast<char*>(contents), total);
+  return total;
 }
 
-}  // namespace
+struct curl_slist* MakeHeaders(const std::string& content_type) {
+  struct curl_slist* list = nullptr;
+  list = curl_slist_append(list, "Expect:");
+  if (!content_type.empty()) {
+    std::string ct = "Content-Type: " + content_type;
+    list = curl_slist_append(list, ct.c_str());
+  }
+  return list;
+}
 
-WhipSession::WhipSession() = default;
-WhipSession::~WhipSession() = default;
+std::string CurlEasyPerform(const std::string& url, const std::string& method,
+                             const std::string& body, const std::string& content_type,
+                             std::string* response_content_type = nullptr,
+                             std::string* location = nullptr) {
+  CURL* curl = curl_easy_init();
+  if (!curl) return "";
 
-std::string WhipSession::HttpPost(const std::string& url, const std::string& body,
-                                   const std::string& content_type,
-                                   std::string* response_content_type) {
-  auto parsed = ParseUrl(url);
+  std::string response_body;
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_body);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+  curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 5L);
+  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 0L);
 
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0) return "";
+  struct curl_slist* headers = MakeHeaders(content_type);
+  if (headers) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-  struct hostent* server = gethostbyname(parsed.host.c_str());
-  if (!server) {
-    close(sock);
+  if (method == "POST") {
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.size());
+  } else if (method == "PATCH") {
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.size());
+  } else if (method == "DELETE") {
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+  }
+
+  CURLcode res = curl_easy_perform(curl);
+  curl_slist_free_all(headers);
+
+  if (res != CURLE_OK) {
+    std::printf("  [whip] curl error: %s\n", curl_easy_strerror(res));
+    curl_easy_cleanup(curl);
     return "";
   }
 
-  sockaddr_in addr;
-  std::memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  std::memcpy(&addr.sin_addr.s_addr, server->h_addr, server->h_length);
-  addr.sin_port = htons(parsed.port);
+  long http_code = 0;
+  curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+  std::printf("  [whip] HTTP %s -> %ld\n", method.c_str(), http_code);
 
-  if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-    close(sock);
-    return "";
-  }
-
-  std::ostringstream req;
-  req << "POST " << parsed.path << " HTTP/1.1\r\n"
-      << "Host: " << parsed.host << "\r\n"
-      << "Content-Type: " << content_type << "\r\n"
-      << "Content-Length: " << body.size() << "\r\n"
-      << "Connection: close\r\n"
-      << "\r\n"
-      << body;
-
-  std::string request = req.str();
-  send(sock, request.c_str(), request.size(), 0);
-
-  shutdown(sock, SHUT_WR);
-
-  char buf[4096];
-  std::memset(buf, 0, sizeof(buf));
-  std::string response;
-  ssize_t n;
-  while ((n = read(sock, buf, sizeof(buf) - 1)) > 0) {
-    buf[n] = 0;
-    response += buf;
-  }
-  close(sock);
-
-  auto header_end = response.find("\r\n\r\n");
-  if (header_end == std::string::npos) return "";
-
-  std::string headers = response.substr(0, header_end);
-  std::string resp_body = response.substr(header_end + 4);
-
-  auto status_line = headers.substr(0, headers.find("\r\n"));
-  std::printf("  [whip] HTTP response: %s\n", status_line.c_str());
-  if (status_line.find("200") == std::string::npos &&
-      status_line.find("201") == std::string::npos) {
-    std::printf("  [whip] unexpected status, body=%s\n", resp_body.substr(0, 200).c_str());
+  if (http_code < 200 || http_code >= 300) {
+    std::printf("  [whip] unexpected status, body=%s\n",
+                response_body.substr(0, 200).c_str());
+    curl_easy_cleanup(curl);
     return "";
   }
 
   if (response_content_type) {
-    auto ct_pos = headers.find("Content-Type:");
-    if (ct_pos != std::string::npos) {
-      auto ct_end = headers.find("\r\n", ct_pos);
-      *response_content_type = headers.substr(ct_pos + 13, ct_end - ct_pos - 13);
+    char* ct = nullptr;
+    CURLcode r = curl_easy_getinfo(curl, CURLINFO_CONTENT_TYPE, &ct);
+    if (r == CURLE_OK && ct) *response_content_type = ct;
+  }
+
+  if (location) {
+    char* loc = nullptr;
+    CURLcode r = curl_easy_getinfo(curl, CURLINFO_REDIRECT_URL, &loc);
+    if (r == CURLE_OK && loc) *location = loc;
+    // Also check the Location header manually for 201 responses
+    if (location->empty()) {
+      char* effective = nullptr;
+      curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &effective);
+      (void)effective;
     }
   }
 
-  auto location = headers.find("Location:");
-  if (location != std::string::npos) {
-    auto loc_end = headers.find("\r\n", location);
-    resource_url_ = headers.substr(location + 9, loc_end - location - 9);
-  }
-
-  return resp_body;
+  curl_easy_cleanup(curl);
+  return response_body;
 }
 
-std::string WhipSession::HttpPatch(const std::string& url, const std::string& body,
-                                    const std::string& content_type) {
-  auto parsed = ParseUrl(url);
+}  // namespace
 
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0) return "";
-
-  struct hostent* server = gethostbyname(parsed.host.c_str());
-  if (!server) {
-    close(sock);
-    return "";
-  }
-
-  sockaddr_in addr;
-  std::memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  std::memcpy(&addr.sin_addr.s_addr, server->h_addr, server->h_length);
-  addr.sin_port = htons(parsed.port);
-
-  if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-    close(sock);
-    return "";
-  }
-
-  std::ostringstream req;
-  req << "PATCH " << parsed.path << " HTTP/1.1\r\n"
-      << "Host: " << parsed.host << "\r\n"
-      << "Content-Type: " << content_type << "\r\n"
-      << "Content-Length: " << body.size() << "\r\n"
-      << "Connection: close\r\n"
-      << "\r\n"
-      << body;
-
-  std::string request = req.str();
-  send(sock, request.c_str(), request.size(), 0);
-
-  shutdown(sock, SHUT_WR);
-
-  char buf[4096];
-  std::memset(buf, 0, sizeof(buf));
-  std::string response;
-  ssize_t n;
-  while ((n = read(sock, buf, sizeof(buf) - 1)) > 0) {
-    buf[n] = 0;
-    response += buf;
-  }
-  close(sock);
-
-  auto header_end = response.find("\r\n\r\n");
-  if (header_end == std::string::npos) return "";
-  return response.substr(header_end + 4);
-}
-
-std::string WhipSession::HttpDelete(const std::string& url) {
-  auto parsed = ParseUrl(url);
-
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock < 0) return "";
-
-  struct hostent* server = gethostbyname(parsed.host.c_str());
-  if (!server) {
-    close(sock);
-    return "";
-  }
-
-  sockaddr_in addr;
-  std::memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  std::memcpy(&addr.sin_addr.s_addr, server->h_addr, server->h_length);
-  addr.sin_port = htons(parsed.port);
-
-  if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-    close(sock);
-    return "";
-  }
-
-  std::ostringstream req;
-  req << "DELETE " << parsed.path << " HTTP/1.1\r\n"
-      << "Host: " << parsed.host << "\r\n"
-      << "Connection: close\r\n"
-      << "\r\n";
-
-  std::string request = req.str();
-  send(sock, request.c_str(), request.size(), 0);
-
-  shutdown(sock, SHUT_WR);
-
-  char buf[4096];
-  std::memset(buf, 0, sizeof(buf));
-  std::string response;
-  ssize_t n;
-  while ((n = read(sock, buf, sizeof(buf) - 1)) > 0) {
-    buf[n] = 0;
-    response += buf;
-  }
-  close(sock);
-
-  auto header_end = response.find("\r\n\r\n");
-  if (header_end == std::string::npos) return "";
-  return response.substr(header_end + 4);
-}
+WhipSession::WhipSession() { curl_global_init(CURL_GLOBAL_ALL); }
+WhipSession::~WhipSession() { curl_global_cleanup(); }
 
 bool WhipSession::Create(const std::string& whip_endpoint,
                           const std::string& offer_sdp) {
   std::printf("  [whip] Create: POST %s (%zu bytes)\n", whip_endpoint.c_str(), offer_sdp.size());
+
   std::string content_type;
-  auto response = HttpPost(whip_endpoint, offer_sdp, "application/sdp", &content_type);
+  std::string location;
+  auto response = CurlEasyPerform(whip_endpoint, "POST", offer_sdp,
+                                   "application/sdp", &content_type, &location);
   if (response.empty()) {
-    std::printf("  [whip] POST failed (empty response)\n");
+    std::printf("  [whip] POST failed\n");
     if (on_error_) on_error_("WHIP POST failed");
     return false;
   }
@@ -242,7 +123,9 @@ bool WhipSession::Create(const std::string& whip_endpoint,
   std::printf("  [whip] POST OK (%zu bytes, type=%s)\n", response.size(), content_type.c_str());
   answer_sdp_ = response;
 
-  if (!resource_url_.empty()) {
+  // Extract session ID from the Location header
+  if (!location.empty()) {
+    resource_url_ = location;
     auto last_slash = resource_url_.rfind('/');
     if (last_slash != std::string::npos) {
       session_id_ = resource_url_.substr(last_slash + 1);
@@ -263,14 +146,14 @@ bool WhipSession::PatchIce(const std::string& whip_endpoint,
     body << "a=candidate:" << c.candidate << "\r\n";
   }
 
-  auto response = HttpPatch(url, body.str(), "application/trickle-ice-sdpfrag");
+  auto response = CurlEasyPerform(url, "PATCH", body.str(), "application/trickle-ice-sdpfrag");
   return !response.empty() || response.empty();
 }
 
 bool WhipSession::Delete(const std::string& whip_endpoint,
                           const std::string& session_id) {
   std::string url = resource_url_.empty() ? whip_endpoint + "/" + session_id : resource_url_;
-  HttpDelete(url);
+  CurlEasyPerform(url, "DELETE", "", "");
   return true;
 }
 

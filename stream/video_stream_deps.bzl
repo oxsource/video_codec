@@ -1,5 +1,14 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+def _curl():
+    http_archive(
+        name = "curl",
+        urls = ["https://github.com/curl/curl/releases/download/curl-8_9_0/curl-8.9.0.tar.gz"],
+        sha256 = "14d931fa98a329310dca7b190d047c3d4987674b1f466481f5490e4e12067ba4",
+        strip_prefix = "curl-8.9.0",
+        build_file = "//third_party/curl:BUILD.bazel",
+    )
+
 def _googletest():
     http_archive(
         name = "com_google_googletest",
@@ -45,6 +54,8 @@ def _libyuv():
 def video_stream_setup():
     if not native.existing_rule("bazel_skylib"):
         _bazel_skylib()
+    if not native.existing_rule("curl"):
+        _curl()
     if not native.existing_rule("com_google_googletest"):
         _googletest()
     if not native.existing_rule("ffmpeg"):
