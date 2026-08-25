@@ -71,35 +71,51 @@ class NullSink : public vc::PacketSink {
 
 int main(int argc, char** argv) {
   std::string out_path = "out/out.mp4";
-  std::string whip_url = "http://localhost:8889/test/whip";
+  std::string whip_url = "http://localhost:8889/whip";
   int seconds = 5;
   bool no_record = false;
 
-  int argi = 1;
-  while (argi < argc) {
-    std::string arg = argv[argi];
+  std::vector<std::string> positional;
+  for (int i = 1; i < argc; i++) {
+    std::string arg = argv[i];
     if (arg == "--no-record") {
       no_record = true;
-      argi++;
-    } else if (out_path == "out/out.mp4" && argi == 1) {
-      out_path = argv[argi++];
-    } else if (whip_url == "http://localhost:8889/test/whip" && argi == 2) {
-      whip_url = argv[argi++];
+    } else if (arg == "--") {
+      // Everything after -- is positional
+      while (++i < argc) positional.push_back(argv[i]);
+      break;
     } else {
-      seconds = std::atoi(argv[argi++]);
+      positional.push_back(arg);
     }
   }
-  if (seconds <= 0) seconds = 5;
-
-  mkdir("out", 0755);
-  if (out_path == "out/out.mp4" && argi == 1) {
-    out_path = "out/out.mp4";
+  // Parse positional args: [output] [url] [seconds]
+  if (positional.size() >= 1 && positional[0].find("://") != std::string::npos) {
+    whip_url = positional[0];
+  } else if (positional.size() >= 1) {
+    out_path = positional[0];
   }
+  if (positional.size() >= 2) {
+    if (positional[1].find("://") != std::string::npos) {
+      whip_url = positional[1];
+    } else {
+      seconds = std::atoi(positional[1].c_str());
+    }
+  }
+  if (positional.size() >= 3) {
+    seconds = std::atoi(positional[2].c_str());
+  }
+  if (seconds <= 0) seconds = 5;
 
   // Resolve output path relative to workspace root (bazel run changes cwd).
   const char* workspace = getenv("BUILD_WORKSPACE_DIRECTORY");
   if (workspace && out_path[0] != '/') {
     out_path = std::string(workspace) + "/" + out_path;
+  }
+  // Ensure the output directory exists.
+  auto dir_pos = out_path.rfind('/');
+  if (dir_pos != std::string::npos) {
+    std::string dir = out_path.substr(0, dir_pos);
+    mkdir(dir.c_str(), 0755);
   }
   std::printf("%s: output=%s, whip=%s, seconds=%d\n", kLogTag,
               out_path.c_str(), whip_url.c_str(), seconds);
