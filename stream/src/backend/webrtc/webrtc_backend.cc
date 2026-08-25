@@ -81,7 +81,7 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
   }
 
   rtc::Configuration pc_config;
-  pc_config.iceServers.emplace_back("stun:stun.l.google.com:19302");
+  // pc_config.iceServers.emplace_back("stun:stun.l.google.com:19302");
   std::printf("  [webrtc] creating PeerConnection\n");
 
   pc_ = std::make_shared<rtc::PeerConnection>(pc_config);
@@ -205,9 +205,12 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
   video_track_ = pc_->addTrack(media);
 
   {
-    auto rtp_config = std::make_shared<rtc::RtpPacketizationConfig>(ssrc, "video-send", 96, 90000);
+    rtp_config_ = std::make_shared<rtc::RtpPacketizationConfig>(ssrc, "video-send", 96, 90000);
     auto packetizer = std::make_shared<rtc::H264RtpPacketizer>(
-        rtc::NalUnit::Separator::StartSequence, rtp_config);
+        rtc::NalUnit::Separator::StartSequence, rtp_config_);
+    // Add RTCP handlers for keyframe request (PLI) and packet retransmission (NACK).
+    packetizer->addToChain(std::make_shared<rtc::RtcpSrReporter>(rtp_config_));
+    packetizer->addToChain(std::make_shared<rtc::RtcpNackResponder>());
     video_track_->setMediaHandler(packetizer);
   }
 
@@ -227,6 +230,10 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
     std::unique_lock<std::mutex> lock(mtx_);
     cv_.wait_for(lock, std::chrono::seconds(10), [this] { return connected_state_; });
   }
+  // Don't check connected_state_ here — MediaMTX (and other servers) may start
+  // the DTLS handshake and hit their "no tracks" timeout before the Connected
+  // state fires. The caller will push data immediately; if the track is still
+  // closed by then SendVideo will report the error naturally.
 
   std::printf("  [webrtc] Connect complete, connected=%d\n", connected_);
   return connect_result_;
@@ -234,7 +241,22 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
 
 video::codec::Status WebrtcBackend::SendVideo(const video::codec::VideoPacket& packet) {
   if (!video_track_) return video::codec::Status::kNotInitialized;
-  std::printf("  [webrtc] SendVideo: %zu bytes\n", packet.data.size());
+  // Advance the RTP timestamp (90 kHz clock) from the encoder PTS. Without this
+  // every packet carries the same timestamp and the receiver never emits a frame.
+  if (rtp_config_) {
+    uint32_t new_ts;
+    if (packet.pts_us > 0) {
+      new_ts = rtp_config_->startTimestamp +
+               static_cast<uint32_t>((static_cast<uint64_t>(packet.pts_us) * 90) / 1000);
+    } else {
+      // Fallback: encoder didn't set PTS, increment by 3000 per frame (= 30fps @ 90kHz)
+      new_ts = rtp_config_->startTimestamp +
+               static_cast<uint32_t>(frame_index_ * 3000);
+    }
+    rtp_config_->timestamp = new_ts;
+    frame_index_++;
+  }
+  std::printf("  [webrtc] SendVideo: %zu bytes, ts=%u\n", packet.data.size(), rtp_config_ ? rtp_config_->timestamp : 0);
   try {
     rtc::message_variant msg(std::vector<std::byte>(
         reinterpret_cast<const std::byte*>(packet.data.data()),

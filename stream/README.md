@@ -55,6 +55,55 @@ bazel run //src/test_server:whip_test_server -- --port=8080
 # Open http://localhost:8080 in a browser
 ```
 
+### WHIP Push (encode + push)
+
+```bash
+# Push SMPTE color bars + 1 kHz tone for 30 seconds (no file recording):
+bazel run //src/examples:encode_and_push -- --no-record http://localhost:8080/whip 30
+
+# Push and record to local file:
+bazel run //src/examples:encode_and_push -- out/out.mp4 http://localhost:8080/whip 5
+```
+
+### WHEP Subscribe (GStreamer)
+
+```bash
+# Requires GStreamer with webrtc plugin (gst-plugins-rs).
+# Subscribe to the WHIP push stream via WHEP endpoint:
+gst-launch-1.0 \
+  whepclientsrc signaller::whep-endpoint="http://localhost:8080/whep" \
+  ! decodebin ! autovideosink
+```
+
+The test server supports both WHIP (push) and WHEP (subscribe) protocols on the same port. Push a stream with the WHIP example, then subscribe with any WHEP-compatible client (browser, GStreamer, etc.).
+
+### Media File Mode (no WHIP push required)
+
+The server can broadcast a pre-recorded H.264 file in a loop to all WHEP subscribers:
+
+```bash
+# Generate a 60-second SMPTE color bars test file:
+ffmpeg -y -f lavfi -i "smptebars=size=640x480:rate=30:duration=60" \
+  -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -g 30 -an \
+  /tmp/test_webrtc_60s.h264
+
+# Start server in media mode:
+bazel run //src/test_server:whip_test_server -- --port 8080 --media /tmp/test_webrtc_60s.h264
+
+# Play once (no loop):
+bazel run //src/test_server:whip_test_server -- --port 8080 --media /tmp/test_webrtc_60s.h264 --no-loop
+```
+
+### RTSP Loop Test (FFmpeg)
+
+For comparison, the same H.264 file can be served via RTSP to verify the file itself is valid:
+
+```bash
+# Requires mediamtx or rtsp-simple-server running on port 8554.
+ffmpeg -re -stream_loop -1 -f h264 -i /tmp/test_webrtc_60s.h264 \
+  -c:v copy -f rtsp rtsp://localhost:8554/test
+```
+
 ## License
 
 MIT

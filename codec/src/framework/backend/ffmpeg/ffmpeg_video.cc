@@ -69,6 +69,17 @@ Status FFmpegVideoEncoder::Init() {
   ctx_->gop_size = config_.gop_size > 0 ? config_.gop_size : (config_.fps * 2);
   ctx_->max_b_frames = 0;  // simplify; keyframes carry SPS/PPS via the bsf
 
+  // WebRTC H.264 interoperates on constrained baseline (profile-level-id
+  // 42e01f, the value browsers offer/negotiate). libx264's default is "high"
+  // (0x64), which browsers commonly refuse to decode when the negotiated
+  // profile-level-id is 42e01f. Note: FF_PROFILE_H264_CONSTRAINED_BASELINE
+  // (66|512) has NO case in libx264.c's profile switch and falls through to
+  // the x264 default (high) — plain FF_PROFILE_H264_BASELINE maps to x264's
+  // "baseline", which emits constraint_set1_flag => 42e01f.
+  if (codec->id == AV_CODEC_ID_H264) {
+    ctx_->profile = FF_PROFILE_H264_BASELINE;
+  }
+
   if (avcodec_open2(ctx_.get(), codec, nullptr) < 0) {
     return Status::kEncodeFailed;
   }

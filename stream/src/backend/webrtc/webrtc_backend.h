@@ -37,6 +37,10 @@ class WebrtcBackend : public StreamBackend {
   std::unique_ptr<WhipSession> whip_session_;
   std::shared_ptr<rtc::PeerConnection> pc_;
   std::shared_ptr<rtc::Track> video_track_;
+  // Held so SendVideo() can advance the RTP timestamp per frame. The library
+  // never increments it automatically; a constant timestamp makes the receiver
+  // treat the whole stream as a single access unit (no decodable frames).
+  std::shared_ptr<rtc::RtpPacketizationConfig> rtp_config_;
   StreamStats stats_;
   StatusCallback callback_;
   bool connected_ = false;
@@ -50,6 +54,7 @@ class WebrtcBackend : public StreamBackend {
   bool answer_ready_ = false;
   bool connected_state_ = false;
   video::codec::Status connect_result_ = video::codec::Status::kOk;
+  uint64_t frame_index_ = 0;  // debug: 用于日志输出
 };
 
 }  // namespace stream

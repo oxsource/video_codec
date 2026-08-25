@@ -46,6 +46,19 @@ cc_test(
     ],
 )
 
+# Manual end-to-end verification of the /subscribe relay path (pusher -> server
+# -> subscriber). Not part of the :all test suite because it needs a live RTC
+# loop. Run with: bazel run //tests:whip_subscribe_verify_test
+cc_test(
+    name = "whip_subscribe_verify_test",
+    srcs = ["whip_subscribe_verify_test.cc"],
+    deps = [
+        "//src/test_server:whip_test_server_lib",
+        "@com_google_googletest//:gtest_main",
+        "@libdatachannel//:datachannel",
+    ],
+)
+
 cc_test(
     name = "abr_controller_test",
     srcs = ["abr_controller_test.cc"],

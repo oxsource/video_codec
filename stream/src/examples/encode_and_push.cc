@@ -9,7 +9,7 @@
 //   bazel run //src/examples:encode_and_push -- [output.mp4] [whip_url] [seconds]
 //
 // Examples:
-//   bazel run //src/examples:encode_and_push -- out.mp4 http://localhost:8080/whip 5
+//   bazel run //src/examples:encode_and_push -- out.mp4 http://localhost:8889/test/whip 5
 
 #include <chrono>
 #include <cstdio>
@@ -40,36 +40,55 @@ static constexpr const char* kLogTag = "encode_and_push";
 // Custom PacketSink that writes to a muxer AND pushes to a stream.
 class RecordAndPushSink : public vc::PacketSink {
  public:
-  RecordAndPushSink(vc::PacketSink* muxer, vs::Stream* stream)
-      : muxer_(muxer), stream_(stream) {}
+  RecordAndPushSink(vc::PacketSink* sink, vs::Stream* stream)
+      : sink_(sink), stream_(stream) {}
 
   vc::Status Push(vc::VideoPacket&& pkt) override {
     std::printf("  [sink] Push video: %zu bytes, stream=%s\n", pkt.data.size(), stream_ ? "yes" : "no");
     if (stream_) stream_->SendVideo(pkt);
-    return muxer_->Push(std::move(pkt));
+    return sink_->Push(std::move(pkt));
   }
 
   vc::Status Push(vc::AudioPacket&& pkt) override {
     if (stream_) stream_->SendAudio(pkt);
-    return muxer_->Push(std::move(pkt));
+    return sink_->Push(std::move(pkt));
   }
 
-  vc::Status Finish() override { return muxer_->Finish(); }
+  vc::Status Finish() override { return sink_->Finish(); }
 
  private:
-  vc::PacketSink* muxer_;
+  vc::PacketSink* sink_;
   vs::Stream* stream_;
+};
+
+// Null sink that discards all data (used with --no-record).
+class NullSink : public vc::PacketSink {
+ public:
+  vc::Status Push(vc::VideoPacket&&) override { return vc::Status::kOk; }
+  vc::Status Push(vc::AudioPacket&&) override { return vc::Status::kOk; }
+  vc::Status Finish() override { return vc::Status::kOk; }
 };
 
 int main(int argc, char** argv) {
   std::string out_path = "out/out.mp4";
-  std::string whip_url = "http://localhost:8080/whip";
+  std::string whip_url = "http://localhost:8889/test/whip";
   int seconds = 5;
+  bool no_record = false;
 
   int argi = 1;
-  if (argi < argc) out_path = argv[argi++];
-  if (argi < argc) whip_url = argv[argi++];
-  if (argi < argc) seconds = std::atoi(argv[argi++]);
+  while (argi < argc) {
+    std::string arg = argv[argi];
+    if (arg == "--no-record") {
+      no_record = true;
+      argi++;
+    } else if (out_path == "out/out.mp4" && argi == 1) {
+      out_path = argv[argi++];
+    } else if (whip_url == "http://localhost:8889/test/whip" && argi == 2) {
+      whip_url = argv[argi++];
+    } else {
+      seconds = std::atoi(argv[argi++]);
+    }
+  }
   if (seconds <= 0) seconds = 5;
 
   mkdir("out", 0755);
@@ -120,6 +139,13 @@ int main(int argc, char** argv) {
     st = stream->Start();
     if (st == vc::Status::kOk) {
       stream_ok = true;
+      // Send a tiny dummy frame immediately so the remote server (e.g.
+      // MediaMTX) doesn't hit its "no tracks" timeout while the codec
+      // pipeline is still being set up.
+      vc::VideoPacket dummy;
+      dummy.data = {0x00, 0x00, 0x00, 0x01, 0x06, 0x01, 0x02, 0x03};  // SEI
+      dummy.pts_us = 1;
+      stream->SendVideo(dummy);
     } else {
       std::fprintf(stderr, "%s: stream Start failed (%s) — recording only\n", kLogTag,
                    vc::StatusToString(st));
@@ -129,28 +155,36 @@ int main(int argc, char** argv) {
                  vc::StatusToString(st));
   }
 
-  // ---- Muxer: record to local MP4 ----
-  auto mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
+  // ---- Muxer: record to local MP4 (unless --no-record) ----
+  NullSink null_sink;
+  std::unique_ptr<vc::FileByteSink> mp4_sink;
+  std::unique_ptr<vc::Muxer> muxer;
+  vc::PacketSink* record_sink = &null_sink;
 
-  vc::MuxerConfig mux_cfg;
-  mux_cfg.format = vc::MuxFormat::kMp4;
-  mux_cfg.fragmented = true;
-  mux_cfg.width = width;
-  mux_cfg.height = height;
-  mux_cfg.fps = fps;
-  mux_cfg.audio_codec = vc::AudioCodecType::kAAC;
-  mux_cfg.sample_rate = sample_rate;
-  mux_cfg.channels = channels;
-  mux_cfg.backend = vc::Backend::kAuto;
+  if (!no_record) {
+    mp4_sink = std::make_unique<vc::FileByteSink>(out_path);
 
-  auto muxer = vc::CodecFactory::CreateMuxer(mux_cfg);
-  if (!muxer) {
-    std::fprintf(stderr, "%s: no muxer available\n", kLogTag);
-    return 1;
+    vc::MuxerConfig mux_cfg;
+    mux_cfg.format = vc::MuxFormat::kMp4;
+    mux_cfg.fragmented = true;
+    mux_cfg.width = width;
+    mux_cfg.height = height;
+    mux_cfg.fps = fps;
+    mux_cfg.audio_codec = vc::AudioCodecType::kAAC;
+    mux_cfg.sample_rate = sample_rate;
+    mux_cfg.channels = channels;
+    mux_cfg.backend = vc::Backend::kAuto;
+
+    muxer = vc::CodecFactory::CreateMuxer(mux_cfg);
+    if (!muxer) {
+      std::fprintf(stderr, "%s: no muxer available\n", kLogTag);
+      return 1;
+    }
+    muxer->SetOutput(mp4_sink.get());
+    record_sink = muxer.get();
   }
-  muxer->SetOutput(mp4_sink.get());
 
-  RecordAndPushSink sink(muxer.get(), stream_ok ? stream.get() : nullptr);
+  RecordAndPushSink sink(record_sink, stream_ok ? stream.get() : nullptr);
 
   // ---- Codec setup: encode SMPTE bars to H.264 + AAC ----
   vc::PacketQueue queue(64, vc::Backpressure::kBlock);
@@ -161,6 +195,7 @@ int main(int argc, char** argv) {
   vcfg.height = height;
   vcfg.fps = fps;
   vcfg.bitrate = 2'000'000;
+  vcfg.gop_size = 30;
   vcfg.input_format = vc::PixelFormat::kI420;
   vcfg.backend = vc::Backend::kAuto;
 
