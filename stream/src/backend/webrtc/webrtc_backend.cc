@@ -82,7 +82,7 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
   }
 
   rtc::Configuration pc_config;
-  // pc_config.iceServers.emplace_back("stun:stun.l.google.com:19302");
+  pc_config.iceServers.emplace_back("stun:stun.l.google.com:19302");
   std::printf("  [webrtc] creating PeerConnection\n");
 
   pc_ = std::make_shared<rtc::PeerConnection>(pc_config);

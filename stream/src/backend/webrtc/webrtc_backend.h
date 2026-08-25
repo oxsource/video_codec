@@ -54,7 +54,7 @@ class WebrtcBackend : public StreamBackend {
   bool answer_ready_ = false;
   bool connected_state_ = false;
   video::codec::Status connect_result_ = video::codec::Status::kOk;
-  uint64_t frame_index_ = 0;  // debug: 用于日志输出
+  uint64_t frame_index_ = 0;
 };
 
 }  // namespace stream
