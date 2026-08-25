@@ -6,14 +6,22 @@
 // the other is pushed to a remote WHIP endpoint.
 //
 // Usage:
-//   bazel run //src/examples:encode_and_push -- [output.mp4] [whip_url] [seconds]
+//   bazel run //src/examples:encode_and_push -- [options]
+//
+// Options:
+//   --no-record       Skip writing to local file (push only)
+//   -o, --output      Output file path (default: out/out.mp4)
+//   --url, --whip     WHIP endpoint URL (default: http://localhost:8889/whip)
+//   --seconds, --time Encoding duration in seconds (default: 5)
 //
 // Examples:
-//   bazel run //src/examples:encode_and_push -- out.mp4 http://localhost:8889/test/whip 5
+//   bazel run //src/examples:encode_and_push -- --no-record --url http://localhost:8889/whip --seconds 30
+//   bazel run //src/examples:encode_and_push -- --output out.mp4 --url http://localhost:8889/whip
 
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <sys/stat.h>
@@ -76,34 +84,20 @@ int main(int argc, char** argv) {
   int seconds = 5;
   bool no_record = false;
 
-  std::vector<std::string> positional;
   for (int i = 1; i < argc; i++) {
-    std::string arg = argv[i];
+    std::string arg(argv[i]);
     if (arg == "--no-record") {
       no_record = true;
-    } else if (arg == "--") {
-      // Everything after -- is positional
-      while (++i < argc) positional.push_back(argv[i]);
-      break;
-    } else {
-      positional.push_back(arg);
+    } else if (arg == "-o" || arg == "--output") {
+      if (++i < argc) out_path = argv[i];
+    } else if (arg == "--url" || arg == "--whip") {
+      if (++i < argc) whip_url = argv[i];
+    } else if (arg == "--seconds" || arg == "--time") {
+      if (++i < argc) seconds = std::atoi(argv[i]);
+    } else if (arg.find("--") == 0) {
+      std::fprintf(stderr, "Unknown option: %s\n", arg.c_str());
+      return 1;
     }
-  }
-  // Parse positional args: [output] [url] [seconds]
-  if (positional.size() >= 1 && positional[0].find("://") != std::string::npos) {
-    whip_url = positional[0];
-  } else if (positional.size() >= 1) {
-    out_path = positional[0];
-  }
-  if (positional.size() >= 2) {
-    if (positional[1].find("://") != std::string::npos) {
-      whip_url = positional[1];
-    } else {
-      seconds = std::atoi(positional[1].c_str());
-    }
-  }
-  if (positional.size() >= 3) {
-    seconds = std::atoi(positional[2].c_str());
   }
   if (seconds <= 0) seconds = 5;
 

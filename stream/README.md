@@ -60,10 +60,10 @@ ffmpeg -y -f lavfi -i "smptebars=size=640x480:rate=30:duration=60" \
   /tmp/test_webrtc_60s.h264
 
 # Push SMPTE color bars for 30 seconds (no file recording):
-bazel run //src/examples:encode_and_push -- --no-record http://localhost:8889/whip 30
+bazel run //src/examples:encode_and_push -- --no-record --url http://localhost:8889/whip --seconds 30
 
 # Push and record to local file:
-bazel run //src/examples:encode_and_push -- out/out.mp4 http://localhost:8889/whip 5
+bazel run //src/examples:encode_and_push -- --output out.mp4 --url http://localhost:8889/whip --seconds 5
 ```
 
 Browser preview: open `http://localhost:8889` and select the stream.
