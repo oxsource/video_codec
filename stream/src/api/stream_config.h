@@ -6,6 +6,14 @@
 namespace video {
 namespace stream {
 
+// Backend type constants
+inline constexpr const char* kBackendWebRTC = "webrtc";
+
+// Codec constants
+inline constexpr const char* kCodecH264 = "h264";
+inline constexpr const char* kCodecAAC = "aac";
+inline constexpr const char* kCodecOpus = "opus";
+
 struct StreamConfig {
   std::string backend_type;
   std::string remote_url;

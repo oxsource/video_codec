@@ -1,4 +1,5 @@
 #include "src/backend/webrtc/webrtc_backend.h"
+#include "src/api/stream_config.h"
 #include "src/core/video_stream_register.h"
 
 #include "src/framework/core/status.h"
@@ -305,7 +306,7 @@ std::unique_ptr<StreamBackend> WebrtcBackend::Create(const StreamConfig& config)
   return std::make_unique<WebrtcBackend>(config);
 }
 
-VIDEO_STREAM_REGISTER("webrtc", WebrtcBackend::Create);
+VIDEO_STREAM_REGISTER(video::stream::kBackendWebRTC, WebrtcBackend::Create);
 
 }  // namespace stream
 }  // namespace video

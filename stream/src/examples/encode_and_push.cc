@@ -129,10 +129,10 @@ int main(int argc, char** argv) {
 
   // ---- Stream setup: push to WHIP endpoint ----
   vs::StreamConfig scfg;
-  scfg.backend_type = "webrtc";
+  scfg.backend_type = vs::kBackendWebRTC;
   scfg.remote_url = whip_url;
-  scfg.video_codec = "h264";
-  scfg.audio_codec = "aac";
+  scfg.video_codec = vs::kCodecH264;
+  scfg.audio_codec = vs::kCodecAAC;
   scfg.initial_bitrate_kbps = 2000;
   scfg.resolution_width = width;
   scfg.resolution_height = height;
