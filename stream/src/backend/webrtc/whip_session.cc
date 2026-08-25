@@ -13,6 +13,19 @@ namespace stream {
 
 namespace {
 
+// HTTP method constants
+static constexpr const char* kMethodPost = "POST";
+static constexpr const char* kMethodPatch = "PATCH";
+static constexpr const char* kMethodDelete = "DELETE";
+
+// HTTP header constants
+static constexpr const char* kHeaderExpect = "Expect:";
+static constexpr const char* kHeaderContentType = "Content-Type: ";
+
+// MIME type constants
+static constexpr const char* kMimeSdp = "application/sdp";
+static constexpr const char* kMimeTrickleIce = "application/trickle-ice-sdpfrag";
+
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
   size_t total = size * nmemb;
   reinterpret_cast<std::string*>(userp)->append(static_cast<char*>(contents), total);
@@ -21,9 +34,9 @@ static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* use
 
 struct curl_slist* MakeHeaders(const std::string& content_type) {
   struct curl_slist* list = nullptr;
-  list = curl_slist_append(list, "Expect:");
+  list = curl_slist_append(list, kHeaderExpect);
   if (!content_type.empty()) {
-    std::string ct = "Content-Type: " + content_type;
+    std::string ct = kHeaderContentType + content_type;
     list = curl_slist_append(list, ct.c_str());
   }
   return list;
@@ -47,16 +60,16 @@ std::string CurlEasyPerform(const std::string& url, const std::string& method,
   struct curl_slist* headers = MakeHeaders(content_type);
   if (headers) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-  if (method == "POST") {
+  if (method == kMethodPost) {
     curl_easy_setopt(curl, CURLOPT_POST, 1L);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.size());
-  } else if (method == "PATCH") {
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
+  } else if (method == kMethodPatch) {
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, kMethodPatch);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.size());
-  } else if (method == "DELETE") {
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+  } else if (method == kMethodDelete) {
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, kMethodDelete);
   }
 
   CURLcode res = curl_easy_perform(curl);
@@ -112,8 +125,8 @@ bool WhipSession::Create(const std::string& whip_endpoint,
 
   std::string content_type;
   std::string location;
-  auto response = CurlEasyPerform(whip_endpoint, "POST", offer_sdp,
-                                   "application/sdp", &content_type, &location);
+  auto response = CurlEasyPerform(whip_endpoint, kMethodPost, offer_sdp,
+                                   kMimeSdp, &content_type, &location);
   if (response.empty()) {
     std::printf("  [whip] POST failed\n");
     if (on_error_) on_error_("WHIP POST failed");
@@ -146,14 +159,14 @@ bool WhipSession::PatchIce(const std::string& whip_endpoint,
     body << "a=candidate:" << c.candidate << "\r\n";
   }
 
-  auto response = CurlEasyPerform(url, "PATCH", body.str(), "application/trickle-ice-sdpfrag");
+  auto response = CurlEasyPerform(url, kMethodPatch, body.str(), kMimeTrickleIce);
   return !response.empty() || response.empty();
 }
 
 bool WhipSession::Delete(const std::string& whip_endpoint,
                           const std::string& session_id) {
   std::string url = resource_url_.empty() ? whip_endpoint + "/" + session_id : resource_url_;
-  CurlEasyPerform(url, "DELETE", "", "");
+  CurlEasyPerform(url, kMethodDelete, "", "");
   return true;
 }
 
