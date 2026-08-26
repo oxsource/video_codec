@@ -134,6 +134,27 @@
 
 ---
 
+## Phase 8: Cross-Platform Compilation (codec parity)
+
+**Purpose**: Align `stream/` build config with `codec/` so it cross-compiles for host (macOS ARM64 + Linux x86_64) and Android arm64. Mirrors codec's platform aliases, `platforms/`, NDK registration, source-built deps, and mk/verify modules.
+
+- [x] T054 Create `stream/platforms/platforms.bzl` + `stream/platforms/BUILD` defining `android_arm64_platform`, `linux_x86_64_platform`, `darwin_arm64_platform` (config_setting + platform, mirroring codec/platforms/)
+- [x] T055 Update `stream/.bazelrc`: add `build:android_arm64 / linux_x86_64 / darwin_arm64` platform aliases, NDK toolchain registration (`--extra_toolchains=@androidndk//:all` + `--incompatible_enable_cc_toolchain_resolution=true`), and `build:shared` config
+- [x] T056 Update `stream/WORKSPACE`: register `rules_android_ndk` (v0.1.2) + `android_ndk_repository(name="androidndk")` (lazy), remove the macOS Homebrew OpenSSL `new_local_repository` path
+- [x] T057 Add OpenSSL source build to `stream/video_stream_deps.bzl` (http_archive + `//third_party/openssl:BUILD.bazel` build_file)
+- [x] T058 Rewrite `stream/third_party/openssl/BUILD.bazel` to `configure_make` source build (static libssl.a + libcrypto.a, `--libdir=lib no-tests no-docs`)
+- [x] T059 Fix `stream/third_party/libdatachannel/BUILD.bazel` `out_shared_libs` `.dylib` hardcode via `select()` (darwin `.dylib` / linux `.so`)
+- [x] T060 Fix `stream/src/examples/BUILD.bazel` `@loader_path` rpath via `select()` (darwin `@loader_path` / linux+android `$ORIGIN`)
+- [x] T061 Create `stream/scripts/verify/host_build.sh`, `host_verify.sh`, `android_build.sh` mirroring codec's scripts
+- [x] T062 Add `stream/mk/host.mk`, `stream/mk/android.mk`, `stream/mk/clean.mk`, `stream/mk/aliases.mk` (host-build/verify, android-build, clean-out, aliases)
+- [x] T063 Clean stale references in `stream/mk/test.mk` and `.github/workflows/stream-ci.yml` (`//tests/...`, `//src/test_server:whip_test_server` no longer exist)
+- [x] T064 Add Android arm64 cross-build job to `.github/workflows/stream-ci.yml` (mirror codec `android.yml`: setup-android + `--config android_arm64`)
+- [x] T065 Validate: host `bazel build //...` + `make host-verify`; Android `bazel build //src/core:stream_core //src/backend/mock:mock_backend --config android_arm64`
+
+**Note**: OpenSSL build needed two follow-on fixes beyond the plan — `lib_source` in `third_party/*/BUILD.bazel` must reference the external repo explicitly (`@openssl//:all` etc.) because a relative `:all` resolves to the local `//third_party/<name>` package; and a `ar_wrapper.sh` shim routes Apple `libtool` (Bazel's macOS AR) to a `-o`-style invocation. Full webrtc backend Android cross-compile (openssl/libdatachannel/curl on NDK) remains a follow-up.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

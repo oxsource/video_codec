@@ -5,7 +5,7 @@ cc_library(
     srcs = ["mock_backend.cc"],
     hdrs = ["mock_backend.h"],
     deps = [
-        "//src/api:stream_api",
-        "//src/core:stream_core",
+        "@video_stream//src/api:stream_api",
+        "@video_stream//src/core:stream_core",
     ],
 )

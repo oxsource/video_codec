@@ -9,11 +9,19 @@ filegroup(
 
 cmake(
     name = "libdatachannel",
-    lib_source = ":all",
-    out_shared_libs = [
-        "libdatachannel.dylib",
-        "libdatachannel.0.dylib",
-    ],
+    # NOTE: reference the external repo explicitly (see third_party/openssl
+    # BUILD.bazel comment): the relative `:all` would resolve to the local
+    # //third_party/libdatachannel package instead of the @libdatachannel tree.
+    lib_source = "@libdatachannel//:all",
+    out_shared_libs = select({
+        "@video_stream//platforms:darwin_arm64_platform_setting": [
+            "libdatachannel.dylib",
+            "libdatachannel.0.dylib",
+        ],
+        # linux x86_64 (CI) + fallback; copy_directory dereferences the CMake
+        # versioned symlinks so each listed name lands as a real file.
+        "//conditions:default": ["libdatachannel.so"],
+    }),
     cache_entries = {
         "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
         "BUILD_SHARED_LIBS": "ON",

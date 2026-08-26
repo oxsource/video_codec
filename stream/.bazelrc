@@ -2,7 +2,31 @@ build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
 build --features=visibility=hidden
 
+# Local caches (outside the output base, so they survive `bazel clean`):
 common --disk_cache=~/.cache/bazel/disk
 common --repository_cache=~/.cache/bazel/repository
+
+# Platform aliases (select explicitly for cross-compiles)
+build:android_arm64 --platforms=//platforms:android_arm64_platform
+build:linux_x86_64 --platforms=//platforms:linux_x86_64_platform
+build:darwin_arm64 --platforms=//platforms:darwin_arm64_platform
+
+# Android NDK cc_toolchain (codec parity): registered only under the android
+# config, so host builds never fetch @androidndk and stay NDK-free.
+# --incompatible_enable_cc_toolchain_resolution is required so --platforms +
+# --extra_toolchains drive the NDK cc_toolchain (Bazel 6 defaults this to off,
+# which would fall back to the host toolchain).
+build:android_arm64 --extra_toolchains=@androidndk//:all
+build:android_arm64 --incompatible_enable_cc_toolchain_resolution=true
+
+# Shared-library (publish) config: compile with hidden visibility so ONLY
+# symbols tagged VIDEO_STREAM_API (public API) are exported. Mirrors codec's
+# build:shared config.
+build:shared --copt=-fvisibility=hidden
+build:shared --copt=-DVIDEO_STREAM_SHARED_LIBRARY
+
+# No forced default --platforms: Bazel uses the host platform automatically, so
+# a macOS dev builds for darwin_arm64 and Linux CI builds for linux_x86_64.
+# Cross-compiles (e.g. Android) pass --config android_arm64 explicitly.
 
 test --test_output=errors

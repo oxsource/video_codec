@@ -3,13 +3,19 @@ package(default_visibility = ["//visibility:public"])
 cc_binary(
     name = "encode_and_push",
     srcs = ["encode_and_push.cc"],
-    linkopts = [
-        "-Wl,-rpath,@loader_path/../../external/libdatachannel/libdatachannel/lib",
-    ],
+    linkopts = select({
+        "//platforms:darwin_arm64_platform_setting": [
+            "-Wl,-rpath,@loader_path/../../external/libdatachannel/libdatachannel/lib",
+        ],
+        # linux x86_64 + Android: $ORIGIN is the Linux/ELF rpath token.
+        "//conditions:default": [
+            "-Wl,-rpath,$ORIGIN/../../external/libdatachannel/libdatachannel/lib",
+        ],
+    }),
     deps = [
-        "//src/api:stream_api",
-        "//src/core:stream_core",
-        "//src/backend/webrtc:webrtc_backend",
+        "@video_stream//src/api:stream_api",
+        "@video_stream//src/core:stream_core",
+        "@video_stream//src/backend/webrtc:webrtc_backend",
         "@video_codec//src/framework/public:video_codec",
         "@video_codec//src/framework/queue",
         "@video_codec//src/framework/consumer",

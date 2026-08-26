@@ -1,6 +1,6 @@
 workspace(name = "video_stream")
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("//:video_stream_deps.bzl", "video_stream_setup")
 load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
 
@@ -15,21 +15,28 @@ rules_foreign_cc_dependencies(
     register_built_pkgconfig_toolchain = False,
 )
 
-# libdatachannel — WebRTC stack with ICE, DTLS, SRTP, SCTP.
-new_git_repository(
-    name = "libdatachannel",
-    remote = "https://github.com/paullouisageneau/libdatachannel.git",
-    tag = "v0.21.2",
-    init_submodules = True,
-    build_file = "//third_party/libdatachannel:BUILD.bazel",
+# OpenSSL is built from source via rules_foreign_cc (configure_make) so it is
+# cross-platform (codec parity) — no system/Homebrew dependency.
+
+# ---- Android cross-build (codec parity) -----------------------------------
+#
+# rules_android_ndk provides the Android NDK cc_toolchain + media headers for
+# cross-builds (--config android_arm64). The NDK path is resolved from the
+# ANDROID_NDK_HOME environment variable; the repo is fetched lazily, so host
+# (non-Android) builds never touch the NDK and stay NDK-free.
+http_archive(
+    name = "rules_android_ndk",
+    sha256 = "65aedff0cd728bee394f6fb8e65ba39c4c5efb11b29b766356922d4a74c623f5",
+    strip_prefix = "rules_android_ndk-0.1.2",
+    urls = ["https://github.com/bazelbuild/rules_android_ndk/releases/download/v0.1.2/rules_android_ndk-v0.1.2.tar.gz"],
 )
 
-# OpenSSL for libdatachannel (DTLS support).
-new_local_repository(
-    name = "openssl",
-    path = "/opt/homebrew/Cellar/openssl@3/3.6.3",
-    build_file = "//third_party/openssl:BUILD.bazel",
-)
+load("@rules_android_ndk//:rules.bzl", "android_ndk_repository")
+
+# The NDK repo is fetched lazily; toolchains are registered only for Android
+# cross-builds via .bazelrc (`build:android_arm64 --extra_toolchains`), so host
+# (non-Android) builds never require the NDK.
+android_ndk_repository(name = "androidndk")
 
 local_repository(
     name = "video_codec",

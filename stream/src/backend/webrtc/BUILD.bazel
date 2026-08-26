@@ -13,8 +13,8 @@ cc_library(
     ],
     alwayslink = True,
     deps = [
-        "//src/api:stream_api",
-        "//src/core:stream_core",
+        "@video_stream//src/api:stream_api",
+        "@video_stream//src/core:stream_core",
         "@libdatachannel//:datachannel",
         "@curl//:libcurl",
         "@video_codec//src/framework/core:log_slot",

@@ -7,6 +7,10 @@ build-stream:
 $(call register_target, build-all)
 build-all: build-stream
 
-$(call register_target, build-server)
-build-server:
-	bazel build //src/test_server:whip_test_server
+$(call register_target, build-webrtc)
+build-webrtc:
+	bazel build //src/backend/webrtc:webrtc_backend
+
+$(call register_target, build-example)
+build-example:
+	bazel build //src/examples:encode_and_push

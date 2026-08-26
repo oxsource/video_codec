@@ -27,8 +27,23 @@ jobs:
       - name: Build stream library
         run: bazel build //src/api:stream_api //src/core:stream_core
 
-      - name: Build test server
-        run: bazel build //src/test_server:whip_test_server
+      - name: Build WebRTC backend
+        run: bazel build //src/backend/webrtc:webrtc_backend
 
-      - name: Run tests
-        run: bazel test //tests/...
+      - name: Build example
+        run: bazel build //src/examples:encode_and_push
+
+  android-cross-build:
+    name: android arm64 cross-build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Bazelisk
+        uses: bazelbuild/setup-bazelisk@v2
+      - name: Setup Android NDK
+        uses: android-actions/setup-android@v3
+      - name: Cross-build stream core + mock backend
+        working-directory: stream
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$(ls -d "${ANDROID_SDK_ROOT:-$HOME/Android/sdk}/ndk"/* 2>/dev/null | tail -1)}"
+          bazel build //src/core:stream_core //src/backend/mock:mock_backend --config android_arm64

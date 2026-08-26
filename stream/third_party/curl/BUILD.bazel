@@ -10,7 +10,10 @@ load("@rules_foreign_cc//foreign_cc:cmake.bzl", "cmake")
 
 cmake(
     name = "curl",
-    lib_source = ":all",
+    # NOTE: reference the external repo explicitly (see third_party/openssl
+    # BUILD.bazel comment): the relative `:all` would resolve to the local
+    # //third_party/curl package instead of the @curl source tree.
+    lib_source = "@curl//:all",
     out_static_libs = ["libcurl.a"],
     cache_entries = {
         "CMAKE_POSITION_INDEPENDENT_CODE": "ON",

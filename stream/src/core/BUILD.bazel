@@ -17,7 +17,7 @@ cc_library(
         "video_stream_register.h",
     ],
     deps = [
-        "//src/api:stream_api",
+        "@video_stream//src/api:stream_api",
         "@video_codec//src/framework/core:status",
         "@video_codec//src/framework/core:types",
     ],
