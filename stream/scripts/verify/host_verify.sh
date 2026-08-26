@@ -6,10 +6,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-echo "[host] bazel build //..."
-bazel build //...
+echo "[host] bazel build //... $@"
+bazel build //... "$@"
 
-echo "[host] bazel build encode_and_push example"
-bazel build //src/examples:encode_and_push
+echo "[host] bazel build encode_and_push example $@"
+bazel build //src/examples:encode_and_push "$@"
 
 echo "[host] verify OK"

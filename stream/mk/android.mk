@@ -9,7 +9,7 @@ $(call register_target,android-verify)
 .PHONY: android-build android-verify
 
 android-build: ## Android arm64 cross-build of stream_core + mock_backend (needs NDK)
-	bash $(V)/android_build.sh
+	bash $(V)/android_build.sh $(BAZEL_OPTS)
 
 android-verify: ## Full android validation (currently = android-build)
-	bash $(V)/android_build.sh
+	bash $(V)/android_build.sh $(BAZEL_OPTS)

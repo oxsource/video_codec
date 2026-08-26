@@ -11,6 +11,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-echo "[android] cross-build stream_core + mock_backend (android_arm64, NDK=$ANDROID_NDK_HOME)"
-bazel build //src/core:stream_core //src/backend/mock:mock_backend --config android_arm64
+echo "[android] cross-build stream_core + mock_backend (android_arm64, NDK=$ANDROID_NDK_HOME) $@"
+bazel build //src/core:stream_core //src/backend/mock:mock_backend --config android_arm64 "$@"
 echo "[android] build OK"
