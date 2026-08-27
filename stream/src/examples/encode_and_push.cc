@@ -5,21 +5,21 @@
 // as H.264 + AAC, then splits the output: one copy goes to a local MP4 file,
 // the other is pushed to a remote WHIP endpoint.
 //
-// Usage:
-//   bazel run //src/examples:encode_and_push -- [options]
+// The stream-side configuration comes from a unified JSON file, whose schema
+// (field keys and defaults) is owned by the stream module (see
+// StreamConfig::LoadFromFile / ::ParseFromJson in //src/core:stream_core)
+// — the example only supplies the content:
+//   bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.json
 //
-// Options:
-//   --no-record       Skip writing to local file (push only)
-//   -o, --output      Output file path (default: out/out.mp4)
-//   --url, --whip     WHIP endpoint URL (default: http://localhost:8889/whip)
-//   --seconds, --time Encoding duration in seconds (default: 5)
+// The WHIP URL is derived inside the module from the signal host + path:
+//   host + "/" + path + "/whip"
+// e.g.  http://localhost:8889 + test  ->  http://localhost:8889/test/whip
 //
-// Examples:
-//   bazel run //src/examples:encode_and_push -- --no-record --url http://localhost:8889/whip --seconds 30
-//   bazel run //src/examples:encode_and_push -- --output out.mp4 --url http://localhost:8889/whip
+// A ready-to-use sample lives at src/examples/stream_conf.json.
 
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -45,61 +45,98 @@ namespace vc = video::codec;
 namespace vcu = video::codec::utils;
 namespace vs = video::stream;
 
-struct Options {
-  std::string out_path = "out/out.mp4";
-  std::string whip_url = "http://localhost:8889/whip";
-  int seconds = 15;
-  bool no_record = true;
-  int connect_timeout_ms = 0;  // 0 = NetworkConfig default (5000)
-  int total_timeout_ms = 0;    // 0 = NetworkConfig default (10000)
-  bool no_verify = false;
-  std::string ca_file;
+// Stderr log slot: the framework default is a no-op, which hides all VC_LOG
+// output (including WHIP/cpp_network diagnostics). Install this in main() to
+// make every log line visible when debugging.
+class StderrLogSlot : public vc::LogSlot {
+ public:
+  void Write(vc::LogLevel level, const char* file, int line,
+             const std::string& msg) override {
+    const char* name = "?";
+    switch (level) {
+      case vc::LogLevel::kInfo: name = "INFO"; break;
+      case vc::LogLevel::kDebug: name = "DEBUG"; break;
+      case vc::LogLevel::kWarn: name = "WARN"; break;
+      case vc::LogLevel::kError: name = "ERROR"; break;
+    }
+    fprintf(stderr, "[%s] %s:%d %s\n", name, file, line, msg.c_str());
+    fflush(stderr);
+  }
 };
 
-// ---- Argument parsing -------------------------------------------------------
+StderrLogSlot g_stderr_slot;
 
-static Options ParseArgs(int argc, char** argv) {
-  Options opts;
+// ---- Example-local options ---------------------------------------------------
+//
+// Everything describing the *stream* (signal host/path, codec, bitrate, ICE,
+// network/TLS) lives in the unified module JSON config (parsed by
+// //src/core:stream_core). This struct only carries run/record
+// knobs that are local to this example binary.
+
+struct Options {
+  std::string config_file = "src/examples/stream_conf.json";
+  std::string out_path = "out/out.mp4";
+  int seconds = 15;
+  bool no_record = true;
+};
+
+static Options g_opts;
+
+// Resolve a relative output path against the bazel runfiles workspace root so
+// it behaves consistently whether invoked via `bazel run` or directly.
+static std::string ResolvePath(std::string path) {
+  if (path[0] == '/') return path;
+  if (const char* ws = getenv("BUILD_WORKSPACE_DIRECTORY")) {
+    return std::string(ws) + "/" + path;
+  }
+  return path;
+}
+
+// ---- CLI / config resolution -------------------------------------------------
+
+static vs::StreamConfig ParseConfig(int argc, char** argv) {
   for (int i = 1; i < argc; i++) {
     std::string arg(argv[i]);
-    if (arg == "--no-record") {
-      opts.no_record = true;
+    if (arg == "--config" || arg == "-c") {
+      if (++i < argc) g_opts.config_file = argv[i];
     } else if (arg == "-o" || arg == "--output") {
-      if (++i < argc) opts.out_path = argv[i];
-    } else if (arg == "--url" || arg == "--whip") {
-      if (++i < argc) opts.whip_url = argv[i];
+      if (++i < argc) g_opts.out_path = argv[i];
     } else if (arg == "--seconds" || arg == "--time") {
-      if (++i < argc) opts.seconds = std::atoi(argv[i]);
-    } else if (arg == "--connect-timeout") {
-      if (++i < argc) opts.connect_timeout_ms = std::atoi(argv[i]);
-    } else if (arg == "--total-timeout") {
-      if (++i < argc) opts.total_timeout_ms = std::atoi(argv[i]);
-    } else if (arg == "--no-verify") {
-      opts.no_verify = true;
-    } else if (arg == "--ca-file") {
-      if (++i < argc) opts.ca_file = argv[i];
-    } else if (arg.find("--") == 0) {
-      VC_LOG(video::codec::LogLevel::kError, std::string("Unknown option: ") + arg);
+      if (++i < argc) g_opts.seconds = std::atoi(argv[i]);
+    } else if (arg == "--no-record") {
+      g_opts.no_record = true;
+    } else {
+      VC_LOG(video::codec::LogLevel::kError,
+             std::string("Unknown option: ") + arg +
+             " (stream config comes from a JSON file, see --config)");
       std::exit(1);
     }
   }
-  if (opts.seconds <= 0) opts.seconds = 5;
 
-  const char* workspace = getenv("BUILD_WORKSPACE_DIRECTORY");
-  if (workspace && opts.out_path[0] != '/') {
-    opts.out_path = std::string(workspace) + "/" + opts.out_path;
+  std::string config_path = ResolvePath(g_opts.config_file);
+  auto res = vs::StreamConfig::LoadFromFile(config_path);
+  if (!res.ok()) {
+    VC_LOG(video::codec::LogLevel::kError,
+           "failed to load stream config from " + config_path);
+    std::exit(1);
   }
-  auto dir_pos = opts.out_path.rfind('/');
+  auto scfg = res.Release();
+
+  g_opts.out_path = ResolvePath(g_opts.out_path);
+  auto dir_pos = g_opts.out_path.rfind('/');
   if (dir_pos != std::string::npos) {
-    std::string dir = opts.out_path.substr(0, dir_pos);
+    std::string dir = g_opts.out_path.substr(0, dir_pos);
     mkdir(dir.c_str(), 0755);
   }
+  if (g_opts.seconds <= 0) g_opts.seconds = 15;
 
   VC_LOG(video::codec::LogLevel::kInfo,
-         std::string("output=") + opts.out_path +
-         " whip=" + opts.whip_url +
-         " seconds=" + std::to_string(opts.seconds));
-  return opts;
+         std::string("config=") + config_path +
+         " output=" + g_opts.out_path +
+         " whip=" + scfg.remote_url +
+         " seconds=" + std::to_string(g_opts.seconds) +
+         " no_record=" + (g_opts.no_record ? "yes" : "no"));
+  return scfg;
 }
 
 // ---- Encoder pipeline -------------------------------------------------------
@@ -189,12 +226,12 @@ struct MuxerResult {
   vc::PacketSink* record_sink = &g_null_sink;
 };
 
-static MuxerResult SetupMuxer(const Options& opts, int width, int height,
+static MuxerResult SetupMuxer(int width, int height,
                                int fps, int sample_rate, int channels) {
   MuxerResult m;
 
-  if (!opts.no_record) {
-    m.file_sink = std::make_unique<vc::FileByteSink>(opts.out_path);
+  if (!g_opts.no_record) {
+    m.file_sink = std::make_unique<vc::FileByteSink>(g_opts.out_path);
 
     vc::MuxerConfig mux_cfg;
     mux_cfg.format = vc::MuxFormat::kMp4;
@@ -220,20 +257,7 @@ static MuxerResult SetupMuxer(const Options& opts, int width, int height,
 
 // ---- Stream setup -----------------------------------------------------------
 
-static std::unique_ptr<vs::Stream> SetupStream(const std::string& whip_url,
-                                                int width, int height, int fps,
-                                                const vs::NetworkConfig& network) {
-  vs::StreamConfig scfg;
-  scfg.backend_type = vs::kBackendWebRTC;
-  scfg.remote_url = whip_url;
-  scfg.video_codec = vs::kCodecH264;
-  scfg.audio_codec = vs::kCodecAAC;
-  scfg.initial_bitrate_kbps = 2000;
-  scfg.resolution_width = width;
-  scfg.resolution_height = height;
-  scfg.framerate = fps;
-  scfg.network = network;
-
+static std::unique_ptr<vs::Stream> SetupStream(const vs::StreamConfig& scfg) {
   auto stream = vs::Stream::Create(scfg);
   if (!stream) {
     VC_LOG(video::codec::LogLevel::kError, "failed to create stream");
@@ -315,25 +339,21 @@ static int64_t RunEncodeLoop(vc::VideoEncoder& video, vc::AudioEncoder* audio,
 // ---- Main -------------------------------------------------------------------
 
 int main(int argc, char** argv) {
-  auto opts = ParseArgs(argc, argv);
+  vc::SetLogSlot(&g_stderr_slot);
 
-  const int width = 640;
-  const int height = 480;
-  const int fps = 30;
+  vs::StreamConfig scfg = ParseConfig(argc, argv);
+
+  const int width = scfg.resolution_width;
+  const int height = scfg.resolution_height;
+  const int fps = scfg.framerate;
   const int sample_rate = 48000;
   const int channels = 2;
-  const int frame_count = opts.seconds * fps;
+  const int frame_count = g_opts.seconds * fps;
 
-  vs::NetworkConfig network;
-  if (opts.connect_timeout_ms > 0) network.connect_timeout_ms = opts.connect_timeout_ms;
-  if (opts.total_timeout_ms > 0) network.total_timeout_ms = opts.total_timeout_ms;
-  network.tls_verify = !opts.no_verify;
-  network.tls_ca_file = opts.ca_file;
-
-  auto stream = SetupStream(opts.whip_url, width, height, fps, network);
+  auto stream = SetupStream(scfg);
   bool stream_ok = (stream->GetStatus().state == vs::StreamState::kStreaming);
 
-  auto mux = SetupMuxer(opts, width, height, fps, sample_rate, channels);
+  auto mux = SetupMuxer(width, height, fps, sample_rate, channels);
   RecordAndPushSink sink(mux.record_sink, stream_ok ? stream.get() : nullptr);
 
   auto pipe = SetupCodec(width, height, fps, sample_rate, channels);
@@ -341,7 +361,7 @@ int main(int argc, char** argv) {
   std::thread drain([&] { pipe->queue->Await(sink); });
 
   RunEncodeLoop(*pipe->video, pipe->audio.get(), frame_count,
-                width, height, fps, opts.out_path, opts.whip_url, stream_ok);
+                width, height, fps, g_opts.out_path, scfg.remote_url, stream_ok);
 
   pipe->queue->MarkEos();
   drain.join();

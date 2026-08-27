@@ -23,7 +23,7 @@ bash scripts/verify/android_build.sh         # ✅ core + mock cross-build (andr
 
 # Server-side prep (MediaMTX), then push and subscribe in a browser at :8889:
 /opt/homebrew/opt/mediamtx/bin/mediamtx /opt/homebrew/etc/mediamtx/mediamtx.yml
-bazel run //src/examples:encode_and_push -- --no-record --url http://localhost:8889/whip --seconds 30
+bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.json
 ```
 
 ## What Works

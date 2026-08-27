@@ -1,0 +1,31 @@
+{
+  // Unified stream-module JSON configuration.
+  // Schema keys and defaults are owned by the stream module
+  // (StreamConfig::LoadFromFile / ::ParseFromJson in //src/core:stream_core).
+  // Missing keys fall back to the module's built-in defaults.
+
+  // WHIP server base (scheme + host[:port]) and stream path prefix.
+  // The signaling URL is derived inside the module:
+  //   host + "/" + path + "/whip"  (e.g. http://localhost:8889/test/whip)
+  "signal": {
+    "host": "http://localhost:8889",
+    "path": "test"
+  },
+
+  // Backend / codec selection.
+  "backend": "webrtc",
+  "video_codec": "h264",
+  "audio_codec": "aac",
+
+  // Resolution / frame rate used by the encoder pipeline.
+  "width": 640,
+  "height": 480,
+  "fps": 30,
+
+  // Optional network/TLS tuning (omitted here -> module defaults).
+  "network": {
+    "connect_timeout_ms": 5000,
+    "total_timeout_ms": 10000,
+    "tls_verify": true
+  }
+}

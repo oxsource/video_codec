@@ -6,6 +6,11 @@
 #include "src/api/network_config.h"
 
 namespace video {
+namespace codec {
+template <typename T>
+class Result;
+}  // namespace codec
+
 namespace stream {
 
 // Backend type constants
@@ -39,6 +44,24 @@ struct StreamConfig {
   // STUN/TURN (ICE servers).
   std::string stun_server;
   std::string turn_server;
+
+  // ---- Unified JSON configuration ------------------------------------------
+  //
+  // The stream module owns the JSON schema (field keys and all defaults); the
+  // caller only supplies the content. Missing keys fall back to the module's
+  // built-in defaults above. The WHIP signaling URL is derived from the signal
+  // "host" + "path" as: host + "/" + path + "/whip" (an explicit top-level
+  // "url" wins over host/path when present).
+  //
+  // Implemented in //src/core:stream_core.
+
+  // Parse a JSON configuration string into a StreamConfig. On failure
+  // (malformed JSON), logs the reason and returns Status::kInvalidArgument.
+  static video::codec::Result<StreamConfig> ParseFromJson(const std::string& json_text);
+
+  // Read a JSON configuration file and parse it. Returns
+  // Status::kInvalidArgument if the file cannot be opened or is malformed.
+  static video::codec::Result<StreamConfig> LoadFromFile(const std::string& file_path);
 };
 
 }  // namespace stream

@@ -26,6 +26,8 @@ bazel build //src/examples:encode_and_push
 
 ## Quickstart
 
+### Programmatic
+
 ```cpp
 #include "video/stream/stream.h"
 
@@ -33,7 +35,7 @@ using namespace video::stream;
 
 StreamConfig config;
 config.backend_type = "webrtc";
-config.remote_url = "http://localhost:8889/whip";
+config.remote_url = "http://localhost:8889/test/whip";
 config.video_codec = "h264";
 config.initial_bitrate_kbps = 2000;
 
@@ -46,6 +48,21 @@ stream->Stop();
 stream->Release();
 ```
 
+### From a unified JSON config
+
+The stream module owns the JSON schema (field keys + all defaults in
+`//src/core:stream_core`, implemented behind the `StreamConfig::LoadFromFile` /
+`::ParseFromJson` static methods). Callers only hand over the content; missing
+keys fall back to module defaults, and the WHIP URL is derived from
+`signal.host + "/" + signal.path + "/whip"`.
+
+```cpp
+#include "src/api/stream_config.h"
+
+auto res = StreamConfig::LoadFromFile("config.json");
+// res.ok(), res.value() or res.Release() -> fully-resolved StreamConfig
+```
+
 ## Testing with MediaMTX
 
 Requires [MediaMTX](https://github.com/bluenviron/mediamtx) running on port 8889 (default WebRTC/WHIP port). Start the server before pushing with `encode_and_push`:
@@ -56,16 +73,14 @@ Requires [MediaMTX](https://github.com/bluenviron/mediamtx) running on port 8889
 # browser:
 /opt/homebrew/opt/mediamtx/bin/mediamtx /opt/homebrew/etc/mediamtx/mediamtx.yml
 
-# Generate a 60-second SMPTE color bars test file:
-ffmpeg -y -f lavfi -i "smptebars=size=640x480:rate=30:duration=60" \
-  -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -g 30 -an \
-  /tmp/test_webrtc_60s.h264
+# Push SMPTE color bars using the sample JSON config
+# (src/examples/stream_conf.json -> http://localhost:8889/test/whip),
+# skipping the local MP4 recording:
+bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.json
 
-# Push SMPTE color bars for 30 seconds (no file recording):
-bazel run //src/examples:encode_and_push -- --no-record --url http://localhost:8889/whip --seconds 30
-
-# Push and record to local file:
-bazel run //src/examples:encode_and_push -- --output out.mp4 --url http://localhost:8889/whip --seconds 5
+# Push and record to a local file for a fixed duration:
+bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.json \
+  --no-record=false --seconds 5
 ```
 
 Browser preview: open `http://localhost:8889`, select the stream, and play it (MediaMTX WebRTC/WHIP subscription).

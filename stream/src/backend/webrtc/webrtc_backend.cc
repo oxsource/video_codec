@@ -11,6 +11,15 @@
 #include <sstream>
 #include <string>
 
+// Per-frame send tracing (SendVideo/SendAudio). Compiled out unless
+// STREAM_DEBUG_SEND is defined (e.g. Bazel: --copt=-DSTREAM_DEBUG_SEND), so
+// release builds carry no per-packet logging cost.
+#if defined(STREAM_DEBUG_SEND)
+#define STREAM_SEND_LOG(level, msg) VC_LOG((level), (msg))
+#else
+#define STREAM_SEND_LOG(level, msg) ((void)0)
+#endif
+
 namespace video {
 namespace stream {
 namespace {
@@ -258,9 +267,9 @@ video::codec::Status WebrtcBackend::SendVideo(const video::codec::VideoPacket& p
     rtp_config_->timestamp = new_ts;
     frame_index_++;
   }
-  VC_LOG(video::codec::LogLevel::kDebug,
-         std::string("SendVideo: ") + std::to_string(packet.data.size()) + " bytes, ts=" +
-         std::to_string(rtp_config_ ? rtp_config_->timestamp : 0));
+  STREAM_SEND_LOG(video::codec::LogLevel::kDebug,
+                  std::string("SendVideo: ") + std::to_string(packet.data.size()) + " bytes, ts=" +
+                      std::to_string(rtp_config_ ? rtp_config_->timestamp : 0));
   try {
     rtc::message_variant msg(std::vector<std::byte>(
         reinterpret_cast<const std::byte*>(packet.data.data()),
@@ -268,8 +277,8 @@ video::codec::Status WebrtcBackend::SendVideo(const video::codec::VideoPacket& p
     video_track_->send(msg);
     stats_.packets_sent++;
     stats_.bytes_sent += packet.data.size();
-    VC_LOG(video::codec::LogLevel::kDebug,
-           std::string("SendVideo OK (") + std::to_string(stats_.packets_sent) + " total)");
+    STREAM_SEND_LOG(video::codec::LogLevel::kDebug,
+                    std::string("SendVideo OK (") + std::to_string(stats_.packets_sent) + " total)");
   } catch (const std::exception& e) {
     VC_LOG(video::codec::LogLevel::kError, std::string("SendVideo FAILED: ") + e.what());
     status_.last_error = e.what();

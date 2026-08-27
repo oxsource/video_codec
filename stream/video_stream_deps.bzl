@@ -47,6 +47,14 @@ def _libyuv():
         build_file = "@video_codec//third_party/libyuv:BUILD.bazel",
     )
 
+def _nlohmann_json():
+    http_archive(
+        name = "nlohmann_json",
+        sha256 = "a22461d13119ac5c78f205d3df1db13403e58ce1bb1794edc9313677313f4a9d",
+        urls = ["https://github.com/nlohmann/json/releases/download/v3.11.3/include.zip"],
+        build_file = "//third_party/nlohmann_json:BUILD.bazel",
+    )
+
 def _libdatachannel():
     new_git_repository(
         name = "libdatachannel",
@@ -61,6 +69,8 @@ def video_stream_setup():
         _bazel_skylib()
     if not native.existing_rule("com_google_googletest"):
         _googletest()
+    if not native.existing_rule("nlohmann_json"):
+        _nlohmann_json()
     if not native.existing_rule("ffmpeg"):
         _ffmpeg()
     if not native.existing_rule("rules_foreign_cc"):
