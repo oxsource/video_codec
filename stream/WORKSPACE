@@ -15,8 +15,10 @@ rules_foreign_cc_dependencies(
     register_built_pkgconfig_toolchain = False,
 )
 
-# OpenSSL is built from source via rules_foreign_cc (configure_make) so it is
-# cross-platform (codec parity) — no system/Homebrew dependency.
+# OpenSSL and libcurl are source-built inside the cpp_network local_repository
+# (third_party/tls/build-tls.sh); the stream module does not build or maintain
+# them. libdatachannel reuses cpp_network's TLS bundle as well, so the whole
+# workspace links a single OpenSSL.
 
 # ---- Android cross-build (codec parity) -----------------------------------
 #
@@ -42,3 +44,21 @@ local_repository(
     name = "video_codec",
     path = "../codec",
 )
+
+# cpp_network provides the HTTP stack (synchronous client) used by the
+# WebRTC/WHIP backend (whip_session.cc). Its cpp_network_setup() bootstraps the
+# @curl / @openssl source archives consumed by its TLS bundle genrule, so this
+# workspace declares no OpenSSL/libcurl of its own (single source of truth for
+# pins lives in cpp_network/cpp_network_deps.bzl).
+#
+# NOTE: this must be loaded after the rules_android_ndk http_archive above,
+# because cpp_network_setup() guards on native.existing_rule() and that
+# declaration is unguarded here.
+local_repository(
+    name = "cpp_network",
+    path = "../../cpp_network",
+)
+
+load("@cpp_network//:cpp_network_deps.bzl", "cpp_network_setup")
+
+cpp_network_setup()

@@ -16,7 +16,7 @@ cc_library(
         "@video_stream//src/api:stream_api",
         "@video_stream//src/core:stream_core",
         "@libdatachannel//:datachannel",
-        "@curl//:libcurl",
+        "@cpp_network//:cpp_network",
         "@video_codec//src/framework/core:log_slot",
     ],
 )

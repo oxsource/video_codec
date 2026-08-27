@@ -9,9 +9,9 @@ filegroup(
 
 cmake(
     name = "libdatachannel",
-    # NOTE: reference the external repo explicitly (see third_party/openssl
-    # BUILD.bazel comment): the relative `:all` would resolve to the local
-    # //third_party/libdatachannel package instead of the @libdatachannel tree.
+    # NOTE: reference the external repo explicitly — the relative `:all` would
+    # resolve to the local //third_party/libdatachannel package instead of the
+    # @libdatachannel source tree.
     lib_source = "@libdatachannel//:all",
     out_shared_libs = select({
         "@video_stream//platforms:darwin_arm64_platform_setting": [
@@ -32,8 +32,11 @@ cmake(
         "USE_GNUTLS": "OFF",
         "USE_MBEDTLS": "OFF",
     },
+    # OpenSSL comes from cpp_network's source-built TLS bundle (host config),
+    # not from a stream-maintained OpenSSL. The Android webrtc build is out of
+    # scope for now (mk/android.mk builds core+mock only).
     deps = [
-        "@openssl//:openssl",
+        "@cpp_network//third_party/tls/host:openssl",
     ],
 )
 

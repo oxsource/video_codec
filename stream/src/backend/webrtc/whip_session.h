@@ -8,6 +8,12 @@
 
 #include "src/api/stream_config.h"
 
+namespace cpp_network {
+namespace http {
+class Client;
+}  // namespace http
+}  // namespace cpp_network
+
 namespace video {
 namespace stream {
 
@@ -38,12 +44,7 @@ class WhipSession {
   const std::string& AnswerSdp() const { return answer_sdp_; }
 
  private:
-  std::string HttpPost(const std::string& url, const std::string& body,
-                       const std::string& content_type,
-                       std::string* response_content_type = nullptr);
-  std::string HttpPatch(const std::string& url, const std::string& body,
-                        const std::string& content_type);
-  std::string HttpDelete(const std::string& url);
+  std::unique_ptr<cpp_network::http::Client> client_;
 
   std::string session_id_;
   std::string answer_sdp_;

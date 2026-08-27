@@ -1,14 +1,9 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
 
-def _curl():
-    http_archive(
-        name = "curl",
-        urls = ["https://github.com/curl/curl/releases/download/curl-8_9_0/curl-8.9.0.tar.gz"],
-        sha256 = "14d931fa98a329310dca7b190d047c3d4987674b1f466481f5490e4e12067ba4",
-        strip_prefix = "curl-8.9.0",
-        build_file = "//third_party/curl:BUILD.bazel",
-    )
+# NOTE: @curl and @openssl are NOT declared here — they are bootstrapped by
+# cpp_network_setup() (loaded from the cpp_network local_repository in the
+# WORKSPACE), keeping a single source of truth for the TLS stack pins.
 
 def _googletest():
     http_archive(
@@ -33,18 +28,6 @@ def _ffmpeg():
         sha256 = "488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144207c270",
         strip_prefix = "ffmpeg-6.1",
         build_file = "@video_codec//third_party/ffmpeg:BUILD.bazel",
-    )
-
-def _openssl():
-    # OpenSSL 3.0 LTS, built from source via rules_foreign_cc (configure_make)
-    # so it is cross-platform (host macOS/Linux + Android arm64), mirroring the
-    # codec module's source-build philosophy. build_file wraps libssl/libcrypto.
-    http_archive(
-        name = "openssl",
-        urls = ["https://github.com/openssl/openssl/releases/download/openssl-3.0.15/openssl-3.0.15.tar.gz"],
-        sha256 = "23c666d0edf20f14249b3d8f0368acaee9ab585b09e1de82107c66e1f3ec9533",
-        strip_prefix = "openssl-3.0.15",
-        build_file = "//third_party/openssl:BUILD.bazel",
     )
 
 def _rules_foreign_cc():
@@ -76,14 +59,10 @@ def _libdatachannel():
 def video_stream_setup():
     if not native.existing_rule("bazel_skylib"):
         _bazel_skylib()
-    if not native.existing_rule("curl"):
-        _curl()
     if not native.existing_rule("com_google_googletest"):
         _googletest()
     if not native.existing_rule("ffmpeg"):
         _ffmpeg()
-    if not native.existing_rule("openssl"):
-        _openssl()
     if not native.existing_rule("rules_foreign_cc"):
         _rules_foreign_cc()
     if not native.existing_rule("libyuv"):
