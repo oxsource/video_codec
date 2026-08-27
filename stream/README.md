@@ -48,11 +48,13 @@ stream->Release();
 
 ## Testing with MediaMTX
 
-Requires [MediaMTX](https://github.com/bluenviron/mediamtx) running on port 8889 (default WebRTC/WHIP port).
+Requires [MediaMTX](https://github.com/bluenviron/mediamtx) running on port 8889 (default WebRTC/WHIP port). Start the server before pushing with `encode_and_push`:
 
 ```bash
-# Start mediamtx (default config uses WHIP on :8889):
-mediamtx
+# Start MediaMTX with an explicit config (Homebrew install). The Web UI at
+# http://localhost:8889 lets you subscribe to the pushed stream directly in a
+# browser:
+/opt/homebrew/opt/mediamtx/bin/mediamtx /opt/homebrew/etc/mediamtx/mediamtx.yml
 
 # Generate a 60-second SMPTE color bars test file:
 ffmpeg -y -f lavfi -i "smptebars=size=640x480:rate=30:duration=60" \
@@ -66,7 +68,7 @@ bazel run //src/examples:encode_and_push -- --no-record --url http://localhost:8
 bazel run //src/examples:encode_and_push -- --output out.mp4 --url http://localhost:8889/whip --seconds 5
 ```
 
-Browser preview: open `http://localhost:8889` and select the stream.
+Browser preview: open `http://localhost:8889`, select the stream, and play it (MediaMTX WebRTC/WHIP subscription).
 
 ## License
 

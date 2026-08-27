@@ -2,140 +2,88 @@
 
 ## Current State
 
-Stream library core, mock backend, WHIP test server, ABR, reconnect, config validation, and example are all implemented and building. The WHIP HTTP signaling handshake works (client POSTs to server, server responds), but **no real RTCPeerConnection** is created on either side — no media flows.
+The stream library implements a full WebRTC/WHIP publishing backend based on
+**libdatachannel** (not libwebrtc). WHIP HTTP signaling uses the **cpp_network**
+http client (a local repository dependency) instead of stream-owned libcurl.
+The backend creates a real `rtc::PeerConnection`, sends a real offer via WHIP
+POST, applies the answer, packetizes H.264/RTCP into RTP, and is verified
+end-to-end against a MediaMTX WHIP endpoint with browser subscription.
+
+OpenSSL for libdatachannel's DTLS is reused from cpp_network's source-built TLS
+bundle (`@cpp_network//third_party/tls/{host,android}:openssl`) — the stream
+module no longer builds or maintains OpenSSL/libcurl.
 
 ## Build Status
 
 ```bash
 cd stream
-bazel build //src/...          # ✅ All targets build
-bazel run //src/test_server:whip_test_server -- --port=8080  # ✅ Server starts, serves player.html
-bazel run //src/examples:encode_and_push -- out.mp4 http://localhost:8080/whip 5  # ✅ WHIP handshake succeeds, no media
+bazel build //...                            # ✅ All targets build
+bash scripts/verify/host_verify.sh           # ✅ build //... + encode_and_push
+bash scripts/verify/android_build.sh         # ✅ core + mock cross-build (android_arm64)
+
+# Server-side prep (MediaMTX), then push and subscribe in a browser at :8889:
+/opt/homebrew/opt/mediamtx/bin/mediamtx /opt/homebrew/etc/mediamtx/mediamtx.yml
+bazel run //src/examples:encode_and_push -- --no-record --url http://localhost:8889/whip --seconds 30
 ```
 
 ## What Works
 
 | Component | Status |
 |-----------|--------|
-| Stream interface (`api/`) | ✅ Complete |
+| Stream interface (`api/`) | ✅ Complete (`StreamConfig`, `StreamStatus`, `StreamBackend`) |
+| NetworkConfig (`api/network_config.h`) | ✅ Nested in `StreamConfig`; timeouts, proxy, bind, TLS/CA/mTLS/SNI |
 | Stream implementation (`core/`) | ✅ Lifecycle, factory, backend registry |
 | Mock backend | ✅ Tests pass |
-| WHIP test server (HTTP) | ✅ POST/PATCH/DELETE, player.html |
+| WebRTC backend (`backend/webrtc/`) | ✅ Real `rtc::PeerConnection` (libdatachannel), H.264 RTP packetizer, `send()` |
+| WHIP signaling | ✅ `WhipSession` over cpp_network http client (POST offer, PATCH ICE, DELETE; Location→session id) |
+| ICE | ✅ STUN `stun:stun.l.google.com:19302`; full offer gathered before POST |
 | ABR controller | ✅ Tests pass |
 | Reconnect handler | ✅ Tests pass |
-| Example (encode + push) | ✅ Builds, WHIP handshake works |
+| Example (encode + push) | ✅ MediaMTX verified, browser subscription |
 | `VIDEO_STREAM_REGISTER` macro | ✅ Self-registration pattern |
 | `alwayslink = True` | ✅ Static initializer preserved |
 
-## What Needs Work (Tomorrow)
+## Key Design Decisions
 
-### 1. libwebrtc Dependency
+### 1. HTTP stack: cpp_network (local repository)
 
-`stream/video_stream_deps.bzl` has `_libwebrtc()` using `http_archive` with a placeholder URL:
+`stream/WORKSPACE` adds cpp_network via `local_repository("../../cpp_network")`
+and bootstraps its deps with `cpp_network_setup()`, so `@curl`/`@openssl` pin
+definitions are single-sourced in `cpp_network/cpp_network_deps.bzl`. The stream
+module lists no libcurl dependency; `whip_session.cc` builds a synchronous
+`cpp_network::http::Client` from `NetworkConfig` (`Options` + `Tls`).
 
-```python
-http_archive(
-    name = "libwebrtc",
-    urls = ["https://github.com/webrtc-sdk/libwebrtc/archive/refs/tags/m127.tar.gz"],
-    sha256 = "d5558cd419c8d46bdc958064cb97f963d1ea793866414c025906ec15033512ed",
-    strip_prefix = "libwebrtc-m127",
-    build_file = "//third_party/libwebrtc:BUILD.bazel",
-)
-```
+### 2. TLS: reuse cpp_network's source-built OpenSSL
 
-`stream/third_party/libwebrtc/BUILD.bazel` uses `rules_foreign_cc` + `cmake`. This needs to be replaced with a real libwebrtc build that actually compiles.
+libdatachannel links `@cpp_network//third_party/tls/{host,android}:openssl`
+(selected per platform). This replaced stream's own OpenSSL `configure_make`
+build, whose macOS arm64 archive was missing `armcap.o` and failed the
+libdatachannel dylib link with `_OPENSSL_armcap_P`.
 
-**Options**:
-- Use a pre-built libwebrtc SDK (e.g., from webrtc-build or a system package)
-- Or build from source using Google's `gn`/`ninja` (not cmake — libwebrtc doesn't use cmake)
-- Or use `rules_foreign_cc` with a custom configure script
+### 3. Media vs libwebrtc
 
-### 2. WebRTC Backend (`webrtc_backend.cc`)
-
-Currently creates a fake SDP offer and sends it via WHIP HTTP. Needs to:
-
-```cpp
-// Pseudocode for real implementation:
-class WebrtcBackend : public StreamBackend {
-  rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> factory_;
-  rtc::scoped_refptr<webrtc::PeerConnectionInterface> pc_;
-  std::unique_ptr<WhipSession> whip_;
-
-  video::codec::Status Connect(const StreamConfig& config) override {
-    // 1. Create PeerConnectionFactory
-    // 2. Create PeerConnection with ICE config
-    // 3. Create video/audio tracks
-    // 4. Create offer SDP via CreateOffer()
-    // 5. Send offer via WHIP POST
-    // 6. Set remote description from WHIP answer
-    // 7. Exchange ICE candidates via WHIP PATCH
-  }
-
-  video::codec::Status SendVideo(const video::codec::VideoPacket& packet) override {
-    // Convert VideoPacket to webrtc::VideoFrame
-    // Push to webrtc::VideoTrackSource
-  }
-};
-```
-
-### 3. WHIP Test Server (`whip_test_server.cc`)
-
-Currently returns a fake SDP answer. Needs to:
-
-```cpp
-// Pseudocode for real WHIP server:
-class WhipTestServer {
-  rtc::scoped_refptr<webrtc::PeerConnectionFactoryInterface> factory_;
-  std::unordered_map<std::string, rtc::scoped_refptr<webrtc::PeerConnectionInterface>> sessions_;
-
-  std::string HandleWhipPost(const std::string& body) override {
-    // 1. Parse offer SDP from body
-    // 2. Create PeerConnection on server side
-    // 3. Set remote description from offer
-    // 4. Create answer SDP via CreateAnswer()
-    // 5. Return answer SDP in 201 response
-    // 6. Add video track to player for browser consumption
-  }
-};
-```
-
-### 4. `webrtc_raii.h`
-
-Already has RAII wrappers for `PeerConnectionFactoryInterface` and `PeerConnectionInterface`. May need to extend with `VideoTrackInterface`, `AudioTrackInterface`, etc.
-
-### 5. BUILD.bazel for webrtc_backend
-
-Already has `alwayslink = True`. Needs to add `@libwebrtc` to deps when the library is ready:
-
-```python
-cc_library(
-    name = "webrtc_backend",
-    ...
-    deps = [
-        "//src/api:stream_api",
-        "//src/core:stream_core",
-        "@libwebrtc//:webrtc",  # ← needs real libwebrtc
-    ],
-)
-```
+libwebrtc was planned but replaced by libdatachannel (BSD-style, C++17, ships a
+Bazel-friendly CMake build). `src/test_server/whip_test_server.*` was removed;
+verification now uses MediaMTX as the WHIP endpoint.
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `stream/src/backend/webrtc/webrtc_backend.h/.cc` | WebRTC backend implementation |
-| `stream/src/backend/webrtc/whip_session.h/.cc` | WHIP HTTP signaling client |
-| `stream/src/backend/webrtc/webrtc_raii.h` | RAII wrappers for WebRTC types |
-| `stream/src/backend/webrtc/BUILD.bazel` | Build target (alwayslink) |
-| `stream/src/test_server/whip_test_server.h/.cc` | WHIP test server |
-| `stream/src/test_server/web/player.html` | Browser player page |
-| `stream/video_stream_deps.bzl` | libwebrtc dependency placeholder |
-| `stream/third_party/libwebrtc/BUILD.bazel` | libwebrtc cmake build template |
-| `stream/src/examples/encode_and_push.cc` | Example: encode + record + push |
-| `stream/src/examples/BUILD.bazel` | Example build target |
+| `stream/src/api/stream_config.h` | StreamConfig (embeds NetworkConfig) |
+| `stream/src/api/network_config.h` | NetworkConfig: timeouts, TLS, proxy, bind |
+| `stream/src/backend/webrtc/webrtc_backend.h/.cc` | WebRTC backend (libdatachannel + whip) |
+| `stream/src/backend/webrtc/whip_session.h/.cc` | WHIP signaling over cpp_network http |
+| `stream/src/backend/webrtc/webrtc_raii.h` | PeerConnection RAII helpers |
+| `stream/src/backend/webrtc/BUILD.bazel` | Build target (`@cpp_network//:cpp_network`, `alwayslink`) |
+| `stream/third_party/libdatachannel/BUILD.bazel` | CMake build, OpenSSL from cpp_network TLS bundle |
+| `stream/video_stream_deps.bzl` | stream-owned deps (no curl/openssl/libwebrtc) |
+| `stream/WORKSPACE` | `local_repository` cpp_network + `cpp_network_setup()` |
+| `stream/src/examples/encode_and_push.cc` | Example: encode + record + push (+ network flags) |
+| `stream/README.md` | MediaMTX quickstart |
 
 ## Unresolved Issues
 
-1. `[mp4 @ ...] track 1: codec frame size is not set` — muxer warning, doesn't affect streaming
-2. libwebrtc dependency needs real build setup (gn/ninja or pre-built SDK)
-3. Both client and server need real `PeerConnectionFactory` creation
+1. `[mp4 @ ...] track 1: codec frame size is not set` — muxer warning, doesn't affect streaming.
+2. WHIP PATCH (trickle ICE) and DELETE are implemented in `WhipSession` but not yet driven by `webrtc_backend` (it posts a fully gathered offer and closes the peer connection on disconnect); ICE candidate trickling can be wired when low-latency start is needed.
+3. No automated WebRTC integration test yet — validation relies on MediaMTX (manual/browser). A deviceless WHIP endpoint for CI is a follow-up.
