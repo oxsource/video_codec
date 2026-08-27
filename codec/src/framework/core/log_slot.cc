@@ -29,11 +29,11 @@ void SetLogSlot(LogSlot* slot) {
   g_slot = slot ? slot : &g_noop;
 }
 
-void Log(LogLevel level, const char* file, int line, const std::string& msg) {
+void Log(LogLevel level, const char* tag, int line, const std::string& msg) {
   // Read the slot pointer once under the lock, then call outside the lock to
   // avoid re-entrant deadlocks in a consumer's logger.
   LogSlot* slot = GetLogSlot();
-  slot->Write(level, file, line, msg);
+  slot->Write(level, tag, line, msg);
 }
 
 }  // namespace codec

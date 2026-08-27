@@ -1,3 +1,8 @@
+// Module log tag: identifies all VC_LOG output from this file (see
+// log_slot.h). Must be defined before the first header include so the
+// framework's LOG_TAG mechanism picks it up instead of defaulting to __FILE__.
+#define LOG_TAG "whip_session"
+
 #include "src/backend/webrtc/whip_session.h"
 
 #include <chrono>

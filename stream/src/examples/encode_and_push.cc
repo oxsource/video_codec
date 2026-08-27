@@ -17,6 +17,11 @@
 //
 // A ready-to-use sample lives at src/examples/stream_conf.json.
 
+// Module log tag: identifies all VC_LOG output from this file (see
+// log_slot.h). Must be defined before the first header include so the
+// framework's LOG_TAG mechanism picks it up instead of defaulting to __FILE__.
+#define LOG_TAG "encode_and_push"
+
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -201,7 +206,9 @@ class RecordAndPushSink : public vc::PacketSink {
       : sink_(sink), stream_(stream) {}
 
   vc::Status Push(vc::VideoPacket&& pkt) override {
+#if 0
     VC_LOG(video::codec::LogLevel::kDebug, std::string("sink Push video: ") + std::to_string(pkt.data.size()) + " bytes, stream=" + (stream_ ? "yes" : "no"));
+#endif
     if (stream_) stream_->SendVideo(pkt);
     return sink_->Push(std::move(pkt));
   }

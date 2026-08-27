@@ -17,7 +17,7 @@ enum class LogLevel { kInfo, kDebug, kWarn, kError };
 class VIDEO_CODEC_API LogSlot {
  public:
   virtual ~LogSlot() = default;
-  virtual void Write(LogLevel level, const char* file, int line, const std::string& msg) = 0;
+  virtual void Write(LogLevel level, const char* tag, int line, const std::string& msg) = 0;
 };
 
 // Returns the current slot. Never null: before SetLogSlot() it returns a
@@ -28,9 +28,21 @@ VIDEO_CODEC_API LogSlot* GetLogSlot();
 VIDEO_CODEC_API void SetLogSlot(LogSlot* slot);
 
 // Framework logging helper. Use the VC_LOG macro at call sites.
-VIDEO_CODEC_API void Log(LogLevel level, const char* file, int line, const std::string& msg);
+VIDEO_CODEC_API void Log(LogLevel level, const char* tag, int line, const std::string& msg);
 
 }  // namespace codec
 }  // namespace video
 
-#define VC_LOG(level, msg) ::video::codec::Log((level), __FILE__, __LINE__, (msg))
+// Per-file log tag mechanism: a compilation unit may define LOG_TAG (typically
+// just before including the first header) to identify its log output:
+//
+//   #define LOG_TAG "webrtc_backend"
+//   #include "src/framework/core/log_slot.h"
+//
+// When LOG_TAG is not defined, it defaults to __FILE__ so existing call sites
+// keep the previous source-path behavior without any changes.
+#ifndef LOG_TAG
+#define LOG_TAG __FILE__
+#endif
+
+#define VC_LOG(level, msg) ::video::codec::Log((level), LOG_TAG, __LINE__, (msg))

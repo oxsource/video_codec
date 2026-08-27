@@ -1,3 +1,8 @@
+// Module log tag: identifies all VC_LOG output from this file (see
+// log_slot.h). Must be defined before the first header include so the
+// framework's LOG_TAG mechanism picks it up instead of defaulting to __FILE__.
+#define LOG_TAG "webrtc_backend"
+
 #include "src/backend/webrtc/webrtc_backend.h"
 #include "src/api/stream_config.h"
 #include "src/core/video_stream_register.h"
