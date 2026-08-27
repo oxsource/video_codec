@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 
+#include "src/api/network_config.h"
+
 namespace video {
 namespace stream {
 
@@ -31,6 +33,10 @@ struct StreamConfig {
   uint32_t buffer_duration_s = 30;
   uint32_t reconnect_max_interval_s = 30;
 
+  // Transport/security settings for signaling (WHIP HTTP requests).
+  NetworkConfig network;
+
+  // STUN/TURN (ICE servers).
   std::string stun_server;
   std::string turn_server;
 };

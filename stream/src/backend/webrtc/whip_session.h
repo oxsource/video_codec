@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -29,7 +30,7 @@ class WhipSession {
   using OnReadyHandler = std::function<void(const std::string& sdp)>;
   using OnErrorHandler = std::function<void(const std::string& error)>;
 
-  WhipSession();
+  explicit WhipSession(const NetworkConfig& network);
   ~WhipSession();
 
   bool Create(const std::string& whip_endpoint, const std::string& offer_sdp);
@@ -45,6 +46,7 @@ class WhipSession {
 
  private:
   std::unique_ptr<cpp_network::http::Client> client_;
+  std::chrono::milliseconds total_timeout_{10000};
 
   std::string session_id_;
   std::string answer_sdp_;

@@ -32,7 +32,7 @@ std::vector<WhipIceCandidate> ExtractIceCandidates(const std::string& sdp) {
 }  // namespace
 
 WebrtcBackend::WebrtcBackend(const StreamConfig& config) : config_(config) {
-  whip_session_ = std::make_unique<WhipSession>();
+  whip_session_ = std::make_unique<WhipSession>(config_.network);
   rtc::InitLogger(rtc::LogLevel::Warning);
 }
 

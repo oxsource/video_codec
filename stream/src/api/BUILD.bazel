@@ -3,6 +3,7 @@ package(default_visibility = ["//visibility:public"])
 cc_library(
     name = "stream_api",
     hdrs = [
+        "network_config.h",
         "stream.h",
         "stream_backend.h",
         "stream_config.h",

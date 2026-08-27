@@ -21,6 +21,8 @@ using cpp_network::http::Options;
 using cpp_network::http::Request;
 using cpp_network::http::Response;
 using cpp_network::http::Result;
+using cpp_network::http::Tls;
+using cpp_network::http::VerifyMode;
 
 namespace {
 
@@ -33,30 +35,64 @@ static constexpr const char* kHeaderExpect = "Expect";
 static constexpr const char* kHeaderContentType = "Content-Type";
 static constexpr const char* kHeaderLocation = "Location";
 
-// Default timeouts (ms), matching the previous libcurl-based implementation.
-static constexpr std::chrono::milliseconds kConnectTimeout{5000};
-static constexpr std::chrono::milliseconds kTotalTimeout{10000};
-
-Options MakeOptions() {
+Options MakeOptions(const NetworkConfig& network) {
   Options options;
-  options.SetConnectTimeout(kConnectTimeout);
-  options.SetTotalTimeout(kTotalTimeout);
-  options.SetFollowRedirects(false);
+  options.SetConnectTimeout(std::chrono::milliseconds(network.connect_timeout_ms));
+  options.SetTotalTimeout(std::chrono::milliseconds(network.total_timeout_ms));
+  if (network.read_timeout_ms > 0) {
+    options.SetReadTimeout(std::chrono::milliseconds(network.read_timeout_ms));
+  }
+  if (network.write_timeout_ms > 0) {
+    options.SetWriteTimeout(std::chrono::milliseconds(network.write_timeout_ms));
+  }
+  options.SetFollowRedirects(network.follow_redirects);
+  options.SetMaxRedirects(network.max_redirects);
+
+  if (!network.local_address.empty()) {
+    options.SetLocalAddress(network.local_address);
+    if (network.local_port != 0) {
+      options.SetLocalPort(network.local_port);
+    }
+  }
+  if (!network.proxy_host.empty()) {
+    options.SetProxy(network.proxy_host, network.proxy_port);
+  }
+  if (network.keep_alive_ms > 0) {
+    options.SetKeepAlive(std::chrono::milliseconds(network.keep_alive_ms));
+  }
+
+  Tls::Builder tls;
+  tls.SetVerifyMode(network.tls_verify ? VerifyMode::kVerifyPeer
+                                       : VerifyMode::kSkipVerification);
+  if (!network.tls_ca_file.empty()) {
+    tls.SetCaFile(network.tls_ca_file);
+  } else if (!network.tls_ca_pem.empty()) {
+    tls.SetCaPem(network.tls_ca_pem);
+  }
+  if (!network.tls_client_cert.empty() && !network.tls_client_key.empty()) {
+    tls.SetCertificate(network.tls_client_cert, network.tls_client_key);
+  }
+  if (!network.tls_sni.empty()) {
+    tls.SetSni(network.tls_sni);
+  }
+  options.SetTls(tls.Build());
+
   return options;
 }
 
 Result<Request> MakeRequest(Method method, const std::string& url,
                             const std::string& body,
-                            const std::string& content_type) {
+                            const std::string& content_type,
+                            std::chrono::milliseconds timeout) {
   Request::Builder builder;
   builder.SetMethod(method).Url(url);
   // Empty Expect header suppresses libcurl's 100-continue handshake for the
-  // SDP POST body (same behavior as the previous implementation).
+  // SDP POST body.
   builder.Header(kHeaderExpect, "");
   if (!content_type.empty()) {
     builder.Header(kHeaderContentType, content_type);
   }
-  builder.Timeout(kTotalTimeout);
+  builder.Timeout(timeout);
   if (!body.empty()) {
     builder.Body(body);
   }
@@ -65,8 +101,9 @@ Result<Request> MakeRequest(Method method, const std::string& url,
 
 }  // namespace
 
-WhipSession::WhipSession() {
-  Result<Client> client = Client::Create(MakeOptions());
+WhipSession::WhipSession(const NetworkConfig& network)
+    : total_timeout_(std::chrono::milliseconds(network.total_timeout_ms)) {
+  Result<Client> client = Client::Create(MakeOptions(network));
   if (client.ok()) {
     client_ = std::make_unique<Client>(std::move(client.value()));
   } else {
@@ -85,7 +122,8 @@ bool WhipSession::Create(const std::string& whip_endpoint,
 
   if (!client_) return false;
 
-  Result<Request> req = MakeRequest(Method::kPost, whip_endpoint, offer_sdp, kMimeSdp);
+  Result<Request> req = MakeRequest(Method::kPost, whip_endpoint, offer_sdp, kMimeSdp,
+                                    total_timeout_);
   if (!req.ok()) {
     VC_LOG(video::codec::LogLevel::kError,
            std::string("POST request build failed: ") + req.error().message());
@@ -140,7 +178,8 @@ bool WhipSession::PatchIce(const std::string& whip_endpoint,
     body << "a=candidate:" << c.candidate << "\r\n";
   }
 
-  Result<Request> req = MakeRequest(Method::kPatch, url, body.str(), kMimeTrickleIce);
+  Result<Request> req = MakeRequest(Method::kPatch, url, body.str(), kMimeTrickleIce,
+                                    total_timeout_);
   if (!req.ok()) {
     VC_LOG(video::codec::LogLevel::kError,
            std::string("PATCH request build failed: ") + req.error().message());
@@ -162,7 +201,7 @@ bool WhipSession::Delete(const std::string& whip_endpoint,
   std::string url = resource_url_.empty() ? whip_endpoint + "/" + session_id : resource_url_;
   if (!client_) return false;
 
-  Result<Request> req = MakeRequest(Method::kDelete, url, "", "");
+  Result<Request> req = MakeRequest(Method::kDelete, url, "", "", total_timeout_);
   if (!req.ok()) {
     VC_LOG(video::codec::LogLevel::kError,
            std::string("DELETE request build failed: ") + req.error().message());

@@ -48,8 +48,12 @@ namespace vs = video::stream;
 struct Options {
   std::string out_path = "out/out.mp4";
   std::string whip_url = "http://localhost:8889/whip";
-  int seconds = 5;
-  bool no_record = false;
+  int seconds = 15;
+  bool no_record = true;
+  int connect_timeout_ms = 0;  // 0 = NetworkConfig default (5000)
+  int total_timeout_ms = 0;    // 0 = NetworkConfig default (10000)
+  bool no_verify = false;
+  std::string ca_file;
 };
 
 // ---- Argument parsing -------------------------------------------------------
@@ -66,6 +70,14 @@ static Options ParseArgs(int argc, char** argv) {
       if (++i < argc) opts.whip_url = argv[i];
     } else if (arg == "--seconds" || arg == "--time") {
       if (++i < argc) opts.seconds = std::atoi(argv[i]);
+    } else if (arg == "--connect-timeout") {
+      if (++i < argc) opts.connect_timeout_ms = std::atoi(argv[i]);
+    } else if (arg == "--total-timeout") {
+      if (++i < argc) opts.total_timeout_ms = std::atoi(argv[i]);
+    } else if (arg == "--no-verify") {
+      opts.no_verify = true;
+    } else if (arg == "--ca-file") {
+      if (++i < argc) opts.ca_file = argv[i];
     } else if (arg.find("--") == 0) {
       VC_LOG(video::codec::LogLevel::kError, std::string("Unknown option: ") + arg);
       std::exit(1);
@@ -209,7 +221,8 @@ static MuxerResult SetupMuxer(const Options& opts, int width, int height,
 // ---- Stream setup -----------------------------------------------------------
 
 static std::unique_ptr<vs::Stream> SetupStream(const std::string& whip_url,
-                                                int width, int height, int fps) {
+                                                int width, int height, int fps,
+                                                const vs::NetworkConfig& network) {
   vs::StreamConfig scfg;
   scfg.backend_type = vs::kBackendWebRTC;
   scfg.remote_url = whip_url;
@@ -219,6 +232,7 @@ static std::unique_ptr<vs::Stream> SetupStream(const std::string& whip_url,
   scfg.resolution_width = width;
   scfg.resolution_height = height;
   scfg.framerate = fps;
+  scfg.network = network;
 
   auto stream = vs::Stream::Create(scfg);
   if (!stream) {
@@ -310,7 +324,13 @@ int main(int argc, char** argv) {
   const int channels = 2;
   const int frame_count = opts.seconds * fps;
 
-  auto stream = SetupStream(opts.whip_url, width, height, fps);
+  vs::NetworkConfig network;
+  if (opts.connect_timeout_ms > 0) network.connect_timeout_ms = opts.connect_timeout_ms;
+  if (opts.total_timeout_ms > 0) network.total_timeout_ms = opts.total_timeout_ms;
+  network.tls_verify = !opts.no_verify;
+  network.tls_ca_file = opts.ca_file;
+
+  auto stream = SetupStream(opts.whip_url, width, height, fps, network);
   bool stream_ok = (stream->GetStatus().state == vs::StreamState::kStreaming);
 
   auto mux = SetupMuxer(opts, width, height, fps, sample_rate, channels);
