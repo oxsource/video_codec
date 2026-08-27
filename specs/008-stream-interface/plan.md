@@ -1,5 +1,13 @@
 # Implementation Plan: Stream Interface
 
+> **Status: historical plan.** The implementation has since evolved; read
+> [webrtc-backend-context.md](webrtc-backend-context.md), [quickstart.md](quickstart.md),
+> [data-model.md](data-model.md) and `stream/README.md` for the current state.
+> Notable drifts from this plan: transport uses **libdatachannel** (not
+> libwebrtc), the in-repo WHIP `test_server/` was removed (MediaMTX is the
+> verification endpoint), and OpenSSL/libcurl/JSON config moved as described in
+> the docs above.
+
 **Branch**: `008-stream-interface` | **Date**: 2026-08-24 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/008-stream-interface/spec.md`

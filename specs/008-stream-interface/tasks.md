@@ -1,5 +1,12 @@
 # Tasks: Stream Interface
 
+> **Status: historical task log.** Task items were executed against an evolving
+> plan; some now describe superseded work (e.g. the in-repo `test_server` was
+> removed in favor of MediaMTX; libwebrtc → libdatachannel; stream-owned
+> OpenSSL/libcurl replaced by cpp_network). For the implementation as it stands
+> today see [data-model.md](data-model.md), [quickstart.md](quickstart.md),
+> [webrtc-backend-context.md](webrtc-backend-context.md) and `stream/README.md`.
+
 **Input**: Design documents from `specs/008-stream-interface/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/stream-interface.md
@@ -130,7 +137,7 @@
 - [x] T050 [P] Add `.github/workflows/stream-ci.yml` — CI matrix for Linux x86_64 and macOS ARM64, build + test
 - [x] T051 [P] Create `stream/.clang-format` matching codec's formatting conventions
 - [x] T052 Update `stream/README.md` with build instructions, quickstart usage, and architecture overview
-- [ ] T053 Run quickstart.md validation: verify `bazel build //src/api:stream_api` and `bazel test //tests/...` pass (requires codec dependency wiring in WORKSPACE)
+- [x] T053 Validate quickstart.md: `bazel build //...` + `bash scripts/verify/host_verify.sh` pass; end-to-end verified with MediaMTX. (The `//tests/...` suite referenced in early drafts was superseded — unit tests live under `codec/tests`; stream validation is via `mk/host.mk` + MediaMTX, see quickstart.md.)
 
 ---
 

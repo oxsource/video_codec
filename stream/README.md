@@ -29,7 +29,8 @@ bazel build //src/examples:encode_and_push
 ### Programmatic
 
 ```cpp
-#include "video/stream/stream.h"
+#include "src/api/stream.h"
+#include "src/api/stream_config.h"
 
 using namespace video::stream;
 

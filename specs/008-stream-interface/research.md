@@ -1,5 +1,12 @@
 # Research: Stream Module Architecture
 
+> **Status: historical research.** Decisions recorded here informed the original
+> design; several have since been superseded. Decision 2 (libwebrtc) was
+> replaced by **libdatachannel**; the WHIP test server was removed in favor of
+> MediaMTX; WHIP HTTP signaling now uses **cpp_network** (local repo). See
+> [webrtc-backend-context.md](webrtc-backend-context.md), [data-model.md](data-model.md),
+> [quickstart.md](quickstart.md) and `stream/README.md` for the current design.
+
 ## Decision 1: Stream Module Location
 
 - **Decision**: Stream module as a top-level directory `stream/` parallel to `codec/`, within the same repository but as a separate Bazel workspace. Bazel, Makefile, and CI are rebuilt independently to enable future repo split.

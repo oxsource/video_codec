@@ -33,12 +33,14 @@ bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.js
 | Stream interface (`api/`) | ✅ Complete (`StreamConfig`, `StreamStatus`, `StreamBackend`) |
 | NetworkConfig (`api/network_config.h`) | ✅ Nested in `StreamConfig`; timeouts, proxy, bind, TLS/CA/mTLS/SNI |
 | Stream implementation (`core/`) | ✅ Lifecycle, factory, backend registry |
-| Mock backend | ✅ Tests pass |
+| Mock backend | ✅ Implemented (`backend/mock/`) — no automated tests (stream has no `tests/` tree) |
 | WebRTC backend (`backend/webrtc/`) | ✅ Real `rtc::PeerConnection` (libdatachannel), H.264 RTP packetizer, `send()` |
 | WHIP signaling | ✅ `WhipSession` over cpp_network http client (POST offer, PATCH ICE, DELETE; Location→session id) |
 | ICE | ✅ STUN `stun:stun.l.google.com:19302`; full offer gathered before POST |
-| ABR controller | ✅ Tests pass |
-| Reconnect handler | ✅ Tests pass |
+| ABR controller | ✅ Implemented (`core/abr_controller.*`) — no automated tests |
+| Reconnect handler | ✅ Implemented (`core/reconnect_handler.*`) — no automated tests |
+| Unified JSON config | ✅ `StreamConfig::LoadFromFile`/`::ParseFromJson` in `core/stream_config.cc`; sample `src/examples/stream_conf.json` |
+| Log tagging | ✅ `LOG_TAG` per-file mechanism in codec `log_slot.h`; tagged by `webrtc_backend`/`whip_session`/`encode_and_push` |
 | Example (encode + push) | ✅ MediaMTX verified, browser subscription |
 | `VIDEO_STREAM_REGISTER` macro | ✅ Self-registration pattern |
 | `alwayslink = True` | ✅ Static initializer preserved |
@@ -70,7 +72,7 @@ verification now uses MediaMTX as the WHIP endpoint.
 
 | File | Purpose |
 |------|---------|
-| `stream/src/api/stream_config.h` | StreamConfig (embeds NetworkConfig) |
+| `stream/src/api/stream_config.h` | StreamConfig (`::ParseFromJson`/`::LoadFromFile`, embeds NetworkConfig) |
 | `stream/src/api/network_config.h` | NetworkConfig: timeouts, TLS, proxy, bind |
 | `stream/src/backend/webrtc/webrtc_backend.h/.cc` | WebRTC backend (libdatachannel + whip) |
 | `stream/src/backend/webrtc/whip_session.h/.cc` | WHIP signaling over cpp_network http |
@@ -79,7 +81,9 @@ verification now uses MediaMTX as the WHIP endpoint.
 | `stream/third_party/libdatachannel/BUILD.bazel` | CMake build, OpenSSL from cpp_network TLS bundle |
 | `stream/video_stream_deps.bzl` | stream-owned deps (no curl/openssl/libwebrtc) |
 | `stream/WORKSPACE` | `local_repository` cpp_network + `cpp_network_setup()` |
-| `stream/src/examples/encode_and_push.cc` | Example: encode + record + push (+ network flags) |
+| `stream/src/core/stream_config.cc` | Unified JSON schema parser (nlohmann/json) |
+| `stream/src/examples/encode_and_push.cc` | Example: encode + record + push (JSON config, `--config`) |
+| `stream/src/examples/stream_conf.json` | Sample unified JSON config |
 | `stream/README.md` | MediaMTX quickstart |
 
 ## Unresolved Issues

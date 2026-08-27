@@ -1,5 +1,11 @@
 # Feature Specification: Stream Interface
 
+> **Status: historical spec.** The requirements below are frozen; the concrete
+> data model, build layout, and verification flow have evolved. See
+> [data-model.md](data-model.md), [quickstart.md](quickstart.md),
+> [webrtc-backend-context.md](webrtc-backend-context.md) and `stream/README.md`
+> for the implementation as it stands today.
+
 **Feature Branch**: `008-stream-interface`
 
 **Created**: 2026-08-24
