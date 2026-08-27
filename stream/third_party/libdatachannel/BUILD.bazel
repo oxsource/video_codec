@@ -32,12 +32,19 @@ cmake(
         "USE_GNUTLS": "OFF",
         "USE_MBEDTLS": "OFF",
     },
-    # OpenSSL comes from cpp_network's source-built TLS bundle (host config),
-    # not from a stream-maintained OpenSSL. The Android webrtc build is out of
-    # scope for now (mk/android.mk builds core+mock only).
-    deps = [
-        "@cpp_network//third_party/tls/host:openssl",
-    ],
+    # OpenSSL comes from cpp_network's source-built TLS bundle (never a
+    # stream-maintained OpenSSL), routed per platform like other cross-build
+    # settings: the android_arm64 config links the NDK-built bundle, host
+    # configs (macOS/Linux) link the native one.
+    deps = select({
+        "@video_stream//platforms:android_arm64_platform_setting": [
+            "@cpp_network//third_party/tls/android:openssl",
+        ],
+        # linux x86_64 (CI) + fallback.
+        "//conditions:default": [
+            "@cpp_network//third_party/tls/host:openssl",
+        ],
+    }),
 )
 
 cc_library(
