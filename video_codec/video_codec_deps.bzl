@@ -76,10 +76,13 @@ def _cpp_network_http():
     )
 
 def _cpp_network_local():
+    # The local cpp_network repo nests its actual workspace under
+    # cpp_network/cpp_network (WORKSPACE + BUILD.bazel + cpp_network_deps.bzl).
+    # Point local_repository there so the repo's own root BUILD.bazel provides
+    # the @cpp_network package (local_repository has no build_file attr).
     native.local_repository(
         name = "cpp_network",
-        path = "../../cpp_network",
-        build_file = "@video_codec//stream/third_party/cpp_network:BUILD.bazel",
+        path = "../../cpp_network/cpp_network",
     )
 
 # ---- Setup function
