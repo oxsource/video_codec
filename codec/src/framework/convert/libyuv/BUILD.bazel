@@ -1,6 +1,6 @@
 package(default_visibility = [
-    "@video_codec//src/framework:__subpackages__",
-    "//tests:__subpackages__",
+    "//codec/src/framework:__subpackages__",
+    "//codec/tests:__subpackages__",
 ])
 
 # libyuv-backed pixel-format converter. libyuv is a neutral (non-FFmpeg)
@@ -11,8 +11,8 @@ cc_library(
     srcs = ["pixel_convert.cc"],
     hdrs = ["pixel_convert.h"],
     deps = [
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/utils",
+        "//codec/src/framework/core",
+        "//codec/src/framework/utils",
         "@libyuv//:libyuv",
     ],
 )

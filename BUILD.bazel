@@ -1,6 +1,11 @@
 package(default_visibility = ["//visibility:public"])
 
 alias(
-    name = "video_codec",
+    name = "codec",
     actual = "//codec/src/framework/public:video_codec",
+)
+
+alias(
+    name = "stream",
+    actual = "//stream/src/api:stream_api",
 )

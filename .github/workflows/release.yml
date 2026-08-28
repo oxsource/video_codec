@@ -12,10 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build shared library
-        working-directory: codec
-        run: bazel build //src/framework/public:video_codec_shared
+        run: bazel build //codec/src/framework/public:video_codec_shared
       - name: Update CHANGELOG
         run: echo "Release ${{ github.ref_name }}" >> CHANGELOG.md
       - name: Publish
-        run: echo "Publish @video_codec archive / artifact for ${{ github.ref_name }}"
+        run: echo "Publish video_codec archive / artifact for ${{ github.ref_name }}"
         # Wire to your package registry / release target here.

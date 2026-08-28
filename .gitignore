@@ -28,3 +28,7 @@ Thumbs.db
 # ---- logs / env ----
 *.log
 .env*
+
+# ---- TLS credentials (never commit) ----
+auto.crt
+auto.key

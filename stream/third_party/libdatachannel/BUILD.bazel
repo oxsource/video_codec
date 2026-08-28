@@ -14,7 +14,7 @@ cmake(
     # @libdatachannel source tree.
     lib_source = "@libdatachannel//:all",
     out_shared_libs = select({
-        "@video_stream//platforms:darwin_arm64_platform_setting": [
+        "//platforms:darwin_arm64_platform_setting": [
             "libdatachannel.dylib",
             "libdatachannel.0.dylib",
         ],
@@ -37,7 +37,7 @@ cmake(
     # settings: the android_arm64 config links the NDK-built bundle, host
     # configs (macOS/Linux) link the native one.
     deps = select({
-        "@video_stream//platforms:android_arm64_platform_setting": [
+        "//platforms:android_arm64_platform_setting": [
             "@cpp_network//third_party/tls/android:openssl",
         ],
         # linux x86_64 (CI) + fallback.

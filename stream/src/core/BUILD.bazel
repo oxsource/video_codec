@@ -18,11 +18,11 @@ cc_library(
         "video_stream_register.h",
     ],
     deps = [
-        "@video_stream//src/api:stream_api",
-        "@video_codec//src/framework/core:log_slot",
-        "@video_codec//src/framework/core:status",
-        "@video_codec//src/framework/core:result",
-        "@video_codec//src/framework/core:types",
+        "//stream/src/api:stream_api",
+        "//codec/src/framework/core:log_slot",
+        "//codec/src/framework/core:status",
+        "//codec/src/framework/core:result",
+        "//codec/src/framework/core:types",
         "@nlohmann_json//:json",
     ],
 )

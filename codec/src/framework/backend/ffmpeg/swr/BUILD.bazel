@@ -1,6 +1,6 @@
 package(default_visibility = [
-    "@video_codec//src/framework:__subpackages__",
-    "//tests:__subpackages__",
+    "//codec/src/framework:__subpackages__",
+    "//codec/tests:__subpackages__",
 ])
 
 # libswresample-backed audio sample-format converter. FFmpeg-dependent: only
@@ -12,7 +12,7 @@ cc_library(
     srcs = ["swr_audio_convert.cc"],
     hdrs = ["swr_audio_convert.h"],
     deps = [
-        "@video_codec//src/framework/core",
+        "//codec/src/framework/core",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],

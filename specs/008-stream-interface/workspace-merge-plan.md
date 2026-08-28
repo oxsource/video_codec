@@ -1,10 +1,8 @@
 # Workspace Merge Migration Plan
 
-> **Status**: Proposal — pending separate review/implementation issue.
-> This document captures the plan discussed for merging `codec/` and `stream/`
-> into a single Bazel workspace, so the whole `video_codec` repo can be consumed
-> as one dependency. Execution is NOT started; it will be tracked as a separate
-> proposal/issue.
+> **Status**: Completed (2026-08-27)
+> Merged `codec/` and `stream/` into a single Bazel workspace at the repo root.
+> `codec/` and `stream/` are now packages within the `video_codec` workspace.
 
 ## Problem Statement
 
@@ -112,20 +110,31 @@ Label mapping after merge:
   (replace "separate workspace" decision with "merged single workspace").
 
 ### Phase 7 — Verification
-- `bazel build //...`
-- `bazel test //codec/tests/...`
-- `make host-verify`
-- cpp_network: build with default http; build with `cpp_network_local=True`
-- Android cross-build (`--config android_arm64`)
+- `bazel build //...` — `//codec/...`, `//stream:video_stream`,
+  `//stream/src/api:stream_api`, `//stream/src/core:stream_core`,
+  `//stream/src/backend/mock:mock_backend` build OK. `webrtc_backend` and
+  `encode_and_push` blocked pending libdatachannel fetch.
+- `bazel test //codec/tests/...` — all 16 tests pass.
+- `make host-verify` — pending.
+- cpp_network: default http mode verified up to TLS bundle; blocked on the
+  missing `openssl`/`curl` targets in `v1.0.0` (fixed by pinning commit
+  `d2e4252`). `cpp_network_local=True` works.
+- Android cross-build (`--config android_arm64`) — not run (no NDK env).
 
 ## Open Decisions
 
-1. **cpp_network http pin**: default `v1.0.0` tag (local HEAD is 4 commits
-   after). OK, or pin a specific commit?
+1. **cpp_network http pin**: default now pinned to commit `d2e4252`
+   (`openssl` TLS targets present). The `v1.0.0` tag lacks the `openssl` and
+   `curl` bundle targets that `//stream/third_party/libdatachannel` depends on,
+   so it is not usable. A future `v1.0.1` tag with the `@cpp_network//` label
+   fix (commit `f678c40`+) would let us pin the tag instead.
 2. **host-verify / android-build semantics**: cover both codec + stream
-   (recommended) vs single module?
+   (recommended) vs single module.
 3. **stream test.mk**: stream has no `tests/` yet (T053 open) — fold into root
    `test` (only `//codec/tests/...`) or drop the placeholder targets?
+4. **libdatachannel fetch**: `new_git_repository` clone of github
+   `paullouisageneau/libdatachannel` timed out during verification (network).
+   Requires network access; consider vendoring or a git-aware fetch for CI.
 
 ## Outcome
 

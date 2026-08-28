@@ -26,10 +26,10 @@ cc_binary(
     }),
     linkstatic = True,
     deps = [
-        "@video_codec//src/framework/public:video_codec",  # encoder API + platform backend
-        "@video_codec//src/framework/queue",              # PacketQueue
-        "@video_codec//src/framework/consumer",           # FileConsumer (raw mode)
-        "@video_codec//src/framework/io",                 # FileByteSink (mp4 output)
-        "@video_codec//src/framework/utils",              # SMPTE color-bars generator
+        "//codec/src/framework/public:video_codec",  # encoder API + platform backend
+        "//codec/src/framework/queue",              # PacketQueue
+        "//codec/src/framework/consumer",           # FileConsumer (raw mode)
+        "//codec/src/framework/io",                 # FileByteSink (mp4 output)
+        "//codec/src/framework/utils",              # SMPTE color-bars generator
     ],
 )

@@ -22,17 +22,15 @@ jobs:
           key: bazel-${{ matrix.os }}-${{ github.sha }}
           restore-keys: bazel-${{ matrix.os }}-
       - name: Build
-        working-directory: codec
         run: bazel build //...
       - name: Test
-        working-directory: codec
-        run: bazel test //...
+        run: bazel test //codec/tests/...
+      - name: Build stream
+        run: bazel build //stream/src/api:stream_api //stream/src/core:stream_core
       - name: clang-format
         if: matrix.os == 'ubuntu-22.04'
-        working-directory: codec
         run: |
-          find src -name '*.h' -o -name '*.cc' | xargs clang-format --dry-run --Werror
+          find codec/src -name '*.h' -o -name '*.cc' | xargs clang-format --dry-run --Werror
       - name: clang-tidy
         if: matrix.os == 'ubuntu-22.04'
-        working-directory: codec
         run: bazel build //... && echo "clang-tidy gate (configure per project)"

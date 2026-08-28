@@ -1,4 +1,4 @@
-package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//tests:__subpackages__", "@video_stream//src/examples:__subpackages__", "@video_stream//src/core:__subpackages__", "@video_stream//src/backend:__subpackages__", "@video_stream//tests:__subpackages__"])
+package(default_visibility = ["//codec/src/framework:__subpackages__", "//codec/tests:__subpackages__", "//stream/src/examples:__subpackages__", "//stream/src/core:__subpackages__", "//stream/src/backend:__subpackages__", "//stream/tests:__subpackages__"])
 
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `api` target deps on all modules for backward compatibility.
@@ -7,8 +7,8 @@ cc_library(
     name = "video_encoder",
     hdrs = ["video_encoder.h"],
     deps = [
-        "@video_codec//src/framework/core:result",
-        "@video_codec//src/framework/core:types",
+        "//codec/src/framework/core:result",
+        "//codec/src/framework/core:types",
     ],
 )
 
@@ -16,8 +16,8 @@ cc_library(
     name = "audio_encoder",
     hdrs = ["audio_encoder.h"],
     deps = [
-        "@video_codec//src/framework/core:result",
-        "@video_codec//src/framework/core:types",
+        "//codec/src/framework/core:result",
+        "//codec/src/framework/core:types",
     ],
 )
 
@@ -25,17 +25,17 @@ cc_library(
     name = "encoder_lifecycle",
     srcs = ["encoder_lifecycle.cc"],
     hdrs = ["encoder_lifecycle.h"],
-    deps = ["@video_codec//src/framework/core:status"],
+    deps = ["//codec/src/framework/core:status"],
 )
 
 cc_library(
     name = "muxer",
     hdrs = ["muxer.h"],
     deps = [
-        "@video_codec//src/framework/core:packet_sink",
-        "@video_codec//src/framework/core:result",
-        "@video_codec//src/framework/core:status",
-        "@video_codec//src/framework/core:types",
+        "//codec/src/framework/core:packet_sink",
+        "//codec/src/framework/core:result",
+        "//codec/src/framework/core:status",
+        "//codec/src/framework/core:types",
     ],
 )
 
@@ -47,7 +47,7 @@ cc_library(
         ":audio_encoder",
         ":muxer",
         ":video_encoder",
-        "@video_codec//src/framework/core:types",
+        "//codec/src/framework/core:types",
     ],
 )
 

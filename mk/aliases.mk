@@ -1,0 +1,10 @@
+# Friendly short aliases for the canonical prefixed targets (conflict-free, unique).
+$(call register_module,aliases)
+$(call register_alias,verify,host-verify)
+$(call register_alias,build,host-build)
+$(call register_alias,spike,host-spike)
+$(call register_alias,ffmpeg-codec,host_ffmpeg_codec)
+$(call register_alias,build-android,android-build)
+$(call register_alias,verify-android,android-verify)
+$(call register_alias,docs,docs-check)
+$(call register_alias,clean,clean-out)

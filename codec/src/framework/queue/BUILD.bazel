@@ -1,4 +1,4 @@
-package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//tests:__subpackages__", "@video_codec//src/examples:__subpackages__", "@video_stream//src/examples:__subpackages__"])
+package(default_visibility = ["//codec/src/framework:__subpackages__", "//codec/tests:__subpackages__", "//codec/src/examples:__subpackages__", "//stream/src/examples:__subpackages__"])
 
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `queue` target deps on all modules for backward compatibility.
@@ -7,9 +7,9 @@ cc_library(
     name = "queue_iface",
     hdrs = ["queue_iface.h"],
     deps = [
-        "@video_codec//src/framework/core:packet_sink",
-        "@video_codec//src/framework/core:status",
-        "@video_codec//src/framework/core:types",
+        "//codec/src/framework/core:packet_sink",
+        "//codec/src/framework/core:status",
+        "//codec/src/framework/core:types",
     ],
 )
 
@@ -19,8 +19,8 @@ cc_library(
     hdrs = ["packet_queue.h"],
     deps = [
         ":queue_iface",
-        "@video_codec//src/framework/core:log_slot",
-        "@video_codec//src/framework/core:types",
+        "//codec/src/framework/core:log_slot",
+        "//codec/src/framework/core:types",
     ],
 )
 

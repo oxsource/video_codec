@@ -1,4 +1,4 @@
-package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//tests:__subpackages__"])
+package(default_visibility = ["//codec/src/framework:__subpackages__", "//codec/tests:__subpackages__"])
 
 # Generic FFmpeg backend (libx264 / libx265 / AAC / Opus). Default backend on all
 # non-Android platforms.
@@ -29,12 +29,12 @@ cc_library(
     alwayslink = True,
     deps = [
         ":ffmpeg_raii",
-        "@video_codec//src/framework/api:codec_factory",
-        "@video_codec//src/framework/api:encoder_lifecycle",
-        "@video_codec//src/framework/api:video_encoder",
-        "@video_codec//src/framework/core:log_slot",
-        "@video_codec//src/framework/core:types",
-        "@video_codec//src/framework/queue:queue_iface",
+        "//codec/src/framework/api:codec_factory",
+        "//codec/src/framework/api:encoder_lifecycle",
+        "//codec/src/framework/api:video_encoder",
+        "//codec/src/framework/core:log_slot",
+        "//codec/src/framework/core:types",
+        "//codec/src/framework/queue:queue_iface",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],
@@ -47,11 +47,11 @@ cc_library(
     alwayslink = True,
     deps = [
         ":ffmpeg_raii",
-        "@video_codec//src/framework/api:audio_encoder",
-        "@video_codec//src/framework/api:codec_factory",
-        "@video_codec//src/framework/api:encoder_lifecycle",
-        "@video_codec//src/framework/core:types",
-        "@video_codec//src/framework/queue:queue_iface",
+        "//codec/src/framework/api:audio_encoder",
+        "//codec/src/framework/api:codec_factory",
+        "//codec/src/framework/api:encoder_lifecycle",
+        "//codec/src/framework/core:types",
+        "//codec/src/framework/queue:queue_iface",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],
@@ -63,10 +63,10 @@ cc_library(
     hdrs = ["ffmpeg_muxer.h"],
     alwayslink = True,
     deps = [
-        "@video_codec//src/framework/api:codec_factory",
-        "@video_codec//src/framework/api:muxer",
-        "@video_codec//src/framework/core:types",
-        "@video_codec//src/framework/io:byte_sink",
+        "//codec/src/framework/api:codec_factory",
+        "//codec/src/framework/api:muxer",
+        "//codec/src/framework/core:types",
+        "//codec/src/framework/io:byte_sink",
         "@ffmpeg//:ffmpeg_codec",
         "@ffmpeg//:ffmpeg_codec_impl",
     ],

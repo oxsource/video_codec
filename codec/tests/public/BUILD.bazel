@@ -4,9 +4,9 @@ cc_test(
     name = "umbrella_compile_test",
     srcs = ["umbrella_compile_test.cc"],
     deps = [
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/api",
-        "@video_codec//src/framework/public:video_codec_hdrs",
+        "//codec/src/framework/core",
+        "//codec/src/framework/api",
+        "//codec/src/framework/public:video_codec_hdrs",
         "@com_google_googletest//:gtest_main",
     ],
 )

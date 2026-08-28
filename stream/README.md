@@ -1,11 +1,11 @@
 # video_stream
 
-A C++ library for pushing encoded media streams with pluggable transport backends. Peer module to [video_codec](https://github.com/anomalyco/video_codec).
+A C++ library for pushing encoded media streams with pluggable transport backends. Part of the [video_codec](https://github.com/oxsource/video_codec) monorepo.
 
 ## Architecture
 
 ```
-stream/                     # Independent Bazel workspace
+stream/                     # Package //stream/... in the merged workspace
 ├── src/
 │   ├── api/                # Public interfaces (Stream, StreamBackend, StreamConfig, StreamStatus)
 │   ├── core/               # Implementation (StreamImpl, ABR controller, reconnect handler, backend registry)
@@ -13,15 +13,23 @@ stream/                     # Independent Bazel workspace
 │   │   ├── mock/           # Mock backend for unit testing
 │   │   └── webrtc/         # WebRTC/WHIP backend (v1)
 │   └── examples/           # Runnable examples
-└── mk/                     # Make module system (AOSP-style)
+└── third_party/            # Build wrappers (libdatachannel, nlohmann_json)
 ```
 
 ## Building
 
+From the repo root (single workspace):
+
 ```bash
-cd stream
-bazel build //src/api:stream_api
-bazel build //src/examples:encode_and_push
+bazel build //stream/src/api:stream_api
+bazel build //stream/src/examples:encode_and_push
+```
+
+Or use the make targets:
+
+```bash
+make build-stream
+make build-example
 ```
 
 ## Quickstart
@@ -29,8 +37,8 @@ bazel build //src/examples:encode_and_push
 ### Programmatic
 
 ```cpp
-#include "src/api/stream.h"
-#include "src/api/stream_config.h"
+#include "stream/src/api/stream.h"
+#include "stream/src/api/stream_config.h"
 
 using namespace video::stream;
 
@@ -52,13 +60,13 @@ stream->Release();
 ### From a unified JSON config
 
 The stream module owns the JSON schema (field keys + all defaults in
-`//src/core:stream_core`, implemented behind the `StreamConfig::LoadFromFile` /
+`//stream/src/core:stream_core`, implemented behind the `StreamConfig::LoadFromFile` /
 `::ParseFromJson` static methods). Callers only hand over the content; missing
 keys fall back to module defaults, and the WHIP URL is derived from
 `signal.host + "/" + signal.path + "/whip"`.
 
 ```cpp
-#include "src/api/stream_config.h"
+#include "stream/src/api/stream_config.h"
 
 auto res = StreamConfig::LoadFromFile("config.json");
 // res.ok(), res.value() or res.Release() -> fully-resolved StreamConfig
@@ -75,12 +83,12 @@ Requires [MediaMTX](https://github.com/bluenviron/mediamtx) running on port 8889
 /opt/homebrew/opt/mediamtx/bin/mediamtx /opt/homebrew/etc/mediamtx/mediamtx.yml
 
 # Push SMPTE color bars using the sample JSON config
-# (src/examples/stream_conf.json -> http://localhost:8889/test/whip),
+# (stream/src/examples/stream_conf.json -> http://localhost:8889/test/whip),
 # skipping the local MP4 recording:
-bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.json
+bazel run //stream/src/examples:encode_and_push -- --config stream/src/examples/stream_conf.json
 
 # Push and record to a local file for a fixed duration:
-bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.json \
+bazel run //stream/src/examples:encode_and_push -- --config stream/src/examples/stream_conf.json \
   --no-record=false --seconds 5
 ```
 

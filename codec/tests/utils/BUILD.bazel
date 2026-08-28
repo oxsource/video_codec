@@ -4,8 +4,8 @@ cc_test(
     name = "smpte_bars_test",
     srcs = ["smpte_bars_test.cc"],
     deps = [
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/utils",
+        "//codec/src/framework/core",
+        "//codec/src/framework/utils",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -14,8 +14,8 @@ cc_test(
     name = "stride_test",
     srcs = ["stride_test.cc"],
     deps = [
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/utils",
+        "//codec/src/framework/core",
+        "//codec/src/framework/utils",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -24,7 +24,7 @@ cc_test(
     name = "media_format_test",
     srcs = ["media_format_test.cc"],
     deps = [
-        "@video_codec//src/framework/utils",
+        "//codec/src/framework/utils",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -33,8 +33,8 @@ cc_test(
     name = "mediacodec_utils_test",
     srcs = ["mediacodec_utils_test.cc"],
     deps = [
-        "@video_codec//src/framework/backend/android:mediacodec_utils",
-        "@video_codec//src/framework/core",
+        "//codec/src/framework/backend/android:mediacodec_utils",
+        "//codec/src/framework/core",
         "@com_google_googletest//:gtest_main",
     ],
 )

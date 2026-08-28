@@ -1,4 +1,4 @@
-package(default_visibility = ["@video_codec//src/framework:__subpackages__", "//tests:__subpackages__"])
+package(default_visibility = ["//codec/src/framework:__subpackages__", "//codec/tests:__subpackages__"])
 
 # Android MediaCodec backend (NDK AMediaCodec). Every target carries
 # `target_compatible_with = ["@platforms//os:android"]` so these sources only
@@ -14,9 +14,9 @@ cc_library(
         ":mediacodec_audio",
         ":mediacodec_muxer",
         ":mediacodec_video",
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/api",
-        "@video_codec//src/framework/utils",
+        "//codec/src/framework/core",
+        "//codec/src/framework/api",
+        "//codec/src/framework/utils",
         "//third_party/android_ndk:android_media_codec",
     ],
 )
@@ -30,9 +30,9 @@ cc_library(
     deps = [
         ":mediacodec_raii",
         ":mediacodec_utils",
-        "@video_codec//src/framework/api:codec_factory",
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/api",
+        "//codec/src/framework/api:codec_factory",
+        "//codec/src/framework/core",
+        "//codec/src/framework/api",
         "//third_party/android_ndk:android_media_codec",
     ],
 )
@@ -46,10 +46,10 @@ cc_library(
     deps = [
         ":mediacodec_raii",
         ":mediacodec_utils",
-        "@video_codec//src/framework/api:codec_factory",
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/api",
-        "@video_codec//src/framework/io:byte_sink",
+        "//codec/src/framework/api:codec_factory",
+        "//codec/src/framework/core",
+        "//codec/src/framework/api",
+        "//codec/src/framework/io:byte_sink",
         "//third_party/android_ndk:android_media_codec",
     ],
 )
@@ -63,9 +63,9 @@ cc_library(
     deps = [
         ":mediacodec_raii",
         ":mediacodec_utils",
-        "@video_codec//src/framework/api:codec_factory",
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/api",
+        "//codec/src/framework/api:codec_factory",
+        "//codec/src/framework/core",
+        "//codec/src/framework/api",
         "//third_party/android_ndk:android_media_codec",
     ],
 )
@@ -86,5 +86,5 @@ cc_library(
     name = "mediacodec_utils",
     srcs = ["mediacodec_utils.cc"],
     hdrs = ["mediacodec_utils.h"],
-    deps = ["@video_codec//src/framework/core:types"],
+    deps = ["//codec/src/framework/core:types"],
 )

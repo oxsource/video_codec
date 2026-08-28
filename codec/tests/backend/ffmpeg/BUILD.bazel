@@ -20,10 +20,10 @@ cc_test(
     # whole archive into this binary.
     linkstatic = True,
     deps = [
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/api",
-        "@video_codec//src/framework/queue",
-        "@video_codec//src/framework/backend/ffmpeg",
+        "//codec/src/framework/core",
+        "//codec/src/framework/api",
+        "//codec/src/framework/queue",
+        "//codec/src/framework/backend/ffmpeg",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -39,10 +39,10 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/api",
-        "@video_codec//src/framework/queue",
-        "@video_codec//src/framework/backend/ffmpeg",
+        "//codec/src/framework/core",
+        "//codec/src/framework/api",
+        "//codec/src/framework/queue",
+        "//codec/src/framework/backend/ffmpeg",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -58,11 +58,11 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/api",
-        "@video_codec//src/framework/io",
-        "@video_codec//src/framework/queue",
-        "@video_codec//src/framework/backend/ffmpeg",
+        "//codec/src/framework/core",
+        "//codec/src/framework/api",
+        "//codec/src/framework/io",
+        "//codec/src/framework/queue",
+        "//codec/src/framework/backend/ffmpeg",
         "@com_google_googletest//:gtest_main",
     ],
 )
@@ -78,8 +78,8 @@ cc_test(
     ],
     linkstatic = True,
     deps = [
-        "@video_codec//src/framework/core",
-        "@video_codec//src/framework/backend/ffmpeg/swr:swr_audio",
+        "//codec/src/framework/core",
+        "//codec/src/framework/backend/ffmpeg/swr:swr_audio",
         "@com_google_googletest//:gtest_main",
     ],
 )

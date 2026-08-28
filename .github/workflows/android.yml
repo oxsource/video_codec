@@ -7,16 +7,15 @@ on:
 
 jobs:
   android:
-    name: mediacodec_spike cross-build
+    name: android arm64 cross-build
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Setup Android NDK
         uses: android-actions/setup-android@v3
-      - name: Cross-build mediacodec_spike
-        working-directory: codec
-        run: >
-          bazel build //src/spike:mediacodec_spike
-          --platforms=//platforms:android_arm64_platform
-          --android_platforms=//platforms:android_arm64_platform
-        # Requires android_ndk_repository(name = "androidndk") registered in WORKSPACE.
+      - name: Cross-build codec spike
+        run: bazel build //codec/src/spike:mediacodec_spike --config android_arm64
+      - name: Cross-build stream core + mock
+        run: |
+          export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$(ls -d "${ANDROID_SDK_ROOT:-$HOME/Android/sdk}/ndk"/* 2>/dev/null | tail -1)}"
+          bazel build //stream/src/core:stream_core //stream/src/backend/mock:mock_backend --config android_arm64
