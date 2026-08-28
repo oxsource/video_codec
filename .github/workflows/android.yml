@@ -9,6 +9,9 @@ jobs:
   android:
     name: android arm64 cross-build
     runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: video_codec
     steps:
       - uses: actions/checkout@v4
       - name: Setup Android NDK

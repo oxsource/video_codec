@@ -3,8 +3,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO="$(cd "$ROOT/.." && pwd)"
 DOC="$ROOT/codec/doc/project_bootstrap.md"
-TASKS="$ROOT/specs/001-project-scaffold/tasks.md"
+TASKS="$REPO/specs/001-project-scaffold/tasks.md"
 FFMPEG_BZ="$ROOT/codec/third_party/ffmpeg/BUILD.bazel"
 fail=0
 

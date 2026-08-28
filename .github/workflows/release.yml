@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build shared library
-        run: bazel build //codec/src/framework/public:video_codec_shared
+        run: cd video_codec && bazel build //codec/src/framework/public:video_codec_shared
       - name: Update CHANGELOG
         run: echo "Release ${{ github.ref_name }}" >> CHANGELOG.md
       - name: Publish
