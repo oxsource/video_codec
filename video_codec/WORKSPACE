@@ -1,6 +1,6 @@
 workspace(name = "video_codec")
 
-load("//:deps.bzl", "video_codec_setup")
+load("//:video_codec_deps.bzl", "video_codec_setup")
 load("@bazel_tools//tools/cpp:cc_configure.bzl", "cc_configure")
 
 video_codec_setup()
@@ -10,7 +10,7 @@ video_codec_setup()
 # pinned commit uses bare // labels that only resolve within the cpp_network
 # workspace itself.
 
-load("//:deps.bzl", "cpp_network_deps")
+load("//:video_codec_deps.bzl", "cpp_network_deps")
 
 cpp_network_deps()
 
