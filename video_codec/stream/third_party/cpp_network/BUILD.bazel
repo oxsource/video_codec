@@ -1,0 +1,15 @@
+# Third-party module for cpp_network (the only external dependency).
+#
+# This BUILD.bazel also serves as the injected root BUILD file when @cpp_network
+# is fetched as an http_archive/local_repository (see video_codec_deps.bzl).
+# cpp_network ships its WORKSPACE + cpp_network_deps.bzl at the repo root but no
+# BUILD file there; Bazel requires a package for a repo's own .bzl files to be
+# loadable. The alias below re-exports the library so consumers keep using
+# @cpp_network//:cpp_network.
+package(default_visibility = ["//visibility:public"])
+
+alias(
+    name = "cpp_network",
+    actual = "@cpp_network//src/public:cpp_network",
+    visibility = ["//visibility:public"],
+)

@@ -25,7 +25,7 @@ def _ffmpeg():
         urls = ["https://ffmpeg.org/releases/ffmpeg-6.1.tar.xz"],
         sha256 = "488c76e57dd9b3bee901f71d5c95eaf1db4a5a31fe46a28654e837144207c270",
         strip_prefix = "ffmpeg-6.1",
-        build_file = "//codec/third_party/ffmpeg:BUILD.bazel",
+        build_file = "@video_codec//codec/third_party/ffmpeg:BUILD.bazel",
     )
 
 def _rules_foreign_cc():
@@ -42,7 +42,7 @@ def _libyuv():
         sha256 = "119e44ae87da1f1362e7d005fcaaf36176f34df43df5e01619fcfec175490e26",
         strip_prefix = "libyuv-79d22698bc2f11f6b0b014141fe94b82aa5a53b3",
         urls = ["https://github.com/lemenkov/libyuv/archive/79d22698bc2f11f6b0b014141fe94b82aa5a53b3.tar.gz"],
-        build_file = "//codec/third_party/libyuv:BUILD.bazel",
+        build_file = "@video_codec//codec/third_party/libyuv:BUILD.bazel",
     )
 
 # ---- Stream-only dependencies
@@ -52,7 +52,7 @@ def _nlohmann_json():
         name = "nlohmann_json",
         sha256 = "a22461d13119ac5c78f205d3df1db13403e58ce1bb1794edc9313677313f4a9d",
         urls = ["https://github.com/nlohmann/json/releases/download/v3.11.3/include.zip"],
-        build_file = "//stream/third_party/nlohmann_json:BUILD.bazel",
+        build_file = "@video_codec//stream/third_party/nlohmann_json:BUILD.bazel",
     )
 
 def _libdatachannel():
@@ -61,6 +61,7 @@ def _libdatachannel():
         remote = "https://github.com/paullouisageneau/libdatachannel.git",
         tag = "v0.21.2",
         init_submodules = True,
+        build_file = "@video_codec//stream/third_party/libdatachannel:BUILD.bazel",
     )
 
 # ---- cpp_network: the only external dependency
@@ -68,39 +69,18 @@ def _libdatachannel():
 def _cpp_network_http():
     http_archive(
         name = "cpp_network",
-        sha256 = "c41754f27804fff4bd045e7a043e409560f77f2ce362d95eb8148d8a2345d8ff",
-        strip_prefix = "cpp_network-d2e4252375daf11f2344b39b87a14515aa5f3a79",
-        urls = ["https://github.com/oxsource/cpp_network/archive/d2e4252375daf11f2344b39b87a14515aa5f3a79.tar.gz"],
+        sha256 = "b919df29585087815e6f724db8dce1ca1b17317dad9e6c2859a869412aa63a75",
+        strip_prefix = "cpp_network-1.1.0/cpp_network",
+        urls = ["https://github.com/oxsource/cpp_network/archive/refs/tags/v1.1.0.tar.gz"],
+        build_file = "@video_codec//stream/third_party/cpp_network:BUILD.bazel",
     )
 
 def _cpp_network_local():
     native.local_repository(
         name = "cpp_network",
         path = "../../cpp_network",
+        build_file = "@video_codec//stream/third_party/cpp_network:BUILD.bazel",
     )
-
-# ---- cpp_network transitive dependencies (curl, openssl)
-# Declared here with @cpp_network// labels rather than calling
-# cpp_network_setup() (which ships bare // labels in the pinned commit that
-# only resolve within the cpp_network workspace itself).
-
-def cpp_network_deps():
-    if not native.existing_rule("curl"):
-        http_archive(
-            name = "curl",
-            sha256 = "f91249c87f68ea00cf27c44fdfa5a78423e41e71b7d408e5901a9896d905c495",
-            strip_prefix = "curl-8.7.1",
-            urls = ["https://curl.se/download/curl-8.7.1.tar.gz"],
-            build_file = "@cpp_network//third_party/libcurl:curl_external.BUILD",
-        )
-    if not native.existing_rule("openssl"):
-        http_archive(
-            name = "openssl",
-            sha256 = "e74504ed7035295ec7062b1da16c15b57ff2a03cd2064a28d8c39458cacc45fc",
-            strip_prefix = "openssl-openssl-3.0.13",
-            urls = ["https://github.com/openssl/openssl/archive/refs/tags/openssl-3.0.13.tar.gz"],
-            build_file = "@cpp_network//third_party/openssl:openssl_external.BUILD",
-        )
 
 # ---- Setup function
 

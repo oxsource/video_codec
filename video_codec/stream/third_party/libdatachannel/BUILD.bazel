@@ -2,6 +2,9 @@ package(default_visibility = ["//visibility:public"])
 
 load("@rules_foreign_cc//foreign_cc:cmake.bzl", "cmake")
 
+# Serves as the injected root BUILD file for the @libdatachannel external repo
+# (see video_codec_deps.bzl). Exposes the full git source tree as :all for the
+# cmake() rule below to compile.
 filegroup(
     name = "all",
     srcs = glob(["**/*"]),
@@ -38,11 +41,11 @@ cmake(
     # configs (macOS/Linux) link the native one.
     deps = select({
         "//platforms:android_arm64_platform_setting": [
-            "@cpp_network//third_party/tls/android:openssl",
+            "@cpp_network//third_party/openssl/android:openssl",
         ],
         # linux x86_64 (CI) + fallback.
         "//conditions:default": [
-            "@cpp_network//third_party/tls/host:openssl",
+            "@cpp_network//third_party/openssl/host:openssl",
         ],
     }),
 )

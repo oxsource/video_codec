@@ -19,15 +19,15 @@ namespace video {
 namespace stream {
 
 using cpp_network::http::Client;
-using cpp_network::http::ErrorCodeToString;
+using cpp_network::comm::ErrorCodeToString;
 using cpp_network::http::Headers;
 using cpp_network::http::Method;
-using cpp_network::http::Options;
+using cpp_network::comm::Options;
 using cpp_network::http::Request;
 using cpp_network::http::Response;
-using cpp_network::http::Result;
-using cpp_network::http::Tls;
-using cpp_network::http::VerifyMode;
+using cpp_network::comm::Result;
+using cpp_network::comm::Tls;
+using cpp_network::comm::VerifyMode;
 
 namespace {
 

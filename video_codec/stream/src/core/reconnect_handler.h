@@ -25,7 +25,8 @@ class ReconnectHandler {
 
  private:
   uint32_t max_interval_s_;
-  uint32_t buffer_duration_s_;
+  // Reserved: buffer-duration-aware reconnect logic is not yet implemented.
+  [[maybe_unused]] uint32_t buffer_duration_s_;
   bool reconnecting_ = false;
   uint32_t current_attempt_ = 0;
   uint32_t elapsed_since_disconnect_ = 0;

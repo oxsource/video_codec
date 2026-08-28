@@ -10,7 +10,7 @@ POST, applies the answer, packetizes H.264/RTCP into RTP, and is verified
 end-to-end against a MediaMTX WHIP endpoint with browser subscription.
 
 OpenSSL for libdatachannel's DTLS is reused from cpp_network's source-built TLS
-bundle (`@cpp_network//third_party/tls/{host,android}:openssl`) — the stream
+bundle (`@cpp_network//third_party/openssl/{host,android}:openssl`) — the stream
 module no longer builds or maintains OpenSSL/libcurl.
 
 ## Build Status
@@ -57,7 +57,7 @@ module lists no libcurl dependency; `whip_session.cc` builds a synchronous
 
 ### 2. TLS: reuse cpp_network's source-built OpenSSL
 
-libdatachannel links `@cpp_network//third_party/tls/{host,android}:openssl`
+libdatachannel links `@cpp_network//third_party/openssl/{host,android}:openssl`
 (selected per platform). This replaced stream's own OpenSSL `configure_make`
 build, whose macOS arm64 archive was missing `armcap.o` and failed the
 libdatachannel dylib link with `_OPENSSL_armcap_P`.

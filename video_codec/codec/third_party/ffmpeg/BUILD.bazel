@@ -123,6 +123,10 @@ genrule(
 cc_import(
     name = "ffmpeg_codec_import",
     static_library = ":ffmpeg_codec_archive",
+    # FFmpeg's large transform tables (ff_tx) live in __DATA,__common with
+    # >16KB alignment. macOS ld lowers the section alignment and emits a
+    # benign warning; suppress it (the lowered alignment is functionally fine).
+    linkopts = ["-Wl,-w"],
 )
 
 cc_library(
