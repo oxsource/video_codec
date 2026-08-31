@@ -1,0 +1,2 @@
+.bazel_git_lfs/*
+!.bazel_git_lfs/.bazelconfig
