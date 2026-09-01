@@ -6,6 +6,34 @@ All notable changes to video_codec are documented here. The format is based on
 ## [Unreleased]
 
 ### Added
+- Public include surface is now workspace-root based (mediapipe-style): codec headers
+  are included as `codec/src/framework/...`, stream as `stream/src/...`; the
+  `--copt=-Icodec` / `--copt=-Istream` global include-root hacks were removed so external
+  consumers of `@video_codec` no longer inherit a workspace-root flag. A consumer only
+  needs `deps` on the published library and `#include <video_codec/video_codec.h>`.
+- `libvideo_codec_shared` (`.so`/`.dylib`) is the self-contained publish artifact: FFmpeg
+  is statically force-loaded inside, so a consumer links only the shared library and never
+  has to know about or link FFmpeg. `ByteSink`/`FileByteSink` are exported via
+  `VIDEO_CODEC_API` and `alwayslink` so the Muxer output target resolves from the shared lib.
+
+### Known limitations
+- **Internal symbols exported from `libvideo_codec_shared`**: on macOS the Bazel toolchain
+  (Homebrew LLVM clang) does not honor `-fvisibility=hidden` / `visibility("hidden")` for
+  Mach-O symbol export, so backend internals (e.g. `FFmpegMuxer`) appear in the dylib's
+  export table. Functionally harmless (a consumer cannot and does not call them); it is
+  visible if you inspect the symbol table. Fixing it requires either an Apple-clang
+  toolchain or a link-time export allow-list (macOS `-exported_symbols_list`), the latter
+  blocked by Bazel 6 not mounting `data` files into the link sandbox.
+- **Runtime dependency on `libx264`**: `libvideo_codec_shared` links the encoder's x264
+  as a Homebrew-provided dylib (not statically embedded), so a deployment host needs
+  `libx264` present at runtime. Consumers of the shared library do not need to know or link
+  x264 themselves.
+- **No per-consumer FFmpeg force-load (ADR-001 relaxation)**: the `encode_file` example no
+  longer hand-writes `data` + `-force_load` FFmpeg link flags; it relies on the backend
+  `alwayslink` pulling the FFmpeg archive as a normal static lib. Verified on host for both
+  MP4 (muxer + AAC + H.264) and raw Annex-B paths. The FFmpeg backend tests keep their
+  explicit `force_load` because they drive broader codec paths (codec registration lists,
+  `_ff_prefetch_aarch64`) that a lazily-linked archive may drop.
 - Architecture & engineering design (spec `002-architecture-engineering-design`):
   module dependency graph, encoder lifecycle, backend-selection model, threading,
   error-handling (`Status` / `Result<T>`), `LogSlot` logging interface, build/test/CI

@@ -4,26 +4,12 @@ package(default_visibility = ["//visibility:public"])
 # queue -> Await -> Muxer (.mp4), or raw .h264 via FileConsumer. The backend
 # is resolved automatically by platform (Backend::kAuto: FFmpeg on host,
 # Android MediaCodec on Android): the `public:video_codec` dep links the
-# platform backend via select(), so this single binary runs on both. The FFmpeg
-# static archive force-load (ADR-001) applies ONLY on the host; on Android the
-# FFmpeg archive does not exist and the MediaCodec backend is linked instead.
+# platform backend via select(). No per-consumer FFmpeg link flags are needed:
+# the backend's `alwayslink` + FFmpeg `cc_import` (ADR-001) make Bazel
+# force-load the FFmpeg archive automatically, so consumers never touch FFmpeg.
 cc_binary(
     name = "encode_file",
     srcs = ["encode_file.cc"],
-    data = select({
-        "//platforms:android_arm64_platform_setting": [],
-        "//conditions:default": ["@ffmpeg//:ffmpeg_codec_archive"],
-    }),
-    linkopts = select({
-        # Android needs no extra libs here: the --surface renderer lives in
-        # utils:smpte_bars, which declares its own -landroid/-lEGL/-lGLESv2.
-        "//platforms:android_arm64_platform_setting": [],
-        # Static linkage so the force_load pulls the whole FFmpeg archive into
-        # this binary (Bazel otherwise builds the backend as a dylib).
-        "//conditions:default": [
-            "-Wl,-force_load,$(execpath @ffmpeg//:ffmpeg_codec_archive)",
-        ],
-    }),
     linkstatic = True,
     deps = [
         "//codec/src/framework/public:video_codec",  # encoder API + platform backend
