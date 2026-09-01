@@ -1,0 +1,23 @@
+package(default_visibility = ["//visibility:public"])
+
+# Codec adapter layer exposed specifically to the stream module.
+#
+# stream depends on this single target for ALL codec capabilities, instead of
+# reaching into codec internals (core/api/io/queue/utils) directly. This lets
+# the internal codec modules keep their visibility at
+# //codec/src/framework:__subpackages__ (plus //codec/tests) and drop the
+# explicit //stream/... holes: stream only ever talks to codec through this
+# adapter. New codec capability needed by stream is added here.
+#
+# It aggregates the public umbrella (api + core + io) plus the handful of
+# stream-facing internals not in the umbrella (packet_sink, PacketQueue, and
+# the SMPTE signal generator used by examples).
+cc_library(
+    name = "codec_for_stream",
+    deps = [
+        "//codec/src/framework/public:video_codec_hdrs",  # umbrella: api + core + io
+        "//codec/src/framework/core:packet_sink",          # packet streaming interface
+        "//codec/src/framework/queue",                      # PacketQueue
+        "//codec/src/framework/utils",                      # SMPTE color-bars signal gen
+    ],
+)

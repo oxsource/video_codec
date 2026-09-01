@@ -9,10 +9,8 @@ cc_binary(
         # webrtc_backend or libdatachannel, and the datachannel rpath propagates
         # from webrtc_backend's linkopts instead of being hand-written here.
         "//stream/src/public:video_stream",
-        # Direct codec pipeline usage (encoder -> queue -> muxer/file sink).
-        "//codec/src/framework/public:video_codec",
-        "//codec/src/framework/queue",
-        "//codec/src/framework/consumer",
-        "//codec/src/framework/core:packet_sink",
+        # All codec pipeline capability via the stream-facing adapter
+        # (encoder -> queue -> muxer/file sink).
+        "//codec/src/framework:codec_for_stream",
     ],
 )

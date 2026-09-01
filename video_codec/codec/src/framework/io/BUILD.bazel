@@ -2,10 +2,6 @@ package(default_visibility = [
     "//codec/src/framework:__subpackages__",  # incl. public umbrella (re-exports ByteSink/FileByteSink, D-1)
     "//codec/src/examples:__subpackages__",
     "//codec/tests:__subpackages__",
-    "//stream/src/examples:__subpackages__",
-    "//stream/src/core:__subpackages__",
-    "//stream/src/backend:__subpackages__",
-    "//stream/tests:__subpackages__",
 ])
 
 # Byte-level output: the single ByteSink contract (used by muxers) and its

@@ -19,10 +19,7 @@ cc_library(
     ],
     deps = [
         "//stream/src/api:stream_api",
-        "//codec/src/framework/core:log_slot",
-        "//codec/src/framework/core:status",
-        "//codec/src/framework/core:result",
-        "//codec/src/framework/core:types",
+        "//codec/src/framework:codec_for_stream",  # all codec capability via adapter
         "@nlohmann_json//:json",
     ],
 )

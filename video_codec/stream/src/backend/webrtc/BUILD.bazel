@@ -29,6 +29,6 @@ cc_library(
         "//stream/src/core:stream_core",
         "//stream/third_party/libdatachannel:datachannel",
         "@cpp_network//:cpp_network",
-        "//codec/src/framework/core:log_slot",
+        "//codec/src/framework:codec_for_stream",  # codec capability via adapter
     ],
 )

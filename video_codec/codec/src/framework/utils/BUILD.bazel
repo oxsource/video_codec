@@ -2,10 +2,6 @@ package(default_visibility = [
     "//codec/src/framework:__subpackages__",
     "//codec/src/examples:__subpackages__",
     "//codec/tests:__subpackages__",
-    "//stream/src/examples:__subpackages__",
-    "//stream/src/core:__subpackages__",
-    "//stream/src/backend:__subpackages__",
-    "//stream/tests:__subpackages__",
 ])
 
 # One cc_library per module (a .cc/.h pair). The aggregate `utils` target deps

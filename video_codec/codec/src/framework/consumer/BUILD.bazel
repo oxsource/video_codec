@@ -1,4 +1,4 @@
-package(default_visibility = ["//codec/src/framework:__subpackages__", "//codec/tests:__subpackages__", "//codec/src/examples:__subpackages__", "//stream/src/examples:__subpackages__"])
+package(default_visibility = ["//codec/src/framework:__subpackages__", "//codec/tests:__subpackages__", "//codec/src/examples:__subpackages__"])
 
 # One cc_library per module (a .cc/.h pair, or a header-only unit). The
 # aggregate `consumer` target deps on all modules for backward compatibility.
