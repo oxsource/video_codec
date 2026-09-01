@@ -17,12 +17,18 @@ package(default_visibility = [
 cc_library(
     name = "byte_sink",
     hdrs = ["byte_sink.h"],
+    deps = ["//codec/src/framework/core:types"],  # VIDEO_CODEC_API via core/export.h
 )
 
 cc_library(
     name = "file_byte_sink",
     srcs = ["file_byte_sink.cc"],
     hdrs = ["file_byte_sink.h"],
+    # alwayslink: FileByteSink is part of the public surface (umbrella
+    # re-exports it as the Muxer output target). Without alwayslink, the
+    # link-time garbage collector drops its .o when nothing inside the shared
+    # library references it, so external consumers cannot resolve the symbol.
+    alwayslink = True,
     deps = [":byte_sink"],
 )
 

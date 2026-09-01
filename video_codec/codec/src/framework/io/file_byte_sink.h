@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <string>
 
+#include "codec/src/framework/core/export.h"
 #include "codec/src/framework/io/byte_sink.h"
 
 namespace video {
@@ -13,7 +14,7 @@ namespace codec {
 
 // ByteSink backed by a FILE* opened for binary writing. Seekable, so it can
 // back formats that need random access (e.g. MP4's moov-at-end layout).
-class FileByteSink : public ByteSink {
+class VIDEO_CODEC_API FileByteSink : public ByteSink {
  public:
   explicit FileByteSink(std::string path);
   ~FileByteSink() override;

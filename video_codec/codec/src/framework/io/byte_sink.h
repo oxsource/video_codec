@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "codec/src/framework/core/export.h"
+
 namespace video {
 namespace codec {
 
@@ -12,7 +14,7 @@ namespace codec {
 // Writing is always sequential (append). Seek/Tell are OPTIONAL capabilities:
 // seekable writers (e.g. FileByteSink) override them for random access, while
 // sequential writers (e.g. StreamByteSink) leave them unsupported.
-class ByteSink {
+class VIDEO_CODEC_API ByteSink {
  public:
   virtual ~ByteSink() = default;
 
