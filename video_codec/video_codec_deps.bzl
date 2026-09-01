@@ -73,6 +73,11 @@ def _cpp_network_http():
         strip_prefix = "cpp_network-1.1.0/cpp_network",
         urls = ["https://github.com/oxsource/cpp_network/archive/refs/tags/v1.1.0.tar.gz"],
         build_file = "@video_codec//stream/third_party/cpp_network:BUILD.bazel",
+        # Skip curl man-page generation and cap make parallelism; the upstream
+        # build_openssl.sh uses -j "$NCPU" (all cores) which OOMs on macOS when
+        # perl spawns hundreds of doc jobs.
+        patches = ["//stream/third_party/cpp_network:build_openssl_parallel.patch"],
+        patch_args = ["-p1"],
     )
 
 def _cpp_network_local():

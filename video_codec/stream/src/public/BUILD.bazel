@@ -1,0 +1,15 @@
+package(default_visibility = ["//visibility:public"])
+
+# Umbrella aggregate for the stream module (mirrors //codec/src/framework/public).
+# Consumers depend on this single target; the platform backend (webrtc) is wired
+# in here so they never name webrtc_backend / libdatachannel directly. The webrtc
+# backend self-registers into stream_core's registry (alwayslink) and carries the
+# libdatachannel rpath, which propagates to the final binary via linkopts.
+cc_library(
+    name = "video_stream",
+    deps = [
+        "//stream/src/api:stream_api",
+        "//stream/src/core:stream_core",
+        "//stream/src/backend/webrtc:webrtc_backend",
+    ],
+)

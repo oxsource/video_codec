@@ -12,6 +12,18 @@ cc_library(
         "whip_session.h",
     ],
     alwayslink = True,
+    # libdatachannel is a shared dylib/so; declare its rpath here (it propagates
+    # to any final binary via linkopts) so consumers never hand-write it. The
+    # token resolves relative to the final binary, so the path is unchanged.
+    linkopts = select({
+        "//platforms:darwin_arm64_platform_setting": [
+            "-Wl,-rpath,@loader_path/../../external/libdatachannel/libdatachannel/lib",
+        ],
+        # Linux x86_64 + Android: $ORIGIN is the ELF rpath token.
+        "//conditions:default": [
+            "-Wl,-rpath,$ORIGIN/../../external/libdatachannel/libdatachannel/lib",
+        ],
+    }),
     deps = [
         "//stream/src/api:stream_api",
         "//stream/src/core:stream_core",

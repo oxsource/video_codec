@@ -1,0 +1,24 @@
+diff --git a/third_party/scripts/build_openssl.sh b/third_party/scripts/build_openssl.sh
+--- a/third_party/scripts/build_openssl.sh
++++ b/third_party/scripts/build_openssl.sh
+@@ -111,7 +111,8 @@ cd "$PWD/work/curl"
+     --with-openssl="$INSTALL_DIR" \
+     --without-libpsl --without-libidn2 --without-brotli --without-zstd \
+     --without-zlib --without-librtmp --without-nghttp2 --without-libssh2 \
+     --without-ca-path --without-ca-bundle \
++    --disable-manual \
+     --disable-shared --enable-static \
+     --disable-dependency-tracking \
+     --enable-http \
+@@ -122,6 +123,11 @@ cd "$PWD/work/curl"
+     --disable-mqtt --disable-websockets \
+     "--prefix=$INSTALL_DIR"
+ 
++# Constrain parallelism: upstream -j "$NCPU" (all cores) spawns hundreds of
++# perl/doc jobs when building curl docs, which OOMs on memory-limited macOS.
++# --disable-manual (above) drops doc generation; cap NCPU to keep it stable.
++NCPU=2
++
+ make -j "$NCPU" >/dev/null
+ make install >/dev/null
+ test -f "$INSTALL_DIR/lib/libcurl.a"
