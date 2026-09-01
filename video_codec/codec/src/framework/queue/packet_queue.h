@@ -6,8 +6,8 @@
 #include <mutex>
 #include <vector>
 
-#include "src/framework/core/types.h"
-#include "src/framework/queue/queue_iface.h"
+#include "codec/src/framework/core/types.h"
+#include "codec/src/framework/queue/queue_iface.h"
 
 namespace video {
 namespace codec {

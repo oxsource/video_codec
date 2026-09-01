@@ -1,5 +1,5 @@
 // mediacodec_video.cc
-#include "src/framework/backend/android/mediacodec_video.h"
+#include "codec/src/framework/backend/android/mediacodec_video.h"
 
 #include <chrono>
 #include <cstring>
@@ -8,9 +8,9 @@
 #include <media/NdkMediaCodec.h>
 #include <media/NdkMediaFormat.h>
 
-#include "src/framework/api/codec_factory.h"
-#include "src/framework/backend/android/mediacodec_utils.h"
-#include "src/framework/core/packet_sink.h"
+#include "codec/src/framework/api/codec_factory.h"
+#include "codec/src/framework/backend/android/mediacodec_utils.h"
+#include "codec/src/framework/core/packet_sink.h"
 
 namespace video {
 namespace codec {

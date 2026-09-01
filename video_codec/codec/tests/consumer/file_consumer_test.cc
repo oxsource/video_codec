@@ -1,14 +1,14 @@
 // file_consumer_test.cc
-#include "src/framework/consumer/file_consumer.h"
+#include "codec/src/framework/consumer/file_consumer.h"
 
 #include <cstdio>
 #include <fstream>
 #include <thread>
 #include <vector>
 
-#include "src/framework/consumer/packet_consumer.h"
+#include "codec/src/framework/consumer/packet_consumer.h"
 #include "gtest/gtest.h"
-#include "src/framework/queue/packet_queue.h"
+#include "codec/src/framework/queue/packet_queue.h"
 
 namespace video {
 namespace codec {

@@ -6,10 +6,10 @@
 
 #include <rtc/rtc.hpp>
 
-#include "src/api/stream_backend.h"
-#include "src/api/stream_config.h"
-#include "src/backend/webrtc/whip_session.h"
-#include "src/framework/core/status.h"
+#include "stream/src/api/stream_backend.h"
+#include "stream/src/api/stream_config.h"
+#include "stream/src/backend/webrtc/whip_session.h"
+#include "codec/src/framework/core/status.h"
 
 namespace video {
 namespace stream {

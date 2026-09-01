@@ -3,9 +3,9 @@
 
 #include <memory>
 
-#include "src/framework/core/export.h"
-#include "src/framework/core/result.h"
-#include "src/framework/core/types.h"
+#include "codec/src/framework/core/export.h"
+#include "codec/src/framework/core/result.h"
+#include "codec/src/framework/core/types.h"
 
 namespace video {
 namespace codec {

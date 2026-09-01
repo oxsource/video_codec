@@ -1,4 +1,4 @@
-#include "src/core/backend_registry.h"
+#include "stream/src/core/backend_registry.h"
 
 #include <unordered_map>
 

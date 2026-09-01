@@ -2,12 +2,12 @@
 
 #include <memory>
 
-#include "src/api/stream.h"
-#include "src/api/stream_backend.h"
-#include "src/api/stream_config.h"
-#include "src/api/stream_status.h"
-#include "src/core/abr_controller.h"
-#include "src/core/reconnect_handler.h"
+#include "stream/src/api/stream.h"
+#include "stream/src/api/stream_backend.h"
+#include "stream/src/api/stream_config.h"
+#include "stream/src/api/stream_status.h"
+#include "stream/src/core/abr_controller.h"
+#include "stream/src/core/reconnect_handler.h"
 
 namespace video {
 namespace stream {

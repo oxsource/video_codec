@@ -3,10 +3,10 @@
 
 #include <memory>
 
-#include "src/framework/api/audio_encoder.h"
-#include "src/framework/api/encoder_lifecycle.h"
-#include "src/framework/backend/ffmpeg/ffmpeg_raii.h"
-#include "src/framework/core/types.h"
+#include "codec/src/framework/api/audio_encoder.h"
+#include "codec/src/framework/api/encoder_lifecycle.h"
+#include "codec/src/framework/backend/ffmpeg/ffmpeg_raii.h"
+#include "codec/src/framework/core/types.h"
 
 namespace video {
 namespace codec {

@@ -17,7 +17,7 @@
 #include <cstdint>
 #include <memory>
 
-#include "src/framework/core/types.h"
+#include "codec/src/framework/core/types.h"
 
 namespace video {
 namespace codec {

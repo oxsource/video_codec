@@ -1,9 +1,9 @@
 // encoder_lifecycle_test.cc
-#include "src/framework/api/encoder_lifecycle.h"
+#include "codec/src/framework/api/encoder_lifecycle.h"
 
-#include "src/framework/api/audio_encoder.h"
-#include "src/framework/api/codec_factory.h"
-#include "src/framework/api/video_encoder.h"
+#include "codec/src/framework/api/audio_encoder.h"
+#include "codec/src/framework/api/codec_factory.h"
+#include "codec/src/framework/api/video_encoder.h"
 #include "gtest/gtest.h"
 
 namespace video {

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "src/api/stream_backend.h"
-#include "src/api/stream_config.h"
-#include "src/api/stream_status.h"
+#include "stream/src/api/stream_backend.h"
+#include "stream/src/api/stream_config.h"
+#include "stream/src/api/stream_status.h"
 
 namespace video {
 namespace stream {

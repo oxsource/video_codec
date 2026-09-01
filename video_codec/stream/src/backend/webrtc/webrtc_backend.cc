@@ -3,13 +3,13 @@
 // framework's LOG_TAG mechanism picks it up instead of defaulting to __FILE__.
 #define LOG_TAG "webrtc_backend"
 
-#include "src/backend/webrtc/webrtc_backend.h"
-#include "src/api/stream_config.h"
-#include "src/core/video_stream_register.h"
+#include "stream/src/backend/webrtc/webrtc_backend.h"
+#include "stream/src/api/stream_config.h"
+#include "stream/src/core/video_stream_register.h"
 
-#include "src/framework/core/log_slot.h"
-#include "src/framework/core/status.h"
-#include "src/framework/core/types.h"
+#include "codec/src/framework/core/log_slot.h"
+#include "codec/src/framework/core/status.h"
+#include "codec/src/framework/core/types.h"
 
 #include <rtc/rtc.hpp>
 

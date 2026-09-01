@@ -45,16 +45,16 @@
 #include <string>
 #include <thread>
 
-#include "src/framework/api/codec_factory.h"
-#include "src/framework/api/muxer.h"
-#include "src/framework/api/audio_encoder.h"
-#include "src/framework/api/video_encoder.h"
-#include "src/framework/consumer/file_consumer.h"
-#include "src/framework/consumer/packet_consumer.h"
-#include "src/framework/io/file_byte_sink.h"
-#include "src/framework/queue/packet_queue.h"
-#include "src/framework/utils/media_format.h"
-#include "src/framework/utils/smpte_bars.h"
+#include "codec/src/framework/api/codec_factory.h"
+#include "codec/src/framework/api/muxer.h"
+#include "codec/src/framework/api/audio_encoder.h"
+#include "codec/src/framework/api/video_encoder.h"
+#include "codec/src/framework/consumer/file_consumer.h"
+#include "codec/src/framework/consumer/packet_consumer.h"
+#include "codec/src/framework/io/file_byte_sink.h"
+#include "codec/src/framework/queue/packet_queue.h"
+#include "codec/src/framework/utils/media_format.h"
+#include "codec/src/framework/utils/smpte_bars.h"
 
 namespace vc = video::codec;
 namespace vcu = video::codec::utils;

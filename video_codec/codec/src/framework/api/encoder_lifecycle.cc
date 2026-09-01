@@ -1,5 +1,5 @@
 // encoder_lifecycle.cc
-#include "src/framework/api/encoder_lifecycle.h"
+#include "codec/src/framework/api/encoder_lifecycle.h"
 
 namespace video {
 namespace codec {

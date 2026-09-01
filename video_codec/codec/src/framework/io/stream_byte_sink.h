@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <functional>
 
-#include "src/framework/io/byte_sink.h"
+#include "codec/src/framework/io/byte_sink.h"
 
 namespace video {
 namespace codec {

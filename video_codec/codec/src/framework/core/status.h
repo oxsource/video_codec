@@ -3,7 +3,7 @@
 
 #include <cstdint>
 
-#include "src/framework/core/export.h"
+#include "codec/src/framework/core/export.h"
 
 namespace video {
 namespace codec {

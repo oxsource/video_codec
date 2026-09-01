@@ -1,5 +1,5 @@
 // stride.cc
-#include "src/framework/utils/stride.h"
+#include "codec/src/framework/utils/stride.h"
 
 namespace video {
 namespace codec {

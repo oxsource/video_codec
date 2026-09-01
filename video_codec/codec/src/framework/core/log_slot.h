@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-#include "src/framework/core/export.h"
+#include "codec/src/framework/core/export.h"
 
 namespace video {
 namespace codec {
@@ -37,7 +37,7 @@ VIDEO_CODEC_API void Log(LogLevel level, const char* tag, int line, const std::s
 // just before including the first header) to identify its log output:
 //
 //   #define LOG_TAG "webrtc_backend"
-//   #include "src/framework/core/log_slot.h"
+//   #include "codec/src/framework/core/log_slot.h"
 //
 // When LOG_TAG is not defined, it defaults to __FILE__ so existing call sites
 // keep the previous source-path behavior without any changes.

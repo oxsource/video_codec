@@ -3,7 +3,7 @@
 // framework's LOG_TAG mechanism picks it up instead of defaulting to __FILE__.
 #define LOG_TAG "whip_session"
 
-#include "src/backend/webrtc/whip_session.h"
+#include "stream/src/backend/webrtc/whip_session.h"
 
 #include <chrono>
 #include <memory>
@@ -13,7 +13,7 @@
 
 #include "http/http_umbrella.h"
 
-#include "src/framework/core/log_slot.h"
+#include "codec/src/framework/core/log_slot.h"
 
 namespace video {
 namespace stream {

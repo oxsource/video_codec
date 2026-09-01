@@ -2,11 +2,10 @@ build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
 build --features=visibility=hidden
 
-# Include roots: source files use #include "src/framework/..." (codec) and
-# #include "src/api/..." (stream) which were relative to the old per-dir
-# workspace roots. Adding -Icodec and -Istream makes the old paths resolve.
-build --copt=-Icodec
-build --copt=-Istream
+# Include paths use the workspace root as the include root (mediapipe-style):
+# codec headers are included as "codec/src/framework/...", stream as
+# "stream/src/...". Bazel exposes each cc_library's hdrs relative to the
+# workspace root, so no -I root flags are needed.
 
 # Local caches (outside the output base, so they survive `bazel clean`).
 common --disk_cache=~/.cache/bazel/disk

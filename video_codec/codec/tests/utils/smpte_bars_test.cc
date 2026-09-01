@@ -1,6 +1,6 @@
 // smpte_bars_test.cc
-#include "src/framework/utils/egl_surface.h"
-#include "src/framework/utils/smpte_bars.h"
+#include "codec/src/framework/utils/egl_surface.h"
+#include "codec/src/framework/utils/smpte_bars.h"
 
 #include <cstdint>
 

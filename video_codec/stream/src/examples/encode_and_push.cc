@@ -32,19 +32,19 @@
 #include <sys/stat.h>
 #include <thread>
 
-#include "src/framework/api/codec_factory.h"
-#include "src/framework/api/audio_encoder.h"
-#include "src/framework/api/muxer.h"
-#include "src/framework/api/video_encoder.h"
-#include "src/framework/core/log_slot.h"
-#include "src/framework/core/packet_sink.h"
-#include "src/framework/io/file_byte_sink.h"
-#include "src/framework/queue/packet_queue.h"
-#include "src/framework/utils/smpte_bars.h"
+#include "codec/src/framework/api/codec_factory.h"
+#include "codec/src/framework/api/audio_encoder.h"
+#include "codec/src/framework/api/muxer.h"
+#include "codec/src/framework/api/video_encoder.h"
+#include "codec/src/framework/core/log_slot.h"
+#include "codec/src/framework/core/packet_sink.h"
+#include "codec/src/framework/io/file_byte_sink.h"
+#include "codec/src/framework/queue/packet_queue.h"
+#include "codec/src/framework/utils/smpte_bars.h"
 
-#include "src/api/stream.h"
-#include "src/api/stream_config.h"
-#include "src/api/stream_utils.h"
+#include "stream/src/api/stream.h"
+#include "stream/src/api/stream_config.h"
+#include "stream/src/api/stream_utils.h"
 
 namespace vc = video::codec;
 namespace vcu = video::codec::utils;

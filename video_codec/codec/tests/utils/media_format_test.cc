@@ -1,5 +1,5 @@
 // media_format_test.cc
-#include "src/framework/utils/media_format.h"
+#include "codec/src/framework/utils/media_format.h"
 
 #include "gtest/gtest.h"
 

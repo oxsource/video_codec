@@ -22,20 +22,20 @@
 #include "video_codec_export.h"
 
 // Core value types & uniform error model
-#include "src/framework/core/log_slot.h"
-#include "src/framework/core/result.h"
-#include "src/framework/core/status.h"
-#include "src/framework/core/types.h"
+#include "codec/src/framework/core/log_slot.h"
+#include "codec/src/framework/core/result.h"
+#include "codec/src/framework/core/status.h"
+#include "codec/src/framework/core/types.h"
 
 // Abstract encoder interfaces, muxer, and backend factory
-#include "src/framework/api/audio_encoder.h"
-#include "src/framework/api/codec_factory.h"
-#include "src/framework/api/muxer.h"
-#include "src/framework/api/video_encoder.h"
+#include "codec/src/framework/api/audio_encoder.h"
+#include "codec/src/framework/api/codec_factory.h"
+#include "codec/src/framework/api/muxer.h"
+#include "codec/src/framework/api/video_encoder.h"
 
 // Byte-output sinks used by Muxer (SetOutput) to write container bytes
-#include "src/framework/io/byte_sink.h"
-#include "src/framework/io/file_byte_sink.h"
+#include "codec/src/framework/io/byte_sink.h"
+#include "codec/src/framework/io/file_byte_sink.h"
 
 // Media file-format constants (common output extensions like .mp4 / .h264)
-#include "src/framework/utils/media_format.h"
+#include "codec/src/framework/utils/media_format.h"

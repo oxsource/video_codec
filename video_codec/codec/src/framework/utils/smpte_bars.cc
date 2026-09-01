@@ -1,5 +1,5 @@
 // smpte_bars.cc
-#include "src/framework/utils/smpte_bars.h"
+#include "codec/src/framework/utils/smpte_bars.h"
 
 #include <cmath>
 
@@ -9,7 +9,7 @@
 #include <GLES2/gl2.h>
 #endif
 
-#include "src/framework/utils/egl_surface.h"
+#include "codec/src/framework/utils/egl_surface.h"
 
 namespace video {
 namespace codec {

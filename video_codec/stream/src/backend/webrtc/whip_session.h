@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "src/api/stream_config.h"
+#include "stream/src/api/stream_config.h"
 
 namespace cpp_network {
 namespace http {

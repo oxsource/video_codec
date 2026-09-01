@@ -4,8 +4,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "src/api/stream_backend.h"
-#include "src/api/stream_config.h"
+#include "stream/src/api/stream_backend.h"
+#include "stream/src/api/stream_config.h"
 
 namespace video {
 namespace stream {

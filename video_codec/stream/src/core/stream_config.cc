@@ -6,7 +6,7 @@
 // schema. A missing key always falls back to the module default (the struct
 // initializers in stream_config.h / network_config.h).
 
-#include "src/api/stream_config.h"
+#include "stream/src/api/stream_config.h"
 
 #include <fstream>
 #include <sstream>
@@ -14,9 +14,9 @@
 
 #include "nlohmann/json.hpp"
 
-#include "src/framework/core/log_slot.h"
-#include "src/framework/core/result.h"
-#include "src/framework/core/status.h"
+#include "codec/src/framework/core/log_slot.h"
+#include "codec/src/framework/core/result.h"
+#include "codec/src/framework/core/status.h"
 
 namespace video {
 namespace stream {

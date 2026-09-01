@@ -1,7 +1,7 @@
-#include "src/backend/mock/mock_backend.h"
+#include "stream/src/backend/mock/mock_backend.h"
 
-#include "src/framework/core/status.h"
-#include "src/framework/core/types.h"
+#include "codec/src/framework/core/status.h"
+#include "codec/src/framework/core/types.h"
 
 namespace video {
 namespace stream {

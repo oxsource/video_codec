@@ -1,10 +1,10 @@
-#include "src/core/stream_impl.h"
-#include "src/core/backend_registry.h"
+#include "stream/src/core/stream_impl.h"
+#include "stream/src/core/backend_registry.h"
 
 #include <algorithm>
 
-#include "src/framework/core/status.h"
-#include "src/framework/core/types.h"
+#include "codec/src/framework/core/status.h"
+#include "codec/src/framework/core/types.h"
 
 namespace video {
 namespace stream {

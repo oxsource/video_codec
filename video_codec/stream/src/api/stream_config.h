@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#include "src/api/network_config.h"
+#include "stream/src/api/network_config.h"
 
 namespace video {
 namespace codec {
