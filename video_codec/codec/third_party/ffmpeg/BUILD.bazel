@@ -114,6 +114,24 @@ genrule(
     cmd = "for f in $(locations :ffmpeg_codec_impl); do case \"$$f\" in *.a) cp \"$$f\" $@;; esac; done",
 )
 
+# Expose FFmpeg's public C headers (libavcodec/libavformat/libavutil/
+# libswresample) as a declared header provider. The backend sources include
+# <libavcodec/...> etc.; without a declared target Bazel's include scanning
+# resolves them to the source tree and flags "undeclared inclusion(s)" (strict
+# deps) whenever these targets are built from a consumer workspace. The headers
+# are reached through the existing @ffmpeg repo include root (-iquote), so no
+# includes = ["."] here — a plain -I on the repo root would shadow the C++
+# standard library's <version> header.
+cc_library(
+    name = "ffmpeg_headers",
+    hdrs = glob([
+        "libavcodec/**/*.h",
+        "libavformat/**/*.h",
+        "libavutil/**/*.h",
+        "libswresample/**/*.h",
+    ]),
+)
+
 # Expose the merged archive as a cc_import so a cc_library can force-load it.
 # alwayslink makes Bazel emit -force_load for this library's objects when any
 # binary depends on it, pulling every member (e.g. the aarch64 helper
@@ -131,6 +149,9 @@ cc_import(
 
 cc_library(
     name = "ffmpeg_codec",
-    deps = [":ffmpeg_codec_import"],
+    deps = [
+        ":ffmpeg_codec_import",
+        ":ffmpeg_headers",
+    ],
     alwayslink = True,
 )
