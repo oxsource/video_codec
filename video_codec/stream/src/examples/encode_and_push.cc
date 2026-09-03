@@ -1,15 +1,17 @@
 // encode_and_push.cc
 //
-// Demonstrates simultaneous recording (to file) and streaming (via WebRTC/WHIP).
-// Generates SMPTE color bars + 1 kHz test tone using the codec module, encodes
-// as H.264 + AAC, then splits the output: one copy goes to a local MP4 file,
-// the other is pushed to a remote WHIP endpoint.
+// Demonstrates encoding + streaming (via WebRTC/WHIP), with optional local
+// recording (--record). Generates SMPTE color bars + 1 kHz test tone using the
+// codec module, encodes as H.264 + AAC, and pushes it to a remote WHIP
+// endpoint. By default no file is written; pass --record to also save the
+// encoded media to a fragmented MP4 (out/out.mp4 unless -o overrides it).
 //
 // The stream-side configuration comes from a unified JSON file, whose schema
 // (field keys and defaults) is owned by the stream module (see
 // StreamConfig::LoadFromFile / ::ParseFromJson in //src/core:stream_core)
 // — the example only supplies the content:
 //   bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.json
+//   bazel run //src/examples:encode_and_push -- --config src/examples/stream_conf.json --record --seconds 5
 //
 // The WHIP URL is derived inside the module from the signal host + path:
 //   host + "/" + path + "/whip"
@@ -82,7 +84,11 @@ struct Options {
   std::string config_file = "src/examples/stream_conf.json";
   std::string out_path = "out/out.mp4";
   int seconds = 15;
-  bool no_record = true;
+  // Recording is OFF by default: the example only pushes to the WHIP endpoint.
+  // Pass --record to also write a fragmented MP4 of the encoded media to
+  // out_path, e.g.:
+  //   --record --seconds 5 -o out/out.mp4
+  bool record = false;
 };
 
 static Options g_opts;
@@ -108,8 +114,18 @@ static vs::StreamConfig ParseConfig(int argc, char** argv) {
       if (++i < argc) g_opts.out_path = argv[i];
     } else if (arg == "--seconds" || arg == "--time") {
       if (++i < argc) g_opts.seconds = std::atoi(argv[i]);
-    } else if (arg == "--no-record") {
-      g_opts.no_record = true;
+    } else if (arg == "--record" || arg == "--record=true" ||
+               arg == "--no-record=false") {
+      g_opts.record = true;
+    } else if (arg == "--no-record" || arg == "--no-record=true" ||
+               arg == "--record=false") {
+      g_opts.record = false;
+    } else if (arg.rfind("--record=", 0) == 0 ||
+               arg.rfind("--no-record=", 0) == 0) {
+      VC_LOG(video::codec::LogLevel::kError,
+             "Unknown value for record flag: '" + arg +
+             "' (expected --record, --no-record or --record=true|false)");
+      std::exit(1);
     } else {
       VC_LOG(video::codec::LogLevel::kError,
              std::string("Unknown option: ") + arg +
@@ -140,7 +156,7 @@ static vs::StreamConfig ParseConfig(int argc, char** argv) {
          " output=" + g_opts.out_path +
          " whip=" + scfg.remote_url +
          " seconds=" + std::to_string(g_opts.seconds) +
-         " no_record=" + (g_opts.no_record ? "yes" : "no"));
+         " record=" + (g_opts.record ? "yes" : "no"));
   return scfg;
 }
 
@@ -237,7 +253,7 @@ static MuxerResult SetupMuxer(int width, int height,
                                int fps, int sample_rate, int channels) {
   MuxerResult m;
 
-  if (!g_opts.no_record) {
+  if (g_opts.record) {
     m.file_sink = std::make_unique<vc::FileByteSink>(g_opts.out_path);
 
     vc::MuxerConfig mux_cfg;
@@ -287,7 +303,9 @@ static std::unique_ptr<vs::Stream> SetupStream(const vs::StreamConfig& scfg) {
 
   st = stream->Start();
   if (st != vc::Status::kOk) {
-    VC_LOG(video::codec::LogLevel::kError, std::string("stream Start failed: ") + vc::StatusToString(st) + " — recording only");
+    VC_LOG(video::codec::LogLevel::kError,
+           std::string("stream Start failed: ") + vc::StatusToString(st) +
+           (g_opts.record ? " — recording only" : " — encoder still runs"));
     return stream;
   }
 
@@ -307,9 +325,11 @@ static int64_t RunEncodeLoop(vc::VideoEncoder& video, vc::AudioEncoder* audio,
   int64_t produced = 0;
   vcu::SmpteBars::AudioPace audio_pace(vcu::SmpteBars::AudioOptions(), fps);
 
+  const std::string rec_target =
+      g_opts.record ? out_path : "(recording disabled)";
   VC_LOG(video::codec::LogLevel::kInfo,
          std::string("encoding ") + std::to_string(frame_count) + " frames to " +
-         out_path + " + pushing to " + (stream_ok ? whip_url : "(skipped)"));
+         rec_target + " + pushing to " + (stream_ok ? whip_url : "(skipped)"));
 
   for (int i = 0; i < frame_count; ++i) {
     vc::VideoFrame frame = vcu::SmpteBars::MakeVideoFrame(width, height, fps, i);
@@ -339,7 +359,8 @@ static int64_t RunEncodeLoop(vc::VideoEncoder& video, vc::AudioEncoder* audio,
                               .count();
   VC_LOG(video::codec::LogLevel::kInfo,
          std::string("done — ") + std::to_string(produced) + " frames encoded in " +
-         std::to_string(elapsed_ms) + " ms -> " + out_path);
+         std::to_string(elapsed_ms) + " ms" +
+         (g_opts.record ? " -> " + out_path : " (recording disabled)"));
   return produced;
 }
 

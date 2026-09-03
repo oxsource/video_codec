@@ -84,12 +84,12 @@ Requires [MediaMTX](https://github.com/bluenviron/mediamtx) running on port 8889
 
 # Push SMPTE color bars using the sample JSON config
 # (stream/src/examples/stream_conf.json -> http://localhost:8889/test/whip),
-# skipping the local MP4 recording:
+# pushing only (no local file):
 bazel run //stream/src/examples:encode_and_push -- --config stream/src/examples/stream_conf.json
 
 # Push and record to a local file for a fixed duration:
 bazel run //stream/src/examples:encode_and_push -- --config stream/src/examples/stream_conf.json \
-  --no-record=false --seconds 5
+  --record --seconds 5
 ```
 
 Browser preview: open `http://localhost:8889`, select the stream, and play it (MediaMTX WebRTC/WHIP subscription).
