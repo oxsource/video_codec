@@ -103,6 +103,20 @@ static std::string ResolvePath(std::string path) {
   return path;
 }
 
+// Extract the signal "path" (the trailing segment of the WHIP URL) so we can
+// tell the user where to view the stream in a browser:
+//   WHIP: host + "/" + path + "/whip"  ->  path
+static std::string SignalPathFromWhip(const std::string& whip_url) {
+  std::string base = whip_url;
+  const std::string suffix = "/whip";
+  if (base.size() >= suffix.size() &&
+      base.compare(base.size() - suffix.size(), suffix.size(), suffix) == 0) {
+    base.resize(base.size() - suffix.size());
+  }
+  auto pos = base.rfind('/');
+  return pos == std::string::npos ? base : base.substr(pos + 1);
+}
+
 // ---- CLI / config resolution -------------------------------------------------
 
 static vs::StreamConfig ParseConfig(int argc, char** argv) {
@@ -370,6 +384,13 @@ int main(int argc, char** argv) {
   vc::SetLogSlot(&g_stderr_slot);
 
   vs::StreamConfig scfg = ParseConfig(argc, argv);
+
+  // MediaMTX exposes the WHIP stream to web browsers at https://localhost:8892/<path>.
+  const std::string view_path = SignalPathFromWhip(scfg.remote_url);
+  VC_LOG(video::codec::LogLevel::kDebug,
+         "View the stream in a web browser (MediaMTX):\n"
+         "  https://localhost:8892/" + view_path +
+         "\nSee https://mediamtx.org/docs/read/web-browsers for details.");
 
   const int width = scfg.resolution_width;
   const int height = scfg.resolution_height;
