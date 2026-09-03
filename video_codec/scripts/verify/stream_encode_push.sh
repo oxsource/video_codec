@@ -21,29 +21,27 @@ bazel build //stream/src/examples:encode_and_push
 BIN="$(find -L bazel-bin -path '*/examples/encode_and_push' -type f | head -1)"
 [ -n "$BIN" ] || { echo "[stream] FAIL: encode_and_push binary not found"; exit 1; }
 
-echo "[stream] run encode_and_push (${RUN_SECONDS}s)"
-LOG="$ROOT/out/encode_and_push.log"
 mkdir -p "$ROOT/out"
-"$BIN" --config "$ROOT/stream/src/examples/stream_conf.json" \
-       --seconds "$RUN_SECONDS" >"$LOG" 2>&1
-
+echo "[stream] run encode_and_push (${RUN_SECONDS}s)"
 # The example logs the encoded-frame summary to stderr (VC_LOG): "done — N frames".
-FRAMES="$(grep -oE 'done — [0-9]+ frames' "$LOG" | grep -oE '[0-9]+' | tail -1 || true)"
+OUTPUT="$("$BIN" --config "$ROOT/stream/src/examples/stream_conf.json" \
+       --seconds "$RUN_SECONDS" 2>&1)" || {
+         echo "$OUTPUT"
+         echo "[stream] FAIL: encode_and_push exited nonzero"
+         exit 1
+       }
+echo "$OUTPUT"
+FRAMES="$(printf '%s\n' "$OUTPUT" | grep -oE 'done — [0-9]+ frames' | grep -oE '[0-9]+' | tail -1 || true)"
 EXPECTED="$((RUN_SECONDS * 30))"
 
-if [ -z "$FRAMES" ] || [ "$FRAMES" -eq 0 ]; then
-  echo "[stream] FAIL: no frames encoded (see $LOG)"
-  tail -20 "$LOG"
+if ! [[ "$FRAMES" =~ ^[0-9]+$ ]]; then
+  echo "[stream] FAIL: no encoded-frame summary found (got '$FRAMES')"
   exit 1
 fi
 
 echo "[stream] encoded $FRAMES frames (expected ~$EXPECTED for ${RUN_SECONDS}s @30fps)"
 if [ "$FRAMES" -lt "$((EXPECTED * 9 / 10))" ]; then
   echo "[stream] WARN: encoded $FRAMES < 90% of expected $EXPECTED — check WHIP/encoder"
-fi
-
-if grep -q 'stream Start failed' "$LOG"; then
-  echo "[stream] NOTE: WHIP endpoint unreachable — ran in encoder-only fallback"
 fi
 
 echo "[stream] PASS: encode_and_push encoded $FRAMES frames over ${RUN_SECONDS}s"

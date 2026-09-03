@@ -81,9 +81,9 @@ StderrLogSlot g_stderr_slot;
 // knobs that are local to this example binary.
 
 struct Options {
-  std::string config_file = "src/examples/stream_conf.json";
+  std::string config_file = "stream/src/examples/stream_conf.json";
   std::string out_path = "out/out.mp4";
-  int seconds = 15;
+  int seconds = 5;
   // Recording is OFF by default: the example only pushes to the WHIP endpoint.
   // Pass --record to also write a fragmented MP4 of the encoded media to
   // out_path, e.g.:

@@ -55,6 +55,7 @@ Configuration parameters for a stream session (`src/api/stream_config.h`).
 | remote_url | string | WHIP endpoint URL (or derived from signal host + path in JSON config) |
 | video_codec | string | Codec name (e.g., `h264`) |
 | audio_codec | string | Codec name (e.g., `aac`) |
+| debug | bool | Verbose per-frame send logging (default false); runtime replacement for the old `STREAM_DEBUG_SEND` compile-time macro |
 | initial_bitrate_kbps | uint32 | Starting bitrate for ABR (default 2000) |
 | max_bitrate_kbps | uint32 | Maximum bitrate cap (default 5000) |
 | min_bitrate_kbps | uint32 | Minimum bitrate floor (default 200) |

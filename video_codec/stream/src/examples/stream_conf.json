@@ -17,6 +17,11 @@
   "video_codec": "h264",
   "audio_codec": "aac",
 
+  // Verbose per-frame send logging (SendVideo/SendAudio packet sizes).
+  // Replaces the old compile-time STREAM_DEBUG_SEND macro; keep false in
+  // release to avoid per-packet logging cost.
+  "debug": true,
+
   // Resolution / frame rate used by the encoder pipeline.
   "width": 640,
   "height": 480,

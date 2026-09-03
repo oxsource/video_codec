@@ -16,14 +16,12 @@
 #include <sstream>
 #include <string>
 
-// Per-frame send tracing (SendVideo/SendAudio). Compiled out unless
-// STREAM_DEBUG_SEND is defined (e.g. Bazel: --copt=-DSTREAM_DEBUG_SEND), so
-// release builds carry no per-packet logging cost.
-#if defined(STREAM_DEBUG_SEND)
-#define STREAM_SEND_LOG(level, msg) VC_LOG((level), (msg))
-#else
-#define STREAM_SEND_LOG(level, msg) ((void)0)
-#endif
+// Per-frame send tracing (SendVideo). Enabled at runtime via
+// StreamConfig::debug (the old compile-time STREAM_DEBUG_SEND macro is gone).
+#define STREAM_SEND_LOG(level, msg)            \
+  do {                                         \
+    if (config_.debug) VC_LOG((level), (msg)); \
+  } while (0)
 
 namespace video {
 namespace stream {

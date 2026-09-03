@@ -27,6 +27,11 @@ struct StreamConfig {
   std::string video_codec;
   std::string audio_codec;
 
+  // Enable verbose per-frame send logging (SendVideo/SendAudio packet sizes).
+  // Runtime replacement for the old compile-time STREAM_DEBUG_SEND macro;
+  // default off so release builds carry no per-packet logging cost.
+  bool debug = false;
+
   uint32_t initial_bitrate_kbps = 2000;
   uint32_t max_bitrate_kbps = 5000;
   uint32_t min_bitrate_kbps = 200;

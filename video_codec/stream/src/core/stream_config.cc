@@ -34,6 +34,7 @@ constexpr char kWhipSuffix[] = "whip";
 constexpr char kKeyBackend[]    = "backend";
 constexpr char kKeyVideoCodec[] = "video_codec";
 constexpr char kKeyAudioCodec[] = "audio_codec";
+constexpr char kKeyDebug[]      = "debug";
 
 // bitrate / resolution / frame rate
 constexpr char kKeyInitialBitrateKbps[] = "initial_bitrate_kbps";
@@ -154,6 +155,7 @@ video::codec::Result<StreamConfig> ParseJsonText(const std::string& json_text,
   cfg.backend_type = root.value(kKeyBackend, cfg.backend_type);
   cfg.video_codec = root.value(kKeyVideoCodec, cfg.video_codec);
   cfg.audio_codec = root.value(kKeyAudioCodec, cfg.audio_codec);
+  cfg.debug = root.value(kKeyDebug, cfg.debug);
 
   cfg.initial_bitrate_kbps = root.value(kKeyInitialBitrateKbps, cfg.initial_bitrate_kbps);
   cfg.max_bitrate_kbps = root.value(kKeyMaxBitrateKbps, cfg.max_bitrate_kbps);
