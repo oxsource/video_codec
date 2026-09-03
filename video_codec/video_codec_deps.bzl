@@ -69,15 +69,10 @@ def _libdatachannel():
 def _cpp_network_http():
     http_archive(
         name = "cpp_network",
-        sha256 = "b919df29585087815e6f724db8dce1ca1b17317dad9e6c2859a869412aa63a75",
-        strip_prefix = "cpp_network-1.1.0/cpp_network",
-        urls = ["https://github.com/oxsource/cpp_network/archive/refs/tags/v1.1.0.tar.gz"],
+        sha256 = "5ab53545da2ca87853d9fe8b4cf506c15f0b805b4d7f9941fcdf17c57a4afd29",
+        strip_prefix = "cpp_network-v1.0.2/cpp_network",
+        urls = ["https://github.com/oxsource/cpp_network/releases/download/v1.0.2/cpp_network-v1.0.2.tar.gz"],
         build_file = "@video_codec//stream/third_party/cpp_network:BUILD.bazel",
-        # Skip curl man-page generation and cap make parallelism; the upstream
-        # build_openssl.sh uses -j "$NCPU" (all cores) which OOMs on macOS when
-        # perl spawns hundreds of doc jobs.
-        patches = ["//stream/third_party/cpp_network:build_openssl_parallel.patch"],
-        patch_args = ["-p1"],
     )
 
 def _cpp_network_local():
@@ -92,7 +87,7 @@ def _cpp_network_local():
 
 # ---- Setup function
 
-def video_codec_setup(cpp_network_local = False):
+def video_codec_setup():
     if not native.existing_rule("bazel_skylib"):
         _bazel_skylib()
     if not native.existing_rule("com_google_googletest"):
@@ -108,7 +103,5 @@ def video_codec_setup(cpp_network_local = False):
     if not native.existing_rule("libdatachannel"):
         _libdatachannel()
     if not native.existing_rule("cpp_network"):
-        if cpp_network_local:
-            _cpp_network_local()
-        else:
-            _cpp_network_http()
+        # _cpp_network_local()
+        _cpp_network_http()
