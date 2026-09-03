@@ -9,15 +9,17 @@ package(default_visibility = ["//visibility:public"])
 # explicit //stream/... holes: stream only ever talks to codec through this
 # adapter. New codec capability needed by stream is added here.
 #
-# It aggregates the public umbrella (api + core + io) plus the handful of
-# stream-facing internals not in the umbrella (packet_sink, PacketQueue, and
-# the SMPTE signal generator used by examples).
+# It aggregates the full public umbrella (api + core + io + utils + the
+# platform-selected backend) plus the handful of stream-facing internals not
+# in the umbrella (packet_sink and PacketQueue). The umbrella must be the full
+# `video_codec` aggregate — NOT the header-only `video_codec_hdrs` slice —
+# otherwise the FFmpeg/MediaCodec backend is never linked and
+# CodecFactory::CreateVideo returns kPlatformUnsupported.
 cc_library(
     name = "codec_for_stream",
     deps = [
-        "//codec/src/framework/public:video_codec_hdrs",  # umbrella: api + core + io
+        "//codec/src/framework/public:video_codec",        # umbrella: api + core + io + backend
         "//codec/src/framework/core:packet_sink",          # packet streaming interface
         "//codec/src/framework/queue",                      # PacketQueue
-        "//codec/src/framework/utils",                      # SMPTE color-bars signal gen
     ],
 )
