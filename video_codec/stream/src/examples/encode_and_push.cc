@@ -4,7 +4,9 @@
 // recording (--record). Generates SMPTE color bars + 1 kHz test tone using the
 // codec module, encodes as H.264 + AAC, and pushes it to a remote WHIP
 // endpoint. By default no file is written; pass --record to also save the
-// encoded media to a fragmented MP4 (out/out.mp4 unless -o overrides it).
+// encoded media to a fragmented MP4 (out/out.mp4 unless -o overrides it) AND a
+// companion raw H.264 Annex-B elementary stream in the same directory
+// (extension replaced with .h264, e.g. out/out.h264).
 //
 // The stream-side configuration comes from a unified JSON file, whose schema
 // (field keys and defaults) is owned by the stream module (see
@@ -86,8 +88,9 @@ struct Options {
   int seconds = 5;
   // Recording is OFF by default: the example only pushes to the WHIP endpoint.
   // Pass --record to also write a fragmented MP4 of the encoded media to
-  // out_path, e.g.:
-  //   --record --seconds 5 -o out/out.mp4
+  // out_path AND a companion raw .h264 elementary stream in the same directory
+  // (extension replaced with .h264), e.g.:
+  //   --record --seconds 5 -o out/out.mp4   # writes out/out.mp4 + out/out.h264
   bool record = false;
 };
 
@@ -100,6 +103,21 @@ static std::string ResolvePath(std::string path) {
   if (const char* ws = getenv("BUILD_WORKSPACE_DIRECTORY")) {
     return std::string(ws) + "/" + path;
   }
+  return path;
+}
+
+// Replace the extension of an output path (out/out.mp4 -> out/out.h264); if the
+// path has no extension, append one. Derives the raw H.264 companion file name
+// from the --record MP4 output path.
+static std::string ReplaceExtension(std::string path, const std::string& new_ext) {
+  auto slash = path.find_last_of('/');
+  auto dot = path.find_last_of('.');
+  if (dot != std::string::npos && (slash == std::string::npos || dot > slash)) {
+    path.resize(dot + 1);
+  } else if (!path.empty() && path.back() != '/') {
+    path.push_back('.');
+  }
+  path += new_ext;
   return path;
 }
 
@@ -257,10 +275,69 @@ class RecordAndPushSink : public vc::PacketSink {
 
 static NullSink g_null_sink;  // global singleton — always available
 
+// Writes the raw H.264 Annex-B elementary stream directly to a file (no
+// container). VideoPacket.data is already Annex-B (start codes, with SPS/PPS on
+// keyframes), so the muxer's AVCC conversion is bypassed on purpose.
+class RawH264Sink : public vc::PacketSink {
+ public:
+  explicit RawH264Sink(vc::FileByteSink* file) : file_(file) {}
+
+  vc::Status Push(vc::VideoPacket&& pkt) override {
+    if (pkt.data.empty()) return vc::Status::kOk;
+    if (!file_ || !file_->Write(pkt.data.data(), pkt.data.size())) {
+      return vc::Status::kEncodeFailed;
+    }
+    return vc::Status::kOk;
+  }
+  vc::Status Push(vc::AudioPacket&&) override { return vc::Status::kOk; }
+  vc::Status Finish() override {
+    if (file_ && !file_->Flush()) return vc::Status::kEncodeFailed;
+    return vc::Status::kOk;
+  }
+
+ private:
+  vc::FileByteSink* file_;
+};
+
+// Fans every packet out to two sinks (e.g. MP4 muxer + raw H.264) in parallel.
+class TeeSink : public vc::PacketSink {
+ public:
+  TeeSink(vc::PacketSink* a, vc::PacketSink* b) : a_(a), b_(b) {}
+
+  vc::Status Push(vc::VideoPacket&& pkt) override {
+    vc::VideoPacket copy = pkt;  // Push() consumes; hand each sink its own copy.
+    vc::Status sa = a_->Push(std::move(copy));
+    vc::Status sb = b_->Push(std::move(pkt));
+    return (sa == vc::Status::kOk && sb == vc::Status::kOk) ? vc::Status::kOk
+                                                            : vc::Status::kEncodeFailed;
+  }
+  vc::Status Push(vc::AudioPacket&& pkt) override {
+    vc::AudioPacket copy = pkt;
+    vc::Status sa = a_->Push(std::move(copy));
+    vc::Status sb = b_->Push(std::move(pkt));
+    return (sa == vc::Status::kOk && sb == vc::Status::kOk) ? vc::Status::kOk
+                                                            : vc::Status::kEncodeFailed;
+  }
+  vc::Status Finish() override {
+    vc::Status sa = a_->Finish();
+    vc::Status sb = b_->Finish();
+    return (sa == vc::Status::kOk && sb == vc::Status::kOk) ? vc::Status::kOk
+                                                            : vc::Status::kEncodeFailed;
+  }
+
+ private:
+  vc::PacketSink* a_;
+  vc::PacketSink* b_;
+};
+
 struct MuxerResult {
   std::unique_ptr<vc::FileByteSink> file_sink;
   std::unique_ptr<vc::Muxer> muxer;
+  std::unique_ptr<vc::FileByteSink> raw_file;
+  std::unique_ptr<RawH264Sink> raw_sink;
+  std::unique_ptr<TeeSink> tee;
   vc::PacketSink* record_sink = &g_null_sink;
+  std::string raw_path;
 };
 
 static MuxerResult SetupMuxer(int width, int height,
@@ -287,7 +364,23 @@ static MuxerResult SetupMuxer(int width, int height,
       std::exit(1);
     }
     m.muxer->SetOutput(m.file_sink.get());
-    m.record_sink = m.muxer.get();
+
+    // Companion raw H.264 elementary stream in the same directory. If the file
+    // cannot be opened, degrade to MP4-only instead of failing the run.
+    m.raw_path = ReplaceExtension(g_opts.out_path, "h264");
+    m.raw_file = std::make_unique<vc::FileByteSink>(m.raw_path);
+    if (m.raw_file->IsOpen()) {
+      m.raw_sink = std::make_unique<RawH264Sink>(m.raw_file.get());
+      m.tee = std::make_unique<TeeSink>(m.muxer.get(), m.raw_sink.get());
+      m.record_sink = m.tee.get();
+    } else {
+      VC_LOG(video::codec::LogLevel::kWarn,
+             "cannot open raw H.264 output '" + m.raw_path +
+                 "', recording MP4 only");
+      m.raw_file.reset();
+      m.raw_path.clear();
+      m.record_sink = m.muxer.get();
+    }
   }
   return m;
 }
@@ -339,8 +432,10 @@ static int64_t RunEncodeLoop(vc::VideoEncoder& video, vc::AudioEncoder* audio,
   int64_t produced = 0;
   vcu::SmpteBars::AudioPace audio_pace(vcu::SmpteBars::AudioOptions(), fps);
 
+  const std::string raw_path = g_opts.record ? ReplaceExtension(out_path, "h264") : "";
   const std::string rec_target =
-      g_opts.record ? out_path : "(recording disabled)";
+      g_opts.record ? out_path + (raw_path.empty() ? "" : " (+ " + raw_path + ")")
+                    : "(recording disabled)";
   VC_LOG(video::codec::LogLevel::kInfo,
          std::string("encoding ") + std::to_string(frame_count) + " frames to " +
          rec_target + " + pushing to " + (stream_ok ? whip_url : "(skipped)"));
@@ -374,7 +469,9 @@ static int64_t RunEncodeLoop(vc::VideoEncoder& video, vc::AudioEncoder* audio,
   VC_LOG(video::codec::LogLevel::kInfo,
          std::string("done — ") + std::to_string(produced) + " frames encoded in " +
          std::to_string(elapsed_ms) + " ms" +
-         (g_opts.record ? " -> " + out_path : " (recording disabled)"));
+         (g_opts.record
+              ? " -> " + out_path + (raw_path.empty() ? "" : " (+ " + raw_path + ")")
+              : " (recording disabled)"));
   return produced;
 }
 
