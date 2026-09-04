@@ -23,9 +23,11 @@
 
 // Per-frame send tracing (SendVideo). Enabled at runtime via
 // StreamConfig::debug (the old compile-time STREAM_DEBUG_SEND macro is gone).
-#define STREAM_SEND_LOG(level, msg)            \
-  do {                                         \
-    if (config_.debug) VC_LOG((level), (msg)); \
+// debug_log_ is an atomic snapshot so a reconnect worker reassigning config_
+// never races the encoder thread's logging.
+#define STREAM_SEND_LOG(level, msg)                \
+  do {                                             \
+    if (debug_log_.load()) VC_LOG((level), (msg)); \
   } while (0)
 
 namespace video {
@@ -99,6 +101,7 @@ bool IsAnnexBStartCode(const uint8_t* data, size_t n) {
 WebrtcBackend::WebrtcBackend(const StreamConfig& config) : config_(config) {
   static std::once_flag logger_init;
   std::call_once(logger_init, [] { rtc::InitLogger(rtc::LogLevel::Warning); });
+  debug_log_.store(config_.debug);
   whip_session_ = std::make_unique<WhipSession>(config_.network);
 }
 
@@ -326,6 +329,7 @@ void WebrtcBackend::TeardownConnection() {
   // delivered while closing (e.g. Closed) cannot touch a newer session or
   // override the terminal state reported by the caller.
   session_gen_.fetch_add(1);
+  send_enabled_.store(false);
 
   std::shared_ptr<rtc::PeerConnection> old_pc;
   std::shared_ptr<rtc::Track> old_track;
@@ -375,15 +379,18 @@ void WebrtcBackend::ResetConnectState() {
   pc_terminal_.store(false);
   first_frame_sent_.store(false);
   streaming_reported_.store(false);
+  send_enabled_.store(false);
+  frame_index_.store(0);
   {
     std::lock_guard<std::mutex> lock(mtx_);
     connect_result_ = video::codec::Status::kOk;
+    annexb_checked_ = false;
   }
-  frame_index_ = 0;
-  annexb_checked_ = false;
-  auto now = std::chrono::steady_clock::now();
-  last_sr_time_ = now;
-  last_drop_log_time_ = now;
+  auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch())
+                    .count();
+  last_sr_us_.store(now_us);
+  last_drop_log_us_.store(now_us);
 }
 
 void WebrtcBackend::TryMarkStreaming() {
@@ -393,7 +400,11 @@ void WebrtcBackend::TryMarkStreaming() {
 }
 
 video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
-  config_ = config;
+  {
+    std::lock_guard<std::mutex> lock(mtx_);
+    config_ = config;
+    debug_log_.store(config_.debug);
+  }
   VC_LOG(video::codec::LogLevel::kDebug,
          std::string("Connect: url=") + config_.remote_url);
 
@@ -417,20 +428,22 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
   pc_config.iceServers.emplace_back("stun:stun.l.google.com:19302");
   VC_LOG(video::codec::LogLevel::kDebug, "creating PeerConnection");
 
+  std::shared_ptr<rtc::PeerConnection> pc;
   {
     std::lock_guard<std::mutex> lock(mtx_);
-    pc_ = std::make_shared<rtc::PeerConnection>(pc_config);
+    pc = std::make_shared<rtc::PeerConnection>(pc_config);
+    pc_ = pc;
   }
 
-  pc_->onStateChange([this, gen](rtc::PeerConnection::State state) {
+  pc->onStateChange([this, gen](rtc::PeerConnection::State state) {
     OnStateChange(gen, state);
   });
 
-  pc_->onLocalDescription([this, gen](const rtc::Description& description) {
+  pc->onLocalDescription([this, gen](const rtc::Description& description) {
     OnLocalDescription(gen, std::string(description));
   });
 
-  pc_->onGatheringStateChange(
+  pc->onGatheringStateChange(
       [this, gen](rtc::PeerConnection::GatheringState state) {
         OnGatheringStateChange(gen, state);
       });
@@ -439,21 +452,28 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
   rtc::Description::Video media("video", rtc::Description::Direction::SendOnly);
   media.addH264Codec(96);
   media.addSSRC(ssrc, "video-send");
-  video_track_ = pc_->addTrack(media);
+  auto track = pc->addTrack(media);
 
-  rtp_config_ = std::make_shared<rtc::RtpPacketizationConfig>(
+  auto rtp_config = std::make_shared<rtc::RtpPacketizationConfig>(
       ssrc, "video-send", 96, 90000);
   auto packetizer = std::make_shared<rtc::H264RtpPacketizer>(
-      rtc::NalUnit::Separator::StartSequence, rtp_config_);
-  rtcp_sr_reporter_ = std::make_shared<rtc::RtcpSrReporter>(rtp_config_);
-  packetizer->addToChain(rtcp_sr_reporter_);
+      rtc::NalUnit::Separator::StartSequence, rtp_config);
+  auto sr = std::make_shared<rtc::RtcpSrReporter>(rtp_config);
+  packetizer->addToChain(sr);
   packetizer->addToChain(std::make_shared<rtc::RtcpNackResponder>());
-  video_track_->setMediaHandler(packetizer);
+  track->setMediaHandler(packetizer);
 
-  video_track_->onOpen([this, gen]() { OnTrackOpen(gen); });
-  video_track_->onClosed([this, gen]() { OnTrackClosed(gen); });
+  track->onOpen([this, gen]() { OnTrackOpen(gen); });
+  track->onClosed([this, gen]() { OnTrackClosed(gen); });
 
-  pc_->setLocalDescription();
+  {
+    std::lock_guard<std::mutex> lock(mtx_);
+    video_track_ = track;
+    rtp_config_ = rtp_config;
+    rtcp_sr_reporter_ = sr;
+  }
+
+  pc->setLocalDescription();
 
   VC_LOG(video::codec::LogLevel::kDebug, "waiting for WHIP answer...");
   {
@@ -509,13 +529,19 @@ video::codec::Status WebrtcBackend::Connect(const StreamConfig& config) {
          std::string("Connect complete, connected=") +
              std::to_string(connected_state_.load()) +
              ", track_open=" + std::to_string(track_open_.load()));
+  send_enabled_.store(true);
   return video::codec::Status::kOk;
 }
 
 video::codec::Status WebrtcBackend::SendVideo(
     const video::codec::VideoPacket& packet) {
-  // Snapshot the media objects under the lock so a concurrent Disconnect()
-  // (which moves them out under mtx_) can never race this frame.
+  // Only send while a fully established session exists. This gate also keeps
+  // the encoder thread out of the members that a reconnect worker reassigns
+  // inside Connect(), so there is no cross-thread access during (re)connect.
+  if (!send_enabled_.load()) {
+    return video::codec::Status::kNotInitialized;
+  }
+
   std::shared_ptr<rtc::Track> track;
   std::shared_ptr<rtc::RtpPacketizationConfig> rtp_config;
   std::shared_ptr<rtc::RtcpSrReporter> sr;
@@ -524,6 +550,20 @@ video::codec::Status WebrtcBackend::SendVideo(
     track = video_track_;
     rtp_config = rtp_config_;
     sr = rtcp_sr_reporter_;
+
+    // One-shot Annex-B vs AVCC sniff on the first frame (P0-6, diagnostic
+    // only); annexb_checked_ is only touched under mtx_.
+    if (!annexb_checked_) {
+      annexb_checked_ = true;
+      const auto* data = reinterpret_cast<const uint8_t*>(packet.data.data());
+      size_t n = std::min(packet.data.size(), size_t{16});
+      bool annexb = n > 0 && IsAnnexBStartCode(data, n);
+      VC_LOG(annexb ? video::codec::LogLevel::kDebug
+                    : video::codec::LogLevel::kWarn,
+             std::string("first packet.data bytes (") +
+                 (annexb ? "Annex-B start code" : "not Annex-B") +
+                 "): " + ToHex(data, n));
+    }
   }
   if (!track) return video::codec::Status::kNotInitialized;
   if (!connected_state_.load() && !track_open_.load()) {
@@ -532,23 +572,9 @@ video::codec::Status WebrtcBackend::SendVideo(
     return video::codec::Status::kNotInitialized;
   }
 
-  // One-shot Annex-B vs AVCC sniff on the first frame (P0-6, diagnostic only).
-  if (!annexb_checked_) {
-    {
-      std::lock_guard<std::mutex> lock(mtx_);
-      if (!annexb_checked_) {
-        annexb_checked_ = true;
-        const auto* data = reinterpret_cast<const uint8_t*>(packet.data.data());
-        size_t n = std::min(packet.data.size(), size_t{16});
-        bool annexb = n > 0 && IsAnnexBStartCode(data, n);
-        VC_LOG(annexb ? video::codec::LogLevel::kDebug
-                      : video::codec::LogLevel::kWarn,
-               std::string("first packet.data bytes (") +
-                   (annexb ? "Annex-B start code" : "not Annex-B") +
-                   "): " + ToHex(data, n));
-      }
-    }
-  }
+  auto now_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch())
+                    .count();
 
   if (rtp_config) {
     uint32_t new_ts;
@@ -558,18 +584,18 @@ video::codec::Status WebrtcBackend::SendVideo(
                    (static_cast<uint64_t>(packet.pts_us) * 90) / 1000);
     } else {
       new_ts = rtp_config->startTimestamp +
-               static_cast<uint32_t>(frame_index_ * 3000);
+               static_cast<uint32_t>(frame_index_.load() * 3000);
     }
     rtp_config->timestamp = new_ts;
-    frame_index_++;
+    frame_index_.fetch_add(1);
   }
 
-  auto now = std::chrono::steady_clock::now();
+  bool report_sr = false;
   // RtcpSrReporter only emits a Sender Report once setNeedsToReport() has been
   // called (no internal timer); drive it at ~1 Hz (P1-3).
-  if (sr && now - last_sr_time_ >= std::chrono::seconds(1)) {
-    last_sr_time_ = now;
-    sr->setNeedsToReport();
+  if (sr && now_us - last_sr_us_.load() >= 1'000'000) {
+    last_sr_us_.store(now_us);
+    report_sr = true;
   }
 
   STREAM_SEND_LOG(video::codec::LogLevel::kDebug,
@@ -582,6 +608,7 @@ video::codec::Status WebrtcBackend::SendVideo(
         reinterpret_cast<const std::byte*>(packet.data.data()),
         reinterpret_cast<const std::byte*>(packet.data.data() +
                                            packet.data.size())));
+    if (report_sr && sr) sr->setNeedsToReport();
     sent = track->send(msg);
   } catch (const std::exception& e) {
     VC_LOG(video::codec::LogLevel::kError,
@@ -594,15 +621,17 @@ video::codec::Status WebrtcBackend::SendVideo(
   }
 
   if (!sent) {
-    // send() returns false under backpressure: count it, do not fake success.
-    // Non-fatal by design (M4): the frame stays counted as dropped in
+    // send() returns false when the SRTP transport refused the packet (for
+    // example keys not yet derived or the outbound path is down mid-stream),
+    // i.e. it was not handed to the network. Count it, do not fake success.
+    // Non-fatal by design (M4): the frame stays counted in
     // stats_.packets_dropped rather than bumping the upper layer's fatal
     // frames_dropped/backpressure accounting.
     stats_.packets_dropped++;
-    if (now - last_drop_log_time_ >= std::chrono::seconds(1)) {
-      last_drop_log_time_ = now;
+    if (now_us - last_drop_log_us_.load() >= 1'000'000) {
+      last_drop_log_us_.store(now_us);
       VC_LOG(video::codec::LogLevel::kWarn,
-             std::string("SendVideo backpressure drop (cumulative dropped=") +
+             std::string("SendVideo send refused (cumulative dropped=") +
                  std::to_string(stats_.packets_dropped) + ")");
     }
     return video::codec::Status::kOk;

@@ -109,13 +109,26 @@ class WebrtcBackend : public StreamBackend {
   std::atomic<bool> first_frame_sent_{false};
   std::atomic<bool> streaming_reported_{false};
   std::atomic<bool> audio_unsupported_logged_{false};
+  // Only true once a session is fully established (after Connect() succeeds)
+  // so SendVideo() from the encoder thread never races a reconnect worker
+  // that is re-initialising the media objects.
+  std::atomic<bool> send_enabled_{false};
+  // Snapshot of config_.debug taken under the lock; avoids a data race on the
+  // std::string config_ when a reconnect worker reassigns it while the encoder
+  // thread is logging.
+  std::atomic<bool> debug_log_{false};
   // connect_result_ is written by the WHIP worker and read by Connect() after
   // waking; guard with mtx_.
   video::codec::Status connect_result_ = video::codec::Status::kOk;
 
-  uint64_t frame_index_ = 0;
-  std::chrono::steady_clock::time_point last_sr_time_;
-  std::chrono::steady_clock::time_point last_drop_log_time_;
+  // frame_index_ is advanced by SendVideo() and reset on (re)connect; atomic
+  // so the two never race even across the send_enabled_ boundary.
+  std::atomic<uint64_t> frame_index_{0};
+  // Timers are stored as microseconds since epoch to stay lock-free on the
+  // send hot path while still being reset concurrently by Connect().
+  std::atomic<int64_t> last_sr_us_{0};
+  std::atomic<int64_t> last_drop_log_us_{0};
+  // Only touched under mtx_.
   bool annexb_checked_ = false;
 };
 

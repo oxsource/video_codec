@@ -179,8 +179,11 @@ bool WhipSession::Create(const std::string& whip_endpoint,
          std::string("Create: POST ") + whip_endpoint + " (" +
              std::to_string(offer_sdp.size()) + " bytes)");
 
+  // Run the HTTP exchange under io_mtx_ but never invoke user callbacks while
+  // holding it: handlers may re-enter the session (e.g. a follow-up request).
   OnReadyHandler ready;
   OnErrorHandler error;
+  std::string error_message;
   bool ok = false;
   {
     std::lock_guard<std::mutex> lock(io_mtx_);
@@ -192,94 +195,100 @@ bool WhipSession::Create(const std::string& whip_endpoint,
     error = on_error_;
 
     if (!client_) {
-      if (error) error("WHIP client not initialized");
-      return false;
-    }
+      error_message = "WHIP client not initialized";
+    } else {
+      auto run = [&]() -> bool {
+        Result<Request> req = MakeRequest(Method::kPost, whip_endpoint,
+                                          offer_sdp, kMimeSdp, total_timeout_);
+        if (!req.ok()) {
+          error_message = "WHIP POST failed";
+          VC_LOG(video::codec::LogLevel::kError,
+                 std::string("POST request build failed: ") +
+                     req.error().message());
+          return false;
+        }
 
-    Result<Request> req = MakeRequest(Method::kPost, whip_endpoint, offer_sdp,
-                                      kMimeSdp, total_timeout_);
-    if (!req.ok()) {
-      VC_LOG(
-          video::codec::LogLevel::kError,
-          std::string("POST request build failed: ") + req.error().message());
-      if (error) error("WHIP POST failed");
-      return false;
-    }
+        Result<Response> resp = client_->Send(req.value());
+        if (!resp.ok()) {
+          error_message = "WHIP POST failed";
+          VC_LOG(video::codec::LogLevel::kError,
+                 std::string("POST failed: [") +
+                     ErrorCodeToString(resp.error().code()) + "] " +
+                     resp.error().message());
+          return false;
+        }
 
-    Result<Response> resp = client_->Send(req.value());
-    if (!resp.ok()) {
-      VC_LOG(video::codec::LogLevel::kError,
-             std::string("POST failed: [") +
-                 ErrorCodeToString(resp.error().code()) + "] " +
-                 resp.error().message());
-      if (error) error("WHIP POST failed");
-      return false;
-    }
+        const Response& response = resp.value();
+        VC_LOG(video::codec::LogLevel::kDebug,
+               std::string("POST -> status ") +
+                   std::to_string(response.status()) + " (" +
+                   std::to_string(response.body().size()) + " bytes body)");
 
-    const Response& response = resp.value();
-    VC_LOG(video::codec::LogLevel::kDebug,
-           std::string("POST -> status ") + std::to_string(response.status()) +
-               " (" + std::to_string(response.body().size()) + " bytes body)");
+        if (response.status() != 201) {
+          error_message = "WHIP POST unexpected status " +
+                          std::to_string(response.status());
+          VC_LOG(video::codec::LogLevel::kError,
+                 std::string("WHIP POST expected 201 Created, got ") +
+                     std::to_string(response.status()) +
+                     ", body=" + response.body().substr(0, 200));
+          return false;
+        }
 
-    if (response.status() != 201) {
-      VC_LOG(video::codec::LogLevel::kError,
-             std::string("WHIP POST expected 201 Created, got ") +
-                 std::to_string(response.status()) +
-                 ", body=" + response.body().substr(0, 200));
-      if (error)
-        error("WHIP POST unexpected status " +
-              std::to_string(response.status()));
-      return false;
-    }
+        if (auto content_type = response.GetHeader(kHeaderContentType)) {
+          if (!StartsWithCaseInsensitive(*content_type, kMimeSdp)) {
+            error_message = "WHIP POST invalid Content-Type: " + *content_type;
+            VC_LOG(video::codec::LogLevel::kError,
+                   std::string("WHIP POST returned unexpected Content-Type: ") +
+                       *content_type);
+            return false;
+          }
+        }
 
-    if (auto content_type = response.GetHeader(kHeaderContentType)) {
-      if (!StartsWithCaseInsensitive(*content_type, kMimeSdp)) {
-        VC_LOG(video::codec::LogLevel::kError,
-               std::string("WHIP POST returned unexpected Content-Type: ") +
-                   *content_type);
-        if (error) error("WHIP POST invalid Content-Type: " + *content_type);
-        return false;
-      }
-    }
+        std::string body = TrimLeft(response.body());
+        if (body.empty()) {
+          error_message = "WHIP POST returned an empty body";
+          VC_LOG(video::codec::LogLevel::kError,
+                 "WHIP POST returned an empty body");
+          return false;
+        }
+        if (!StartsWithCaseInsensitive(body, "v=0")) {
+          error_message = "WHIP POST returned a non-SDP body";
+          VC_LOG(
+              video::codec::LogLevel::kError,
+              std::string("WHIP POST body is not a valid SDP (missing v=0): ") +
+                  body.substr(0, 200));
+          return false;
+        }
 
-    std::string body = TrimLeft(response.body());
-    if (body.empty()) {
-      VC_LOG(video::codec::LogLevel::kError,
-             "WHIP POST returned an empty body");
-      if (error) error("WHIP POST returned an empty body");
-      return false;
-    }
-    if (!StartsWithCaseInsensitive(body, "v=0")) {
-      VC_LOG(video::codec::LogLevel::kError,
-             std::string("WHIP POST body is not a valid SDP (missing v=0): ") +
-                 body.substr(0, 200));
-      if (error) error("WHIP POST returned a non-SDP body");
-      return false;
-    }
+        answer_sdp_ = body;
 
-    answer_sdp_ = body;
+        auto location = response.GetHeader(kHeaderLocation);
+        if (!location) {
+          error_message = "WHIP POST missing Location header";
+          VC_LOG(video::codec::LogLevel::kWarn,
+                 "WHIP POST response is missing the Location header (session "
+                 "cannot be torn down later)");
+          return false;
+        }
+        resource_url_ = ResolveLocation(whip_endpoint, *location);
+        VC_LOG(video::codec::LogLevel::kDebug,
+               std::string("WHIP Location raw='") + *location + "' resolved='" +
+                   resource_url_ + "'");
 
-    auto location = response.GetHeader(kHeaderLocation);
-    if (!location) {
-      VC_LOG(video::codec::LogLevel::kWarn,
-             "WHIP POST response is missing the Location header (session "
-             "cannot be torn down later)");
-      if (error) error("WHIP POST missing Location header");
-      return false;
+        auto last_slash = resource_url_.rfind('/');
+        if (last_slash != std::string::npos) {
+          session_id_ = resource_url_.substr(last_slash + 1);
+        }
+        return true;
+      };
+      ok = run();
     }
-    resource_url_ = ResolveLocation(whip_endpoint, *location);
-    VC_LOG(video::codec::LogLevel::kDebug, std::string("WHIP Location raw='") +
-                                               *location + "' resolved='" +
-                                               resource_url_ + "'");
-
-    auto last_slash = resource_url_.rfind('/');
-    if (last_slash != std::string::npos) {
-      session_id_ = resource_url_.substr(last_slash + 1);
-    }
-    ok = true;
   }
 
-  if (!ok) return false;
+  if (!ok) {
+    if (error) error(error_message);
+    return false;
+  }
   if (ready) ready(answer_sdp_);
   return true;
 }
