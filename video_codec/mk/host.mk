@@ -5,9 +5,10 @@ $(call register_target,host-build)
 $(call register_target,host-spike)
 $(call register_target,host_ffmpeg_codec)
 $(call register_target,host-encode-push)
+$(call register_target,host-ffmpeg-stream)
 $(call register_target,host-verify)
 
-.PHONY: host-build host-spike host_ffmpeg_codec host-encode-push host-verify
+.PHONY: host-build host-spike host_ffmpeg_codec host-encode-push host-ffmpeg-stream host-verify
 
 host-build: ## Host build: bazel build //... (all targets)
 	bash $(V)/host_build.sh $(BAZEL_OPTS)
@@ -20,6 +21,9 @@ host_ffmpeg_codec: ## Run the encode_file demo (SMPTE color bars -> .h264) + ffp
 
 host-encode-push: ## Run the stream encode_and_push example (default 30s; pass DURATION=N to override)
 	bash $(V)/stream_encode_push.sh $(DURATION)
+
+host-ffmpeg-stream: ## Push synthetic testsrc to mediamtx via ffmpeg WHIP muxer (scripts/push_whip.sh)
+	bash scripts/push_whip.sh $(STREAM_PATH) $(RES)
 
 host-verify: ## Full host validation: build + stream example + codec verification
 	bash $(V)/host_verify.sh $(BAZEL_OPTS)
