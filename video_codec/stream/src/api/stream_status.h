@@ -14,7 +14,11 @@ enum class StreamState {
   kStreaming,
   kReconnecting,
   kDisconnected,
-  kDestroyed
+  kDestroyed,
+  // WebRTC-only refinement: ICE/DTLS-SRTP is up (PC Connected) but the media
+  // track is not open yet, so no frame has been confirmed sent. kStreaming is
+  // only reported once the track is open AND a frame was sent successfully.
+  kIceConnected
 };
 
 struct StreamStatus {

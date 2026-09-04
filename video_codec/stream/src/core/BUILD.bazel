@@ -23,3 +23,12 @@ cc_library(
         "@nlohmann_json//:json",
     ],
 )
+
+cc_test(
+    name = "reconnect_handler_test",
+    srcs = ["reconnect_handler_test.cc"],
+    deps = [
+        ":stream_core",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

@@ -23,6 +23,8 @@ enum class Status {
   kBackendUnavailable,    // requested backend could not be loaded/resolved
   kPlatformUnsupported,   // no backend for this platform/configuration
   kUnsupportedOperation,  // e.g. Encode(NativeBuffer) on a software-only path
+  kNetworkError,          // transport/signaling failure (e.g. WHIP HTTP errors)
+  kTimeout,               // operation did not complete within its deadline
 };
 
 // Human-readable name of a status, e.g. StatusToString(Status::kEncodeFailed)
@@ -50,6 +52,10 @@ inline VIDEO_CODEC_API const char* StatusToString(Status c) {
       return "kPlatformUnsupported";
     case Status::kUnsupportedOperation:
       return "kUnsupportedOperation";
+    case Status::kNetworkError:
+      return "kNetworkError";
+    case Status::kTimeout:
+      return "kTimeout";
   }
   return "kUnknown";
 }

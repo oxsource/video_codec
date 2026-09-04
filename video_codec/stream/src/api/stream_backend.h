@@ -25,6 +25,7 @@ struct StreamStats {
   uint32_t jitter_ms = 0;
   uint64_t bytes_sent = 0;
   uint64_t packets_sent = 0;
+  uint64_t packets_dropped = 0;
 };
 
 class StreamBackend {
@@ -33,8 +34,10 @@ class StreamBackend {
   virtual ~StreamBackend() = default;
 
   virtual video::codec::Status Connect(const StreamConfig& config) = 0;
-  virtual video::codec::Status SendVideo(const video::codec::VideoPacket& packet) = 0;
-  virtual video::codec::Status SendAudio(const video::codec::AudioPacket& packet) = 0;
+  virtual video::codec::Status SendVideo(
+      const video::codec::VideoPacket& packet) = 0;
+  virtual video::codec::Status SendAudio(
+      const video::codec::AudioPacket& packet) = 0;
   virtual video::codec::Status Disconnect() = 0;
 
   virtual StreamStats GetStats() = 0;

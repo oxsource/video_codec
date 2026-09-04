@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -36,15 +37,23 @@ class WhipSession {
   bool Create(const std::string& whip_endpoint, const std::string& offer_sdp);
   bool PatchIce(const std::string& whip_endpoint, const std::string& session_id,
                 const std::vector<WhipIceCandidate>& candidates);
-  bool Delete(const std::string& whip_endpoint, const std::string& session_id);
+  bool Delete();
 
   void SetOnReady(OnReadyHandler handler) { on_ready_ = std::move(handler); }
   void SetOnError(OnErrorHandler handler) { on_error_ = std::move(handler); }
 
   const std::string& SessionId() const { return session_id_; }
+  const std::string& ResourceUrl() const { return resource_url_; }
   const std::string& AnswerSdp() const { return answer_sdp_; }
 
+  // Clears all per-session state so a later Delete() cannot act on a stale
+  // resource URL from a previous session.
+  void Reset();
+
  private:
+  // Serialises Create/PatchIce/Delete issued from different threads (backend
+  // worker thread vs Disconnect()).
+  mutable std::mutex io_mtx_;
   std::unique_ptr<cpp_network::http::Client> client_;
   std::chrono::milliseconds total_timeout_{10000};
 
