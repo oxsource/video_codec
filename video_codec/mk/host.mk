@@ -6,9 +6,10 @@ $(call register_target,host-spike)
 $(call register_target,host_ffmpeg_codec)
 $(call register_target,host-encode-push)
 $(call register_target,host-ffmpeg-stream)
+$(call register_target,host-whep-play)
 $(call register_target,host-verify)
 
-.PHONY: host-build host-spike host_ffmpeg_codec host-encode-push host-ffmpeg-stream host-verify
+.PHONY: host-build host-spike host_ffmpeg_codec host-encode-push host-ffmpeg-stream host-whep-play host-verify
 
 host-build: ## Host build: bazel build //... (all targets)
 	bash $(V)/host_build.sh $(BAZEL_OPTS)
@@ -24,6 +25,9 @@ host-encode-push: ## Run the stream encode_and_push example (default 30s; pass D
 
 host-ffmpeg-stream: ## Push synthetic testsrc to mediamtx via ffmpeg WHIP muxer (scripts/push_whip.sh)
 	bash scripts/push_whip.sh $(STREAM_PATH) $(RES)
+
+host-whep-play: ## Play back a WHIP-published stream via GStreamer WHEP (scripts/play_whep.sh)
+	bash scripts/play_whep.sh $(STREAM_PATH)
 
 host-verify: ## Full host validation: build + stream example + codec verification
 	bash $(V)/host_verify.sh $(BAZEL_OPTS)
